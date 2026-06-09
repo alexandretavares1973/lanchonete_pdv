@@ -127,6 +127,29 @@ export default function POSPage() {
       localStorage.setItem("weeklyMenus", JSON.stringify(updatedMenus));
     }
 
+    // Atualizar estoque no cardápio
+    if (!product.isUnlimited && product.quantity !== null) {
+      const updatedMenus = menus.map(menu =>
+        menu.id === selectedMenu.id
+          ? {
+              ...menu,
+              items: menu.items.map((item: MenuItem) =>
+                item.id === product.id
+                  ? { ...item, quantity: item.quantity !== null ? item.quantity - 1 : 0 }
+                  : item
+              ),
+            }
+          : menu
+      );
+      setMenus(updatedMenus);
+      // Atualizar selectedMenu com o novo cardápio
+      const updatedSelectedMenu = updatedMenus.find(m => m.id === selectedMenu.id);
+      if (updatedSelectedMenu) {
+        setSelectedMenu(updatedSelectedMenu);
+      }
+      localStorage.setItem("weeklyMenus", JSON.stringify(updatedMenus));
+    }
+
     toast.success(`✅ ${product.productName} adicionado ao carrinho!`);
   };
 
@@ -151,6 +174,11 @@ export default function POSPage() {
             : menu
         );
         setMenus(updatedMenus);
+        // Atualizar selectedMenu com o novo cardápio
+        const updatedSelectedMenu = updatedMenus.find(m => m.id === selectedMenu.id);
+        if (updatedSelectedMenu) {
+          setSelectedMenu(updatedSelectedMenu);
+        }
         localStorage.setItem("weeklyMenus", JSON.stringify(updatedMenus));
       }
     }
@@ -187,6 +215,11 @@ export default function POSPage() {
           : menu
       );
       setMenus(updatedMenus);
+      // Atualizar selectedMenu com o novo cardápio
+      const updatedSelectedMenu = updatedMenus.find(m => m.id === selectedMenu.id);
+      if (updatedSelectedMenu) {
+        setSelectedMenu(updatedSelectedMenu);
+      }
       localStorage.setItem("weeklyMenus", JSON.stringify(updatedMenus));
     }
 
