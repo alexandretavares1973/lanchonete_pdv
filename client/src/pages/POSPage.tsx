@@ -193,47 +193,168 @@ export default function POSPage() {
     if (!printWindow) return;
 
     const total = calculateTotal();
+    const paymentLabel = paymentMethod === "pix" ? "PIX" : paymentMethod === "card" ? "CARTÃO" : "DINHEIRO";
+    const timestamp = new Date();
+
+    const itemsHtml = cart.map(item => `
+      <div style="display: flex; justify-content: space-between; font-size: 12px; margin: 8px 0; padding: 5px 0; border-bottom: 1px dotted #999;">
+        <div style="flex: 1;">
+          <div style="font-weight: bold;">${item.productName}</div>
+          <div style="font-size: 11px; color: #666;">Qtd: ${item.quantity} x R$ ${item.price.toFixed(2)}</div>
+        </div>
+        <div style="text-align: right; font-weight: bold; min-width: 70px;">R$ ${item.subtotal.toFixed(2)}</div>
+      </div>
+    `).join("");
+
     const html = `
       <!DOCTYPE html>
       <html>
       <head>
+        <meta charset="UTF-8">
         <title>Cupom de Venda</title>
         <style>
-          body { font-family: 'Courier New', monospace; margin: 0; padding: 10px; width: 80mm; }
-          .header { text-align: center; border-bottom: 1px solid #000; padding-bottom: 10px; margin-bottom: 10px; }
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { 
+            font-family: 'Courier New', monospace; 
+            background: white; 
+            color: #000;
+            padding: 10px;
+          }
+          .container { 
+            width: 80mm; 
+            margin: 0 auto; 
+            padding: 10px;
+            background: white;
+          }
+          .header { 
+            text-align: center; 
+            border-bottom: 2px solid #000; 
+            padding-bottom: 10px; 
+            margin-bottom: 15px; 
+          }
+          .header h1 { 
+            font-size: 16px; 
+            font-weight: bold; 
+            margin-bottom: 5px; 
+          }
+          .header p { 
+            font-size: 11px; 
+            margin: 3px 0; 
+          }
+          .divider { 
+            border-bottom: 2px solid #000; 
+            margin: 10px 0; 
+          }
+          .section-title { 
+            font-weight: bold; 
+            font-size: 12px; 
+            margin-top: 12px; 
+            margin-bottom: 8px; 
+            padding-bottom: 5px;
+            border-bottom: 1px solid #000;
+          }
           .items { margin: 10px 0; }
-          .item { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px dotted #ccc; }
-          .total { font-weight: bold; font-size: 16px; text-align: right; margin-top: 10px; padding-top: 10px; border-top: 2px solid #000; }
-          .payment { text-align: center; margin-top: 10px; }
-          .footer { text-align: center; font-size: 12px; margin-top: 20px; }
+          .item { 
+            display: flex; 
+            justify-content: space-between; 
+            font-size: 12px; 
+            margin: 8px 0; 
+            padding: 5px 0; 
+            border-bottom: 1px dotted #999; 
+          }
+          .item-name { 
+            flex: 1; 
+            font-weight: bold;
+          }
+          .item-qty { 
+            font-size: 11px; 
+            color: #666;
+            margin-top: 2px;
+          }
+          .item-total { 
+            text-align: right; 
+            font-weight: bold; 
+            min-width: 70px; 
+          }
+          .summary { 
+            font-size: 11px; 
+            margin: 10px 0; 
+          }
+          .summary-row { 
+            display: flex; 
+            justify-content: space-between; 
+            margin: 5px 0; 
+          }
+          .total-row { 
+            display: flex; 
+            justify-content: space-between; 
+            font-size: 13px; 
+            font-weight: bold; 
+            margin: 10px 0; 
+            padding: 8px 0;
+            border-top: 2px solid #000;
+            border-bottom: 2px solid #000;
+          }
+          .payment-info { 
+            text-align: center; 
+            font-size: 11px; 
+            margin: 10px 0; 
+            padding: 8px;
+            background: #f5f5f5;
+            border-radius: 4px;
+          }
+          .footer { 
+            text-align: center; 
+            font-size: 10px; 
+            margin-top: 15px; 
+            padding-top: 10px; 
+          }
+          @media print { 
+            body { margin: 0; padding: 0; } 
+            .container { width: 80mm; }
+          }
         </style>
       </head>
       <body>
-        <div class="header">
-          <h2>LANCHONETE PDV</h2>
-          <p>Cupom de Venda</p>
-        </div>
-        <div class="items">
-          ${cart.map(item => `
-            <div class="item">
-              <span>${item.productName} x${item.quantity}</span>
-              <span>R$ ${item.subtotal.toFixed(2)}</span>
+        <div class="container">
+          <div class="header">
+            <h1>LANCHONETE PDV</h1>
+            <p>CUPOM DE VENDA</p>
+            <p>━━━━━━━━━━━━━━━━━━━━━━━</p>
+            <p><strong>Cardápio:</strong> ${selectedMenu ? getSaturdayLabel(selectedMenu.saturdayOrder) : "N/A"}</p>
+            <p><strong>Data:</strong> ${timestamp.toLocaleDateString("pt-BR")}</p>
+            <p><strong>Hora:</strong> ${timestamp.toLocaleTimeString("pt-BR")}</p>
+          </div>
+
+          <div class="section-title">PRODUTOS COMPRADOS</div>
+          <div class="items">
+            ${itemsHtml}
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="summary">
+            <div class="summary-row">
+              <span><strong>Total de Itens:</strong></span>
+              <span>${cart.reduce((sum, item) => sum + item.quantity, 0)}</span>
             </div>
-          `).join("")}
-        </div>
-        <div class="total">
-          TOTAL: R$ ${total.toFixed(2)}
-        </div>
-        <div class="payment">
-          <p>Forma de Pagamento: ${
-            paymentMethod === "pix" ? "PIX" :
-            paymentMethod === "card" ? "CARTÃO" :
-            "DINHEIRO"
-          }</p>
-        </div>
-        <div class="footer">
-          <p>${new Date().toLocaleDateString("pt-BR")} ${new Date().toLocaleTimeString("pt-BR")}</p>
-          <p>Obrigado pela compra!</p>
+          </div>
+
+          <div class="total-row">
+            <span>TOTAL:</span>
+            <span>R$ ${total.toFixed(2)}</span>
+          </div>
+
+          <div class="payment-info">
+            <strong>Forma de Pagamento:</strong><br>
+            ${paymentLabel}
+          </div>
+
+          <div class="footer">
+            <p>━━━━━━━━━━━━━━━━━━━━━━━</p>
+            <p>Obrigado pela compra!</p>
+            <p style="margin-top: 10px;">Volte sempre!</p>
+          </div>
         </div>
       </body>
       </html>
