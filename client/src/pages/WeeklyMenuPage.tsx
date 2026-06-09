@@ -14,12 +14,11 @@ interface Responsible {
 }
 
 interface MenuItem {
-  id: number;
-  productId: number;
+  id: string;
   productName: string;
   price: number;
-  availableQuantity: number | null;
-  isAvailable: boolean;
+  quantity: number | null;
+  isUnlimited: boolean;
 }
 
 interface WeeklyMenu {
@@ -38,10 +37,20 @@ export default function WeeklyMenuPage() {
   const [selectedMenu, setSelectedMenu] = useState<WeeklyMenu | null>(null);
   const [showDetails, setShowDetails] = useState(false);
   const [showAddMenu, setShowAddMenu] = useState(false);
+  const [showAddProducts, setShowAddProducts] = useState(false);
+  const [editingMenuId, setEditingMenuId] = useState<number | null>(null);
+  
   const [formData, setFormData] = useState({
     saturdayDate: "",
     saturdayOrder: 1,
     responsibleId: "",
+  });
+
+  const [productForm, setProductForm] = useState({
+    productName: "",
+    price: "",
+    quantity: "",
+    isUnlimited: false,
   });
 
   // Carregar responsáveis do localStorage
@@ -51,7 +60,6 @@ export default function WeeklyMenuPage() {
       setResponsibles(JSON.parse(stored));
     }
 
-    // Carregar cardápios do localStorage
     const storedMenus = localStorage.getItem("weeklyMenus");
     if (storedMenus) {
       setMenus(JSON.parse(storedMenus));
@@ -76,41 +84,67 @@ export default function WeeklyMenuPage() {
       saturdayOrder: formData.saturdayOrder,
       responsibleId: parseInt(formData.responsibleId),
       responsibleName: responsible.name,
-      items: [
-        {
-          id: 1,
-          productId: 1,
-          productName: "Hambúrguer Clássico",
-          price: 25.00,
-          availableQuantity: 50,
-          isAvailable: true,
-        },
-        {
-          id: 2,
-          productId: 2,
-          productName: "Pizza Margherita",
-          price: 35.00,
-          availableQuantity: 30,
-          isAvailable: true,
-        },
-        {
-          id: 3,
-          productId: 3,
-          productName: "Refrigerante 2L",
-          price: 8.50,
-          availableQuantity: null,
-          isAvailable: true,
-        },
-      ],
+      items: [],
     };
 
     const updated = [...menus, newMenu];
     setMenus(updated);
     localStorage.setItem("weeklyMenus", JSON.stringify(updated));
     
-    toast.success("Cardápio criado com sucesso!");
+    toast.success("Cardápio criado! Agora adicione os produtos.");
+    setEditingMenuId(newMenu.id);
+    setShowAddProducts(true);
     setFormData({ saturdayDate: "", saturdayOrder: 1, responsibleId: "" });
     setShowAddMenu(false);
+  };
+
+  const handleAddProduct = () => {
+    if (!productForm.productName || !productForm.price) {
+      toast.error("Preencha nome e preço do produto");
+      return;
+    }
+
+    if (!editingMenuId) {
+      toast.error("Nenhum cardápio selecionado");
+      return;
+    }
+
+    const price = parseFloat(productForm.price);
+    const quantity = productForm.isUnlimited ? null : (productForm.quantity ? parseInt(productForm.quantity) : 0);
+
+    const newProduct: MenuItem = {
+      id: `${Date.now()}-${Math.random()}`,
+      productName: productForm.productName,
+      price,
+      quantity,
+      isUnlimited: productForm.isUnlimited,
+    };
+
+    const updated = menus.map(menu => {
+      if (menu.id === editingMenuId) {
+        return { ...menu, items: [...menu.items, newProduct] };
+      }
+      return menu;
+    });
+
+    setMenus(updated);
+    localStorage.setItem("weeklyMenus", JSON.stringify(updated));
+    
+    toast.success("Produto adicionado!");
+    setProductForm({ productName: "", price: "", quantity: "", isUnlimited: false });
+  };
+
+  const handleRemoveProduct = (menuId: number, productId: string) => {
+    const updated = menus.map(menu => {
+      if (menu.id === menuId) {
+        return { ...menu, items: menu.items.filter(item => item.id !== productId) };
+      }
+      return menu;
+    });
+
+    setMenus(updated);
+    localStorage.setItem("weeklyMenus", JSON.stringify(updated));
+    toast.success("Produto removido!");
   };
 
   const getSaturdayLabel = (order: number) => {
@@ -130,6 +164,15 @@ export default function WeeklyMenuPage() {
     toast.success("Cardápio removido!");
   };
 
+  const handleEditProducts = (menu: WeeklyMenu) => {
+    setEditingMenuId(menu.id);
+    setSelectedMenu(menu);
+    setShowDetails(false);
+    setShowAddProducts(true);
+  };
+
+  const currentEditingMenu = menus.find(m => m.id === editingMenuId);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
       <div className="max-w-7xl mx-auto p-6">
@@ -137,7 +180,7 @@ export default function WeeklyMenuPage() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-3xl font-bold text-foreground">Cardápio Semanal</h1>
-            <p className="text-muted-foreground">Gerencie cardápios dos sábados com responsáveis</p>
+            <p className="text-muted-foreground">Crie cardápios com produtos específicos para cada sábado</p>
           </div>
           <div className="flex gap-2">
             <Button
@@ -194,16 +237,22 @@ export default function WeeklyMenuPage() {
 
                 {/* Items Preview */}
                 <div className="space-y-2 mb-4">
-                  {menu.items.slice(0, 3).map((item) => (
-                    <div key={item.id} className="flex items-center justify-between text-sm">
-                      <span className="text-foreground truncate">{item.productName}</span>
-                      <span className="text-primary font-semibold">R$ {item.price.toFixed(2)}</span>
-                    </div>
-                  ))}
-                  {menu.items.length > 3 && (
-                    <p className="text-xs text-muted-foreground pt-2">
-                      +{menu.items.length - 3} produtos...
-                    </p>
+                  {menu.items.length === 0 ? (
+                    <p className="text-xs text-muted-foreground italic">Nenhum produto adicionado</p>
+                  ) : (
+                    <>
+                      {menu.items.slice(0, 3).map((item) => (
+                        <div key={item.id} className="flex items-center justify-between text-sm">
+                          <span className="text-foreground truncate">{item.productName}</span>
+                          <span className="text-primary font-semibold">R$ {item.price.toFixed(2)}</span>
+                        </div>
+                      ))}
+                      {menu.items.length > 3 && (
+                        <p className="text-xs text-muted-foreground pt-2">
+                          +{menu.items.length - 3} produtos...
+                        </p>
+                      )}
+                    </>
                   )}
                 </div>
 
@@ -214,17 +263,24 @@ export default function WeeklyMenuPage() {
                 </div>
 
                 {/* Actions */}
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-col">
                   <Button
                     onClick={() => handleViewDetails(menu)}
-                    className="flex-1 bg-gradient-to-r from-primary to-secondary"
+                    className="w-full bg-gradient-to-r from-primary to-secondary"
                   >
                     Ver Detalhes
                   </Button>
                   <Button
+                    onClick={() => handleEditProducts(menu)}
+                    variant="outline"
+                    className="w-full"
+                  >
+                    Editar Produtos
+                  </Button>
+                  <Button
                     onClick={() => handleDeleteMenu(menu.id)}
                     variant="destructive"
-                    className="flex-1"
+                    className="w-full"
                   >
                     Deletar
                   </Button>
@@ -261,37 +317,38 @@ export default function WeeklyMenuPage() {
               </div>
 
               <div>
-                <h3 className="font-semibold text-foreground mb-3">Produtos Disponíveis</h3>
-                <div className="space-y-2">
-                  {selectedMenu.items.map((item) => (
-                    <div
-                      key={item.id}
-                      className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
-                    >
-                      <div className="flex-1">
-                        <p className="font-medium text-foreground">{item.productName}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {item.availableQuantity
-                            ? `${item.availableQuantity} disponível`
-                            : "Quantidade ilimitada"}
-                        </p>
-                      </div>
-                      <div className="text-right">
+                <h3 className="font-semibold text-foreground mb-3">Produtos do Cardápio</h3>
+                {selectedMenu.items.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">Nenhum produto adicionado</p>
+                ) : (
+                  <div className="space-y-2">
+                    {selectedMenu.items.map((item) => (
+                      <div
+                        key={item.id}
+                        className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
+                      >
+                        <div className="flex-1">
+                          <p className="font-medium text-foreground">{item.productName}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {item.isUnlimited
+                              ? "Quantidade ilimitada"
+                              : `${item.quantity} disponível`}
+                          </p>
+                        </div>
                         <p className="font-bold text-primary">R$ {item.price.toFixed(2)}</p>
-                        <span className={`text-xs px-2 py-1 rounded ${
-                          item.isAvailable
-                            ? "bg-green-100 text-green-700"
-                            : "bg-red-100 text-red-700"
-                        }`}>
-                          {item.isAvailable ? "Disponível" : "Indisponível"}
-                        </span>
                       </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="flex gap-2 pt-4">
+                <Button
+                  onClick={() => handleEditProducts(selectedMenu)}
+                  className="flex-1 bg-gradient-to-r from-primary to-secondary"
+                >
+                  Editar Produtos
+                </Button>
                 <Button
                   onClick={() => setShowDetails(false)}
                   variant="outline"
@@ -322,9 +379,6 @@ export default function WeeklyMenuPage() {
                 onChange={(e) => setFormData({ ...formData, saturdayDate: e.target.value })}
                 className="w-full"
               />
-              <p className="text-xs text-muted-foreground mt-1">
-                Selecione o sábado para este cardápio
-              </p>
             </div>
 
             <div>
@@ -394,6 +448,130 @@ export default function WeeklyMenuPage() {
               </Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Products Dialog */}
+      <Dialog open={showAddProducts} onOpenChange={setShowAddProducts}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              Adicionar Produtos - {currentEditingMenu && getSaturdayLabel(currentEditingMenu.saturdayOrder)}
+            </DialogTitle>
+          </DialogHeader>
+          {currentEditingMenu && (
+            <div className="space-y-4">
+              {/* Produtos Existentes */}
+              {currentEditingMenu.items.length > 0 && (
+                <div>
+                  <h3 className="font-semibold text-foreground mb-3">Produtos Adicionados</h3>
+                  <div className="space-y-2 mb-4">
+                    {currentEditingMenu.items.map((item) => (
+                      <div
+                        key={item.id}
+                        className="flex items-center justify-between p-3 bg-green-50 rounded-lg border border-green-200"
+                      >
+                        <div className="flex-1">
+                          <p className="font-medium text-foreground">{item.productName}</p>
+                          <p className="text-xs text-muted-foreground">
+                            R$ {item.price.toFixed(2)} • {item.isUnlimited ? "Ilimitado" : `${item.quantity} un`}
+                          </p>
+                        </div>
+                        <Button
+                          onClick={() => handleRemoveProduct(currentEditingMenu.id, item.id)}
+                          variant="destructive"
+                          size="sm"
+                        >
+                          Remover
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Formulário para Adicionar Novo Produto */}
+              <div className="border-t border-border pt-4">
+                <h3 className="font-semibold text-foreground mb-3">Adicionar Novo Produto</h3>
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-sm font-medium text-foreground block mb-2">
+                      Nome do Produto *
+                    </label>
+                    <Input
+                      value={productForm.productName}
+                      onChange={(e) => setProductForm({ ...productForm, productName: e.target.value })}
+                      placeholder="Ex: Hambúrguer Clássico"
+                      className="w-full"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-sm font-medium text-foreground block mb-2">
+                        Preço (R$) *
+                      </label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={productForm.price}
+                        onChange={(e) => setProductForm({ ...productForm, price: e.target.value })}
+                        placeholder="0.00"
+                        className="w-full"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-sm font-medium text-foreground block mb-2">
+                        Quantidade
+                      </label>
+                      <Input
+                        type="number"
+                        value={productForm.quantity}
+                        onChange={(e) => setProductForm({ ...productForm, quantity: e.target.value })}
+                        placeholder="0"
+                        disabled={productForm.isUnlimited}
+                        className="w-full"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="unlimited"
+                      checked={productForm.isUnlimited}
+                      onChange={(e) => setProductForm({ ...productForm, isUnlimited: e.target.checked })}
+                      className="w-4 h-4"
+                    />
+                    <label htmlFor="unlimited" className="text-sm text-foreground">
+                      Quantidade ilimitada
+                    </label>
+                  </div>
+
+                  <Button
+                    onClick={handleAddProduct}
+                    className="w-full bg-gradient-to-r from-primary to-secondary"
+                  >
+                    Adicionar Produto
+                  </Button>
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-4 border-t border-border">
+                <Button
+                  onClick={() => {
+                    setShowAddProducts(false);
+                    setEditingMenuId(null);
+                    setProductForm({ productName: "", price: "", quantity: "", isUnlimited: false });
+                  }}
+                  className="flex-1 bg-gradient-to-r from-primary to-secondary"
+                >
+                  Concluir
+                </Button>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

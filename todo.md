@@ -95,3 +95,13 @@
 - [x] Validar responsável antes de operações
 - [x] Integrar com tabela de cashier_responsibles
 - [x] Vincular responsável aos cardápios semanais
+
+
+## Refatoração - Cardápio e Relatório Integrados
+
+- [x] Refatorar fluxo de criação de cardápio para incluir adição de produtos
+- [x] Implementar interface de seleção/adição de produtos ao criar cardápio
+- [x] Vincular produtos vendidos ao cardápio semanal específíco
+- [x] Atualizar relatório para filtrar por cardápio semanal ativo
+- [x] Mostrar apenas produtos do cardápio no PDV
+- [x] Integrar tudo ao backend com tRPC
