@@ -105,3 +105,14 @@
 - [x] Atualizar relatório para filtrar por cardápio semanal ativo
 - [x] Mostrar apenas produtos do cardápio no PDV
 - [x] Integrar tudo ao backend com tRPC
+
+
+## Status de Cardápio e Validação de Vendas
+
+- [x] Adicionar campo de status ao cardápio semanal (Aberto/Fechado)
+- [x] Criar interface para abrir/fechar cardápios
+- [x] Atualizar schema do banco com status do cardápio
+- [x] Validar status ao exibir produtos no PDV
+- [x] Permitir vendas apenas com cardápio aberto
+- [x] Mostrar mensagem de erro se tentar vender com cardápio fechado
+- [x] Atualizar relatórios para mostrar status do cardápio

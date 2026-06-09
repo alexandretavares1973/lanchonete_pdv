@@ -1,0 +1,1 @@
+ALTER TABLE `weekly_menus` ADD `status` enum('open','closed') DEFAULT 'closed' NOT NULL;

@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { useLocation } from "wouter";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { Lock, Unlock } from "lucide-react";
 
 interface Responsible {
   id: number;
@@ -27,14 +28,15 @@ interface WeeklyMenu {
   saturdayOrder: number;
   responsibleId: number | null;
   responsibleName?: string;
+  status: "open" | "closed";
   items: MenuItem[];
 }
 
 export default function WeeklyMenuPage() {
   const [, setLocation] = useLocation();
-  const [menus, setMenus] = useState<WeeklyMenu[]>([]);
+  const [menus, setMenus] = useState<any[]>([]);
   const [responsibles, setResponsibles] = useState<Responsible[]>([]);
-  const [selectedMenu, setSelectedMenu] = useState<WeeklyMenu | null>(null);
+  const [selectedMenu, setSelectedMenu] = useState<any>(null);
   const [showDetails, setShowDetails] = useState(false);
   const [showAddMenu, setShowAddMenu] = useState(false);
   const [showAddProducts, setShowAddProducts] = useState(false);
@@ -78,12 +80,13 @@ export default function WeeklyMenuPage() {
       return;
     }
 
-    const newMenu: WeeklyMenu = {
+    const newMenu: any = {
       id: Date.now(),
       saturdayDate: formData.saturdayDate,
       saturdayOrder: formData.saturdayOrder,
       responsibleId: parseInt(formData.responsibleId),
       responsibleName: responsible.name,
+      status: "closed" as const,
       items: [],
     };
 
@@ -112,7 +115,7 @@ export default function WeeklyMenuPage() {
     const price = parseFloat(productForm.price);
     const quantity = productForm.isUnlimited ? null : (productForm.quantity ? parseInt(productForm.quantity) : 0);
 
-    const newProduct: MenuItem = {
+    const newProduct: any = {
       id: `${Date.now()}-${Math.random()}`,
       productName: productForm.productName,
       price,
@@ -120,7 +123,7 @@ export default function WeeklyMenuPage() {
       isUnlimited: productForm.isUnlimited,
     };
 
-    const updated = menus.map(menu => {
+    const updated = menus.map((menu: any) => {
       if (menu.id === editingMenuId) {
         return { ...menu, items: [...menu.items, newProduct] };
       }
@@ -135,9 +138,9 @@ export default function WeeklyMenuPage() {
   };
 
   const handleRemoveProduct = (menuId: number, productId: string) => {
-    const updated = menus.map(menu => {
+    const updated = menus.map((menu: any) => {
       if (menu.id === menuId) {
-        return { ...menu, items: menu.items.filter(item => item.id !== productId) };
+        return { ...menu, items: menu.items.filter((item: any) => item.id !== productId) };
       }
       return menu;
     });
@@ -145,6 +148,20 @@ export default function WeeklyMenuPage() {
     setMenus(updated);
     localStorage.setItem("weeklyMenus", JSON.stringify(updated));
     toast.success("Produto removido!");
+  };
+
+  const handleToggleStatus = (menuId: number) => {
+    const updated = menus.map((menu: any) => {
+      if (menu.id === menuId) {
+        const newStatus = menu.status === "open" ? "closed" : "open" as const;
+        toast.success(newStatus === "open" ? "Cardápio aberto!" : "Cardápio fechado!");
+        return { ...menu, status: newStatus };
+      }
+      return menu;
+    });
+
+    setMenus(updated);
+    localStorage.setItem("weeklyMenus", JSON.stringify(updated));
   };
 
   const getSaturdayLabel = (order: number) => {
@@ -158,20 +175,20 @@ export default function WeeklyMenuPage() {
   };
 
   const handleDeleteMenu = (id: number) => {
-    const updated = menus.filter(m => m.id !== id);
+    const updated = menus.filter((m: any) => m.id !== id);
     setMenus(updated);
     localStorage.setItem("weeklyMenus", JSON.stringify(updated));
     toast.success("Cardápio removido!");
   };
 
-  const handleEditProducts = (menu: WeeklyMenu) => {
+  const handleEditProducts = (menu: any) => {
     setEditingMenuId(menu.id);
     setSelectedMenu(menu);
     setShowDetails(false);
     setShowAddProducts(true);
   };
 
-  const currentEditingMenu = menus.find(m => m.id === editingMenuId);
+  const currentEditingMenu = menus.find((m: any) => m.id === editingMenuId);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
@@ -212,15 +229,26 @@ export default function WeeklyMenuPage() {
             </Card>
           ) : (
             menus.map((menu) => (
-              <Card key={menu.id} className="p-6 hover:shadow-lg transition-shadow">
+              <Card key={menu.id} className={`p-6 hover:shadow-lg transition-shadow border-2 ${
+                menu.status === "open" ? "border-green-500" : "border-red-500"
+              }`}>
                 <div className="mb-4">
                   <div className="flex items-center justify-between mb-2">
                     <h2 className="text-xl font-bold text-foreground">
                       {getSaturdayLabel(menu.saturdayOrder)}
                     </h2>
-                    <span className="text-xs bg-primary/10 text-primary px-3 py-1 rounded-full">
-                      {menu.items.length} itens
-                    </span>
+                    <div className="flex gap-2">
+                      <span className={`text-xs px-3 py-1 rounded-full font-semibold ${
+                        menu.status === "open"
+                          ? "bg-green-100 text-green-700"
+                          : "bg-red-100 text-red-700"
+                      }`}>
+                        {menu.status === "open" ? "🟢 Aberto" : "🔴 Fechado"}
+                      </span>
+                      <span className="text-xs bg-primary/10 text-primary px-3 py-1 rounded-full">
+                        {menu.items.length} itens
+                      </span>
+                    </div>
                   </div>
                   <p className="text-sm text-muted-foreground">
                     {new Date(menu.saturdayDate).toLocaleDateString("pt-BR")}
@@ -241,7 +269,7 @@ export default function WeeklyMenuPage() {
                     <p className="text-xs text-muted-foreground italic">Nenhum produto adicionado</p>
                   ) : (
                     <>
-                      {menu.items.slice(0, 3).map((item) => (
+                      {menu.items.slice(0, 3).map((item: any) => (
                         <div key={item.id} className="flex items-center justify-between text-sm">
                           <span className="text-foreground truncate">{item.productName}</span>
                           <span className="text-primary font-semibold">R$ {item.price.toFixed(2)}</span>
@@ -254,12 +282,6 @@ export default function WeeklyMenuPage() {
                       )}
                     </>
                   )}
-                </div>
-
-                {/* Status */}
-                <div className="flex items-center gap-2 mb-4 p-2 bg-green-50 rounded">
-                  <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-                  <span className="text-xs text-green-700">Cardápio Ativo</span>
                 </div>
 
                 {/* Actions */}
@@ -276,6 +298,26 @@ export default function WeeklyMenuPage() {
                     className="w-full"
                   >
                     Editar Produtos
+                  </Button>
+                  <Button
+                    onClick={() => handleToggleStatus(menu.id)}
+                    className={`w-full gap-2 ${
+                      menu.status === "open"
+                        ? "bg-red-500 hover:bg-red-600"
+                        : "bg-green-500 hover:bg-green-600"
+                    }`}
+                  >
+                    {menu.status === "open" ? (
+                      <>
+                        <Lock className="w-4 h-4" />
+                        Fechar Cardápio
+                      </>
+                    ) : (
+                      <>
+                        <Unlock className="w-4 h-4" />
+                        Abrir Cardápio
+                      </>
+                    )}
                   </Button>
                   <Button
                     onClick={() => handleDeleteMenu(menu.id)}
@@ -309,9 +351,23 @@ export default function WeeklyMenuPage() {
                   </p>
                 </div>
                 <div>
+                  <p className="text-sm text-muted-foreground mb-2">Status</p>
+                  <p className={`font-semibold ${
+                    selectedMenu.status === "open" ? "text-green-600" : "text-red-600"
+                  }`}>
+                    {selectedMenu.status === "open" ? "🟢 Aberto" : "🔴 Fechado"}
+                  </p>
+                </div>
+                <div>
                   <p className="text-sm text-muted-foreground mb-2">Responsável</p>
                   <p className="font-semibold text-foreground">
                     {selectedMenu.responsibleName || "Não atribuído"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground mb-2">Total de Produtos</p>
+                  <p className="font-semibold text-foreground">
+                    {selectedMenu.items.length}
                   </p>
                 </div>
               </div>
@@ -322,7 +378,7 @@ export default function WeeklyMenuPage() {
                   <p className="text-sm text-muted-foreground">Nenhum produto adicionado</p>
                 ) : (
                   <div className="space-y-2">
-                    {selectedMenu.items.map((item) => (
+                      {selectedMenu.items.map((item: any) => (
                       <div
                         key={item.id}
                         className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
@@ -466,7 +522,7 @@ export default function WeeklyMenuPage() {
                 <div>
                   <h3 className="font-semibold text-foreground mb-3">Produtos Adicionados</h3>
                   <div className="space-y-2 mb-4">
-                    {currentEditingMenu.items.map((item) => (
+                    {currentEditingMenu.items.map((item: any) => (
                       <div
                         key={item.id}
                         className="flex items-center justify-between p-3 bg-green-50 rounded-lg border border-green-200"

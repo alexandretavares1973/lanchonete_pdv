@@ -67,6 +67,7 @@ export const weeklyMenus = mysqlTable("weekly_menus", {
   saturdayDate: date("saturdayDate").notNull().unique(),
   saturdayOrder: int("saturdayOrder").notNull(), // 1º sábado, 2º sábado, etc.
   responsibleId: int("responsibleId"), // Responsável pelo cardápio
+  status: mysqlEnum("status", ["open", "closed"]).default("closed").notNull(), // Status do cardápio
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
