@@ -85,9 +85,13 @@
 - [x] Implementar identificação de sábados (1º, 2º, 3º, 4º, 5º)
 - [x] Mostrar produtos disponíveis por sábado
 - [x] Integrar com geração automática de cardápio
+- [x] Permitir cadastro manual de data e ordem do sábado
+- [x] Vincular responsável a cada cardápio
+- [x] Adicionar campo responsibleId ao schema
 
 ### Cadastro de Responsável pelo Caixa
 - [x] Criar página de cadastro de responsável
 - [x] Implementar seleção de responsável ao abrir caixa
 - [x] Validar responsável antes de operações
 - [x] Integrar com tabela de cashier_responsibles
+- [x] Vincular responsável aos cardápios semanais

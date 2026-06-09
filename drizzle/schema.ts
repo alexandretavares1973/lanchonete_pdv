@@ -66,12 +66,17 @@ export const weeklyMenus = mysqlTable("weekly_menus", {
   id: int("id").autoincrement().primaryKey(),
   saturdayDate: date("saturdayDate").notNull().unique(),
   saturdayOrder: int("saturdayOrder").notNull(), // 1º sábado, 2º sábado, etc.
+  responsibleId: int("responsibleId"), // Responsável pelo cardápio
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
 export type WeeklyMenu = typeof weeklyMenus.$inferSelect;
 export type InsertWeeklyMenu = typeof weeklyMenus.$inferInsert;
+
+export interface WeeklyMenuWithResponsible extends WeeklyMenu {
+  responsible?: CashierResponsible;
+}
 
 /**
  * Tabela de produtos no cardápio semanal
