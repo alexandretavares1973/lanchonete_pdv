@@ -408,6 +408,24 @@ export default function ReportsPage() {
                     </div>
                   </div>
 
+                  {/* Products Details */}
+                  <div className="mb-4 p-4 bg-muted/30 rounded-lg border border-border">
+                    <h4 className="font-semibold text-foreground mb-3">Detalhes dos Produtos</h4>
+                    <div className="space-y-2">
+                      {Object.entries(report.productSales).map(([key, product]) => (
+                        <div key={key} className="flex justify-between items-center p-2 bg-background rounded border border-border/50">
+                          <div className="flex-1">
+                            <p className="font-medium text-foreground">{product.name}</p>
+                            <p className="text-xs text-muted-foreground">Qtd: {product.quantity} × R$ {product.unitPrice.toFixed(2)}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-semibold text-primary">R$ {product.subtotal.toFixed(2)}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
                   {/* Payment Summary */}
                   <div className="grid grid-cols-3 gap-4 mb-4 p-4 bg-muted/50 rounded-lg">
                     <div className="text-center">
