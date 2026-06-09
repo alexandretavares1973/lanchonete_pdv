@@ -43,6 +43,10 @@ export default function POSPage() {
   const [showPrint, setShowPrint] = useState(false);
   const [amountReceived, setAmountReceived] = useState<number>(0);
   const [lastOrderChange, setLastOrderChange] = useState<number>(0);
+  const [lastOrderItems, setLastOrderItems] = useState<CartItem[]>([]);
+  const [lastOrderTotal, setLastOrderTotal] = useState<number>(0);
+  const [lastPaymentMethod, setLastPaymentMethod] = useState<'pix' | 'card' | 'cash'>('pix');
+  const [lastAmountReceived, setLastAmountReceived] = useState<number>(0);
 
   useEffect(() => {
     const storedMenus = localStorage.getItem("weeklyMenus");
@@ -199,6 +203,12 @@ export default function POSPage() {
     session.orders.push(newOrder);
     localStorage.setItem("cashierSessions", JSON.stringify(sessions));
 
+    // Salvar itens do pedido para impressão
+    setLastOrderItems(cart);
+    setLastOrderTotal(total);
+    setLastPaymentMethod(paymentMethod);
+    setLastAmountReceived(paymentMethod === "cash" ? amountReceived : 0);
+
     toast.success("✅ Pedido finalizado!");
     setShowConfirm(false);
     setShowPrint(true);
@@ -210,11 +220,12 @@ export default function POSPage() {
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
 
-    const total = calculateTotal();
-    const paymentLabel = paymentMethod === "pix" ? "PIX" : paymentMethod === "card" ? "CARTÃO" : "DINHEIRO";
+    const total = lastOrderTotal;
+    const paymentLabel = lastPaymentMethod === "pix" ? "PIX" : lastPaymentMethod === "card" ? "CARTÃO" : "DINHEIRO";
     const timestamp = new Date();
+    const itemsToPrint = lastOrderItems.length > 0 ? lastOrderItems : cart;
 
-    const itemsHtml = cart.map(item => `
+    const itemsHtml = itemsToPrint.map(item => `
       <div style="display: flex; justify-content: space-between; font-size: 12px; margin: 8px 0; padding: 5px 0; border-bottom: 1px dotted #999;">
         <div style="flex: 1;">
           <div style="font-weight: bold;">${item.productName}</div>
@@ -224,11 +235,11 @@ export default function POSPage() {
       </div>
     `).join("");
 
-    const changeSection = paymentMethod === "cash" ? `
+    const changeSection = lastPaymentMethod === "cash" ? `
       <div class="summary">
         <div class="summary-row">
           <span><strong>Valor Recebido:</strong></span>
-          <span>R$ ${amountReceived.toFixed(2)}</span>
+          <span>R$ ${lastAmountReceived.toFixed(2)}</span>
         </div>
         <div class="summary-row" style="color: #2ecc71; font-weight: bold;">
           <span>TROCO:</span>
@@ -367,7 +378,7 @@ export default function POSPage() {
           <div class="summary">
             <div class="summary-row">
               <span><strong>Total de Itens:</strong></span>
-              <span>${cart.reduce((sum, item) => sum + item.quantity, 0)}</span>
+              <span>${itemsToPrint.reduce((sum, item) => sum + item.quantity, 0)}</span>
             </div>
           </div>
 
