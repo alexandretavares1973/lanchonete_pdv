@@ -23,10 +23,12 @@ interface WeeklyMenu {
 }
 
 interface OrderItem {
-  productId: number;
+  id?: string;
+  productId?: number;
   productName: string;
   quantity: number;
-  unitPrice: number;
+  price?: number;
+  unitPrice?: number;
   subtotal: number;
 }
 
@@ -84,16 +86,19 @@ export default function ReportsPage() {
     
     orders.forEach(order => {
       order.items.forEach(item => {
-        if (!productSales[item.productId]) {
-          productSales[item.productId] = {
+        const key = item.productName;
+        const unitPrice = item.unitPrice || item.price || 0;
+        
+        if (!productSales[key]) {
+          productSales[key] = {
             name: item.productName,
             quantity: 0,
-            unitPrice: item.unitPrice,
+            unitPrice: unitPrice,
             subtotal: 0,
           };
         }
-        productSales[item.productId].quantity += item.quantity;
-        productSales[item.productId].subtotal += item.subtotal;
+        productSales[key].quantity += item.quantity;
+        productSales[key].subtotal += item.subtotal;
       });
     });
 
@@ -130,82 +135,186 @@ export default function ReportsPage() {
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
 
+    const productRows = Object.entries(report.productSales)
+      .map(([_, product]) => {
+        return `
+          <div style="display: flex; justify-content: space-between; font-size: 12px; margin: 8px 0; padding: 5px 0; border-bottom: 1px dotted #999;">
+            <div style="flex: 1;">
+              <div style="font-weight: bold;">${product.name}</div>
+              <div style="font-size: 11px; color: #666;">Qtd: ${product.quantity} x R$ ${product.unitPrice.toFixed(2)}</div>
+            </div>
+            <div style="text-align: right; font-weight: bold; min-width: 80px;">R$ ${product.subtotal.toFixed(2)}</div>
+          </div>
+        `;
+      })
+      .join("");
+
     const html = `
       <!DOCTYPE html>
       <html>
       <head>
+        <meta charset="UTF-8">
         <title>Relatório de Vendas</title>
         <style>
-          body { font-family: Arial, sans-serif; margin: 20px; }
-          h1 { text-align: center; }
-          .header { border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px; }
-          table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-          th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-          th { background-color: #f0f0f0; font-weight: bold; }
-          .total-row { font-weight: bold; background-color: #f9f9f9; }
-          .payment-section { margin: 20px 0; }
-          .footer { text-align: center; margin-top: 30px; font-size: 12px; }
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { 
+            font-family: 'Courier New', monospace; 
+            background: white; 
+            color: #000;
+            padding: 10px;
+          }
+          .container { 
+            width: 80mm; 
+            margin: 0 auto; 
+            padding: 10px;
+            background: white;
+          }
+          .header { 
+            text-align: center; 
+            border-bottom: 2px solid #000; 
+            padding-bottom: 10px; 
+            margin-bottom: 15px; 
+          }
+          .header h1 { 
+            font-size: 16px; 
+            font-weight: bold; 
+            margin-bottom: 5px; 
+          }
+          .header p { 
+            font-size: 11px; 
+            margin: 3px 0; 
+          }
+          .divider { 
+            border-bottom: 2px solid #000; 
+            margin: 10px 0; 
+          }
+          .section-title { 
+            font-weight: bold; 
+            font-size: 12px; 
+            margin-top: 12px; 
+            margin-bottom: 8px; 
+            padding-bottom: 5px;
+            border-bottom: 1px solid #000;
+          }
+          .product-item { 
+            display: flex; 
+            justify-content: space-between; 
+            font-size: 12px; 
+            margin: 8px 0; 
+            padding: 5px 0; 
+            border-bottom: 1px dotted #999; 
+          }
+          .product-name { 
+            flex: 1; 
+            font-weight: bold;
+          }
+          .product-qty { 
+            font-size: 11px; 
+            color: #666;
+            margin-top: 2px;
+          }
+          .product-total { 
+            text-align: right; 
+            font-weight: bold; 
+            min-width: 80px; 
+          }
+          .summary { 
+            font-size: 11px; 
+            margin: 10px 0; 
+          }
+          .summary-row { 
+            display: flex; 
+            justify-content: space-between; 
+            margin: 5px 0; 
+          }
+          .payment-section { 
+            margin-top: 12px; 
+          }
+          .payment-row { 
+            display: flex; 
+            justify-content: space-between; 
+            font-size: 11px; 
+            margin: 5px 0; 
+          }
+          .total-row { 
+            display: flex; 
+            justify-content: space-between; 
+            font-size: 13px; 
+            font-weight: bold; 
+            margin: 10px 0; 
+            padding: 8px 0;
+            border-top: 2px solid #000;
+            border-bottom: 2px solid #000;
+          }
+          .footer { 
+            text-align: center; 
+            font-size: 10px; 
+            margin-top: 15px; 
+            padding-top: 10px; 
+          }
+          @media print { 
+            body { margin: 0; padding: 0; } 
+            .container { width: 80mm; }
+          }
         </style>
       </head>
       <body>
-        <h1>Relatório de Vendas</h1>
-        <div class="header">
-          <p><strong>Cardápio:</strong> ${report.menu ? getSaturdayLabel(report.menu.saturdayOrder) : "N/A"}</p>
-          <p><strong>Data:</strong> ${report.menu ? new Date(report.menu.saturdayDate).toLocaleDateString("pt-BR") : "N/A"}</p>
-          <p><strong>Responsável:</strong> ${report.menu?.responsibleName || "N/A"}</p>
-          <p><strong>Data do Relatório:</strong> ${new Date(session.openedAt).toLocaleDateString("pt-BR")} às ${new Date(session.openedAt).toLocaleTimeString("pt-BR")}</p>
-        </div>
+        <div class="container">
+          <div class="header">
+            <h1>LANCHONETE PDV</h1>
+            <p>RELATÓRIO DE VENDAS</p>
+            <p>━━━━━━━━━━━━━━━━━━━━━━━</p>
+            <p><strong>Cardápio:</strong> ${report.menu ? getSaturdayLabel(report.menu.saturdayOrder) : "N/A"}</p>
+            <p><strong>Data:</strong> ${report.menu ? new Date(report.menu.saturdayDate).toLocaleDateString("pt-BR") : "N/A"}</p>
+            <p><strong>Responsável:</strong> ${report.menu?.responsibleName || "N/A"}</p>
+            <p><strong>Abertura:</strong> ${new Date(session.openedAt).toLocaleTimeString("pt-BR")}</p>
+          </div>
 
-        <h2>Produtos Vendidos</h2>
-        <table>
-          <thead>
-            <tr>
-              <th>Produto</th>
-              <th>Quantidade</th>
-              <th>Preço Unitário</th>
-              <th>Subtotal</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${Object.entries(report.productSales).map(([_, product]) => `
-              <tr>
-                <td>${product.name}</td>
-                <td>${product.quantity}</td>
-                <td>R$ ${product.unitPrice.toFixed(2)}</td>
-                <td>R$ ${product.subtotal.toFixed(2)}</td>
-              </tr>
-            `).join("")}
-            <tr class="total-row">
-              <td colspan="3">TOTAL DE ITENS</td>
-              <td>${report.totalItems}</td>
-            </tr>
-          </tbody>
-        </table>
+          <div class="section-title">PRODUTOS VENDIDOS</div>
+          <div>
+            ${productRows}
+          </div>
 
-        <h2>Resumo de Pagamentos</h2>
-        <div class="payment-section">
-          <table>
-            <tr>
-              <td><strong>PIX:</strong></td>
-              <td>R$ ${report.paymentTotals.pix.toFixed(2)}</td>
-            </tr>
-            <tr>
-              <td><strong>Cartão:</strong></td>
-              <td>R$ ${report.paymentTotals.card.toFixed(2)}</td>
-            </tr>
-            <tr>
-              <td><strong>Dinheiro:</strong></td>
-              <td>R$ ${report.paymentTotals.cash.toFixed(2)}</td>
-            </tr>
-            <tr class="total-row">
-              <td><strong>TOTAL GERAL:</strong></td>
-              <td><strong>R$ ${report.grandTotal.toFixed(2)}</strong></td>
-            </tr>
-          </table>
-        </div>
+          <div class="divider"></div>
 
-        <div class="footer">
-          <p>Relatório gerado em ${new Date().toLocaleDateString("pt-BR")} às ${new Date().toLocaleTimeString("pt-BR")}</p>
+          <div class="summary">
+            <div class="summary-row">
+              <span><strong>Total de Itens:</strong></span>
+              <span>${report.totalItems}</span>
+            </div>
+            <div class="summary-row">
+              <span><strong>Total de Pedidos:</strong></span>
+              <span>${report.ordersCount}</span>
+            </div>
+          </div>
+
+          <div class="section-title">RESUMO DE PAGAMENTOS</div>
+          <div class="payment-section">
+            <div class="payment-row">
+              <span>📱 PIX:</span>
+              <span><strong>R$ ${report.paymentTotals.pix.toFixed(2)}</strong></span>
+            </div>
+            <div class="payment-row">
+              <span>💳 Cartão:</span>
+              <span><strong>R$ ${report.paymentTotals.card.toFixed(2)}</strong></span>
+            </div>
+            <div class="payment-row">
+              <span>💵 Dinheiro:</span>
+              <span><strong>R$ ${report.paymentTotals.cash.toFixed(2)}</strong></span>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+          <div class="total-row">
+            <span>TOTAL GERAL:</span>
+            <span>R$ ${report.grandTotal.toFixed(2)}</span>
+          </div>
+
+          <div class="footer">
+            <p>Relatório gerado em ${new Date().toLocaleDateString("pt-BR")}</p>
+            <p>às ${new Date().toLocaleTimeString("pt-BR")}</p>
+            <p style="margin-top: 10px;">✓ Obrigado!</p>
+          </div>
         </div>
       </body>
       </html>
@@ -391,17 +500,17 @@ export default function ReportsPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {Object.entries(report.productSales).map(([_, product]) => (
-                          <tr key={_} className="border-b border-border hover:bg-muted/50">
+                        {Object.entries(report.productSales).map(([key, product]) => (
+                          <tr key={key} className="border-b border-border hover:bg-muted/50">
                             <td className="py-2 px-3 text-foreground">{product.name}</td>
                             <td className="py-2 px-3 text-center text-foreground">{product.quantity}</td>
                             <td className="py-2 px-3 text-right text-foreground">R$ {product.unitPrice.toFixed(2)}</td>
                             <td className="py-2 px-3 text-right font-semibold text-primary">R$ {product.subtotal.toFixed(2)}</td>
                           </tr>
                         ))}
-                        <tr className="bg-primary/10 border-t-2 border-primary">
-                          <td colSpan={3} className="py-2 px-3 font-bold text-foreground">TOTAL</td>
-                          <td className="py-2 px-3 text-right font-bold text-primary text-lg">R$ {report.grandTotal.toFixed(2)}</td>
+                        <tr className="bg-muted/50 font-semibold">
+                          <td colSpan={3} className="py-2 px-3 text-right">TOTAL:</td>
+                          <td className="py-2 px-3 text-right text-primary">R$ {report.grandTotal.toFixed(2)}</td>
                         </tr>
                       </tbody>
                     </table>
@@ -411,41 +520,20 @@ export default function ReportsPage() {
                 {/* Payment Summary */}
                 <div>
                   <h3 className="font-semibold text-foreground mb-3">Resumo de Pagamentos</h3>
-                  <div className="space-y-2">
-                    <div className="flex justify-between p-3 bg-blue-50 rounded-lg border border-blue-200">
-                      <span className="text-foreground">PIX</span>
-                      <span className="font-bold text-blue-700">R$ {report.paymentTotals.pix.toFixed(2)}</span>
+                  <div className="grid grid-cols-3 gap-4 p-4 bg-muted/50 rounded-lg">
+                    <div className="text-center">
+                      <p className="text-xs text-muted-foreground mb-2">PIX</p>
+                      <p className="text-lg font-bold text-foreground">R$ {report.paymentTotals.pix.toFixed(2)}</p>
                     </div>
-                    <div className="flex justify-between p-3 bg-purple-50 rounded-lg border border-purple-200">
-                      <span className="text-foreground">Cartão</span>
-                      <span className="font-bold text-purple-700">R$ {report.paymentTotals.card.toFixed(2)}</span>
+                    <div className="text-center">
+                      <p className="text-xs text-muted-foreground mb-2">Cartão</p>
+                      <p className="text-lg font-bold text-foreground">R$ {report.paymentTotals.card.toFixed(2)}</p>
                     </div>
-                    <div className="flex justify-between p-3 bg-green-50 rounded-lg border border-green-200">
-                      <span className="text-foreground">Dinheiro</span>
-                      <span className="font-bold text-green-700">R$ {report.paymentTotals.cash.toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between p-3 bg-primary/10 rounded-lg border-2 border-primary mt-2">
-                      <span className="font-bold text-foreground">TOTAL GERAL</span>
-                      <span className="font-bold text-primary text-lg">R$ {report.grandTotal.toFixed(2)}</span>
+                    <div className="text-center">
+                      <p className="text-xs text-muted-foreground mb-2">Dinheiro</p>
+                      <p className="text-lg font-bold text-foreground">R$ {report.paymentTotals.cash.toFixed(2)}</p>
                     </div>
                   </div>
-                </div>
-
-                <div className="flex gap-2 pt-4 border-t border-border">
-                  <Button
-                    onClick={() => handlePrint(selectedSession)}
-                    className="flex-1 bg-gradient-to-r from-primary to-secondary gap-2"
-                  >
-                    <Printer className="w-4 h-4" />
-                    Imprimir Relatório
-                  </Button>
-                  <Button
-                    onClick={() => setShowDetails(false)}
-                    variant="outline"
-                    className="flex-1"
-                  >
-                    Fechar
-                  </Button>
                 </div>
               </div>
             );
