@@ -10,6 +10,9 @@ import Dashboard from "./pages/Dashboard";
 import POSPage from "./pages/POSPage";
 import ProductsPage from "./pages/ProductsPage";
 import ReportsPage from "./pages/ReportsPage";
+import LocalLogin from "./pages/LocalLogin";
+import WeeklyMenuPage from "./pages/WeeklyMenuPage";
+import CashierResponsiblePage from "./pages/CashierResponsiblePage";
 import { useAuth } from "@/_core/hooks/useAuth";
 
 function Router() {
@@ -33,6 +36,8 @@ function Router() {
       <Route path={"/pos"} component={POSPage} />
       <Route path={"/products"} component={ProductsPage} />
       <Route path={"/reports"} component={ReportsPage} />
+      <Route path={"/weekly-menu"} component={WeeklyMenuPage} />
+      <Route path={"/cashier-responsible"} component={CashierResponsiblePage} />
       <Route path={""} component={isAuthenticated ? Dashboard : Login} />
       <Route path={"/404"} component={NotFound} />
       <Route component={NotFound} />

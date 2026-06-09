@@ -70,3 +70,24 @@
 - [x] Escrever testes unitários para cálculo de pedidos
 - [x] Escrever testes unitários para fechamento de caixa
 - [x] Escrever testes de integração para fluxo de vendas
+
+
+## Tarefas Faltantes Identificadas
+
+### Login e Autenticação Local
+- [x] Implementar tela de login com usuário e senha
+- [x] Implementar validação de credenciais
+- [x] Implementar logout
+- [x] Integrar com autenticação OAuth existente
+
+### Cardápio Semanal Dedicado
+- [x] Criar página de visualização de cardápio semanal
+- [x] Implementar identificação de sábados (1º, 2º, 3º, 4º, 5º)
+- [x] Mostrar produtos disponíveis por sábado
+- [x] Integrar com geração automática de cardápio
+
+### Cadastro de Responsável pelo Caixa
+- [x] Criar página de cadastro de responsável
+- [x] Implementar seleção de responsável ao abrir caixa
+- [x] Validar responsável antes de operações
+- [x] Integrar com tabela de cashier_responsibles

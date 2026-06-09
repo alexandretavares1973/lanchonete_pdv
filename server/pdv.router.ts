@@ -133,10 +133,12 @@ export const pdvRouter = router({
           status: "completed",
         });
 
-        // Criar itens do pedido
-        const orderId = typeof orderResult === 'object' && 'insertId' in orderResult 
-          ? (orderResult as any).insertId 
-          : (orderResult as any)[0]?.id;
+        // O resultado agora é o objeto do pedido criado
+        const orderId = (orderResult as any)?.id;
+        
+        if (!orderId) {
+          throw new Error("Failed to get order ID after creation");
+        }
         
         for (const item of input.items) {
           await db.createOrderItem({

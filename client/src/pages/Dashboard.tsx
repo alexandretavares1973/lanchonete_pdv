@@ -114,6 +114,30 @@ export default function Dashboard() {
                 </div>
               </div>
             </Card>
+
+            <Card className="p-8 hover:shadow-lg transition-all cursor-pointer border-2 border-purple-500/20 hover:border-purple-500/40" onClick={() => setLocation("/weekly-menu")}>
+              <div className="text-center space-y-4">
+                <div className="w-16 h-16 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-xl flex items-center justify-center mx-auto">
+                  <span className="text-3xl">📅</span>
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-foreground">Cardápio Semanal</h3>
+                  <p className="text-sm text-muted-foreground">Sábados e produtos</p>
+                </div>
+              </div>
+            </Card>
+
+            <Card className="p-8 hover:shadow-lg transition-all cursor-pointer border-2 border-green-500/20 hover:border-green-500/40" onClick={() => setLocation("/cashier-responsible")}>
+              <div className="text-center space-y-4">
+                <div className="w-16 h-16 bg-gradient-to-br from-green-500/20 to-emerald-500/20 rounded-xl flex items-center justify-center mx-auto">
+                  <span className="text-3xl">👤</span>
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-foreground">Responsáveis</h3>
+                  <p className="text-sm text-muted-foreground">Gerenciar operadores</p>
+                </div>
+              </div>
+            </Card>
           </div>
         </div>
       </div>

@@ -1,4 +1,4 @@
-import { eq, and, sql } from "drizzle-orm";
+import { eq, desc, and, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { InsertUser, users, cashierResponsibles, products, weeklyMenus, menuItems, cashierSessions, orders, orderItems, stockHistory } from "../drizzle/schema";
 import { ENV } from './_core/env';
@@ -205,8 +205,21 @@ export async function closeCashierSession(id: number, finalBalance: any) {
 export async function createOrder(data: any) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const result = await db.insert(orders).values(data);
-  return result;
+  
+  // Inserir o pedido
+  const insertResult = await db.insert(orders).values(data);
+  
+  // Buscar o pedido criado para obter o ID (ordena por ID descendente para pegar o mais recente)
+  const createdOrder = await db.select().from(orders)
+    .where(eq(orders.cashierSessionId, data.cashierSessionId))
+    .orderBy(desc(orders.id))
+    .limit(1);
+  
+  if (createdOrder.length === 0) {
+    throw new Error("Failed to retrieve created order");
+  }
+  
+  return createdOrder[0];
 }
 
 export async function createOrderItem(data: any) {
