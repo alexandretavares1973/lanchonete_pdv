@@ -109,11 +109,52 @@ export default function POSPage() {
       ]);
     }
 
+    // Atualizar estoque no cardápio
+    if (!product.isUnlimited && product.quantity !== null) {
+      const updatedMenus = menus.map(menu =>
+        menu.id === selectedMenu.id
+          ? {
+              ...menu,
+              items: menu.items.map((item: MenuItem) =>
+                item.id === product.id
+                  ? { ...item, quantity: item.quantity !== null ? item.quantity - 1 : 0 }
+                  : item
+              ),
+            }
+          : menu
+      );
+      setMenus(updatedMenus);
+      localStorage.setItem("weeklyMenus", JSON.stringify(updatedMenus));
+    }
+
     toast.success(`✅ ${product.productName} adicionado ao carrinho!`);
   };
 
   const handleRemoveFromCart = (productId: string) => {
+    const removedItem = cart.find(item => item.id === productId);
     setCart(cart.filter(item => item.id !== productId));
+    
+    // Devolver estoque ao remover do carrinho
+    if (removedItem && selectedMenu) {
+      const product = selectedMenu.items.find((p: MenuItem) => p.id === productId);
+      if (product && !product.isUnlimited) {
+        const updatedMenus = menus.map(menu =>
+          menu.id === selectedMenu.id
+            ? {
+                ...menu,
+                items: menu.items.map((item: MenuItem) =>
+                  item.id === productId
+                    ? { ...item, quantity: item.quantity !== null ? item.quantity + removedItem.quantity : removedItem.quantity }
+                    : item
+                ),
+              }
+            : menu
+        );
+        setMenus(updatedMenus);
+        localStorage.setItem("weeklyMenus", JSON.stringify(updatedMenus));
+      }
+    }
+    
     toast.success("✅ Item removido do carrinho!");
   };
 
@@ -123,10 +164,30 @@ export default function POSPage() {
       return;
     }
 
+    const currentItem = cart.find(item => item.id === productId);
     const product = selectedMenu?.items.find((p: MenuItem) => p.id === productId);
     if (product && !product.isUnlimited && product.quantity !== null && newQuantity > product.quantity) {
       toast.error("❌ Quantidade máxima atingida!");
       return;
+    }
+
+    // Calcular diferença de quantidade para ajustar estoque
+    if (currentItem && product && !product.isUnlimited) {
+      const quantityDifference = currentItem.quantity - newQuantity;
+      const updatedMenus = menus.map(menu =>
+        menu.id === selectedMenu.id
+          ? {
+              ...menu,
+              items: menu.items.map((item: MenuItem) =>
+                item.id === productId
+                  ? { ...item, quantity: item.quantity !== null ? item.quantity + quantityDifference : 0 }
+                  : item
+              ),
+            }
+          : menu
+      );
+      setMenus(updatedMenus);
+      localStorage.setItem("weeklyMenus", JSON.stringify(updatedMenus));
     }
 
     setCart(
