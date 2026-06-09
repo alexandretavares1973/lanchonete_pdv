@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { useLocation } from "wouter";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
@@ -40,6 +41,8 @@ export default function POSPage() {
   const [paymentMethod, setPaymentMethod] = useState<"pix" | "card" | "cash">("pix");
   const [showConfirm, setShowConfirm] = useState(false);
   const [showPrint, setShowPrint] = useState(false);
+  const [amountReceived, setAmountReceived] = useState<number>(0);
+  const [lastOrderChange, setLastOrderChange] = useState<number>(0);
 
   useEffect(() => {
     const storedMenus = localStorage.getItem("weeklyMenus");
@@ -154,13 +157,27 @@ export default function POSPage() {
   };
 
   const handleConfirmOrder = () => {
+    const total = calculateTotal();
+    
+    // Validar pagamento em dinheiro
+    if (paymentMethod === "cash" && amountReceived < total) {
+      toast.error("❌ Valor recebido é menor que o total!");
+      return;
+    }
+
+    // Calcular troco
+    const change = paymentMethod === "cash" ? amountReceived - total : 0;
+    setLastOrderChange(change);
+
     // Salvar pedido
     const sessions = JSON.parse(localStorage.getItem("cashierSessions") || "[]");
     
     const newOrder = {
       id: Date.now(),
       paymentMethod,
-      total: calculateTotal(),
+      total: total,
+      amountReceived: paymentMethod === "cash" ? amountReceived : null,
+      change: paymentMethod === "cash" ? change : null,
       items: cart,
       createdAt: new Date().toISOString(),
     };
@@ -186,6 +203,7 @@ export default function POSPage() {
     setShowConfirm(false);
     setShowPrint(true);
     setCart([]);
+    setAmountReceived(0);
   };
 
   const handlePrint = () => {
@@ -205,6 +223,19 @@ export default function POSPage() {
         <div style="text-align: right; font-weight: bold; min-width: 70px;">R$ ${item.subtotal.toFixed(2)}</div>
       </div>
     `).join("");
+
+    const changeSection = paymentMethod === "cash" ? `
+      <div class="summary">
+        <div class="summary-row">
+          <span><strong>Valor Recebido:</strong></span>
+          <span>R$ ${amountReceived.toFixed(2)}</span>
+        </div>
+        <div class="summary-row" style="color: #2ecc71; font-weight: bold;">
+          <span>TROCO:</span>
+          <span>R$ ${lastOrderChange.toFixed(2)}</span>
+        </div>
+      </div>
+    ` : "";
 
     const html = `
       <!DOCTYPE html>
@@ -350,6 +381,8 @@ export default function POSPage() {
             ${paymentLabel}
           </div>
 
+          ${changeSection}
+
           <div class="footer">
             <p>━━━━━━━━━━━━━━━━━━━━━━━</p>
             <p>Obrigado pela compra!</p>
@@ -447,12 +480,12 @@ export default function POSPage() {
                             <span className="text-primary font-bold">R$ {product.price.toFixed(2)}</span>
                           </div>
                           <p className="text-xs text-muted-foreground mb-3">
-                            {product.isUnlimited ? "Ilimitado" : `${product.quantity} disponível`}
+                            {product.isUnlimited ? "Ilimitado" : `${product.quantity} disponível(is)`}
                           </p>
                           <Button
                             onClick={() => handleAddToCart(product)}
-                            className="w-full bg-gradient-to-r from-primary to-secondary"
-                            disabled={!product.isUnlimited && product.quantity === 0}
+                            className="w-full bg-gradient-to-r from-primary to-secondary text-white"
+                            disabled={!product.isUnlimited && product.quantity !== null && product.quantity <= 0}
                           >
                             Adicionar
                           </Button>
@@ -463,7 +496,7 @@ export default function POSPage() {
                 </div>
 
                 {/* Cart */}
-                <div className="lg:col-span-1">
+                <div>
                   <Card className="p-6 sticky top-6">
                     <div className="flex items-center gap-2 mb-4">
                       <ShoppingCart className="w-5 h-5 text-primary" />
@@ -471,86 +504,94 @@ export default function POSPage() {
                     </div>
 
                     {cart.length === 0 ? (
-                      <p className="text-center text-muted-foreground py-8">Carrinho vazio</p>
+                      <p className="text-muted-foreground text-center py-8">Carrinho vazio</p>
                     ) : (
                       <>
-                        <div className="space-y-3 mb-4 max-h-[300px] overflow-y-auto">
+                        <div className="space-y-3 mb-4 max-h-64 overflow-y-auto">
                           {cart.map((item) => (
-                            <div key={item.id} className="p-3 bg-muted/50 rounded-lg">
+                            <div key={item.id} className="p-3 border border-border rounded-lg">
                               <div className="flex justify-between items-start mb-2">
-                                <span className="font-medium text-foreground text-sm">{item.productName}</span>
-                                <Button
+                                <h3 className="font-semibold text-foreground text-sm">{item.productName}</h3>
+                                <button
                                   onClick={() => handleRemoveFromCart(item.id)}
-                                  variant="ghost"
-                                  size="sm"
-                                  className="p-0 h-auto"
+                                  className="text-red-500 hover:text-red-700"
                                 >
-                                  <Trash2 className="w-4 h-4 text-red-500" />
-                                </Button>
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
                               </div>
-                              <div className="flex items-center gap-2">
-                                <Button
+                              <div className="flex items-center gap-2 mb-2">
+                                <button
                                   onClick={() => handleUpdateQuantity(item.id, item.quantity - 1)}
-                                  variant="outline"
-                                  size="sm"
-                                  className="px-2 h-8"
+                                  className="px-2 py-1 border border-border rounded text-sm"
                                 >
                                   -
-                                </Button>
-                                <span className="w-8 text-center text-sm font-semibold">{item.quantity}</span>
-                                <Button
+                                </button>
+                                <span className="flex-1 text-center text-sm font-semibold">{item.quantity}</span>
+                                <button
                                   onClick={() => handleUpdateQuantity(item.id, item.quantity + 1)}
-                                  variant="outline"
-                                  size="sm"
-                                  className="px-2 h-8"
+                                  className="px-2 py-1 border border-border rounded text-sm"
                                 >
                                   +
-                                </Button>
-                                <span className="ml-auto text-sm font-bold text-primary">
-                                  R$ {item.subtotal.toFixed(2)}
-                                </span>
+                                </button>
+                              </div>
+                              <div className="flex justify-between text-sm">
+                                <span className="text-muted-foreground">R$ {item.price.toFixed(2)}</span>
+                                <span className="font-bold text-primary">R$ {item.subtotal.toFixed(2)}</span>
                               </div>
                             </div>
                           ))}
                         </div>
 
-                        <div className="border-t border-border pt-3 mb-4">
-                          <div className="flex justify-between items-center mb-4">
-                            <span className="font-semibold text-foreground">Total:</span>
-                            <span className="text-2xl font-bold text-primary">R$ {total.toFixed(2)}</span>
+                        <div className="border-t border-border pt-4 mb-4">
+                          <div className="flex justify-between mb-2">
+                            <span className="text-foreground">Subtotal:</span>
+                            <span className="font-bold">R$ {total.toFixed(2)}</span>
                           </div>
-
-                          <div className="space-y-2 mb-4">
-                            <label className="text-sm font-medium text-foreground block">
-                              Forma de Pagamento
-                            </label>
-                            <div className="space-y-2">
-                              {(["pix", "card", "cash"] as const).map((method) => (
-                                <label key={method} className="flex items-center gap-2 cursor-pointer">
-                                  <input
-                                    type="radio"
-                                    name="payment"
-                                    value={method}
-                                    checked={paymentMethod === method}
-                                    onChange={(e) => setPaymentMethod(e.target.value as any)}
-                                    className="w-4 h-4"
-                                  />
-                                  <span className="text-sm text-foreground">
-                                    {method === "pix" ? "📱 PIX" : method === "card" ? "💳 Cartão" : "💵 Dinheiro"}
-                                  </span>
-                                </label>
-                              ))}
-                            </div>
-                          </div>
-
-                          <Button
-                            onClick={handleCompleteOrder}
-                            className="w-full bg-gradient-to-r from-primary to-secondary"
-                            size="lg"
-                          >
-                            Finalizar Pedido
-                          </Button>
                         </div>
+
+                        <div className="space-y-3 mb-4">
+                          <label className="text-sm font-medium text-foreground block">
+                            Forma de Pagamento
+                          </label>
+                          <select
+                            value={paymentMethod}
+                            onChange={(e) => setPaymentMethod(e.target.value as "pix" | "card" | "cash")}
+                            className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground"
+                          >
+                            <option value="pix">PIX</option>
+                            <option value="card">CARTÃO</option>
+                            <option value="cash">DINHEIRO</option>
+                          </select>
+                        </div>
+
+                        {paymentMethod === "cash" && (
+                          <div className="space-y-3 mb-4 p-3 bg-primary/10 rounded-lg">
+                            <label className="text-sm font-medium text-foreground block">
+                              Valor Recebido
+                            </label>
+                            <Input
+                              type="number"
+                              placeholder="0.00"
+                              value={amountReceived || ""}
+                              onChange={(e) => setAmountReceived(parseFloat(e.target.value) || 0)}
+                              className="text-foreground"
+                              step="0.01"
+                              min="0"
+                            />
+                            {amountReceived > 0 && (
+                              <div className="p-2 bg-green-100 rounded text-green-800 text-sm font-semibold">
+                                Troco: R$ {(amountReceived - total).toFixed(2)}
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        <Button
+                          onClick={handleCompleteOrder}
+                          className="w-full bg-gradient-to-r from-primary to-secondary text-white font-bold"
+                        >
+                          Finalizar Pedido
+                        </Button>
                       </>
                     )}
                   </Card>
@@ -559,84 +600,77 @@ export default function POSPage() {
             )}
           </>
         )}
-      </div>
 
-      {/* Confirmation Dialog */}
-      <Dialog open={showConfirm} onOpenChange={setShowConfirm}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Confirmar Pedido</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              {cart.map((item) => (
-                <div key={item.id} className="flex justify-between text-sm">
-                  <span>{item.productName} x{item.quantity}</span>
-                  <span>R$ {item.subtotal.toFixed(2)}</span>
+        {/* Confirmation Dialog */}
+        <Dialog open={showConfirm} onOpenChange={setShowConfirm}>
+          <DialogContent className="bg-background border border-border">
+            <DialogHeader>
+              <DialogTitle className="text-foreground">Confirmar Pedido</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="p-4 bg-primary/10 rounded-lg">
+                <p className="text-sm text-muted-foreground mb-2">Total do Pedido:</p>
+                <p className="text-3xl font-bold text-primary">R$ {total.toFixed(2)}</p>
+              </div>
+              <div className="p-4 bg-secondary/10 rounded-lg">
+                <p className="text-sm text-muted-foreground mb-2">Forma de Pagamento:</p>
+                <p className="text-lg font-semibold text-foreground">
+                  {paymentMethod === "pix" ? "PIX" : paymentMethod === "card" ? "CARTÃO" : "DINHEIRO"}
+                </p>
+              </div>
+              {paymentMethod === "cash" && (
+                <div className="p-4 bg-green-100 rounded-lg">
+                  <p className="text-sm text-green-800 mb-2">Valor Recebido:</p>
+                  <p className="text-lg font-semibold text-green-800">R$ {amountReceived.toFixed(2)}</p>
+                  <p className="text-sm text-green-800 mt-2">Troco: R$ {(amountReceived - total).toFixed(2)}</p>
                 </div>
-              ))}
-            </div>
-            <div className="border-t border-border pt-3">
-              <div className="flex justify-between font-bold text-lg mb-4">
-                <span>Total:</span>
-                <span>R$ {total.toFixed(2)}</span>
+              )}
+              <div className="flex gap-3">
+                <Button
+                  onClick={() => setShowConfirm(false)}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={handleConfirmOrder}
+                  className="flex-1 bg-gradient-to-r from-primary to-secondary text-white"
+                >
+                  Confirmar
+                </Button>
               </div>
-              <div className="text-sm text-muted-foreground mb-4">
-                Forma de Pagamento: {
-                  paymentMethod === "pix" ? "PIX" :
-                  paymentMethod === "card" ? "CARTÃO" :
-                  "DINHEIRO"
-                }
-              </div>
             </div>
-            <div className="flex gap-2">
-              <Button
-                onClick={handleConfirmOrder}
-                className="flex-1 bg-gradient-to-r from-primary to-secondary"
-              >
-                Confirmar
-              </Button>
-              <Button
-                onClick={() => setShowConfirm(false)}
-                variant="outline"
-                className="flex-1"
-              >
-                Cancelar
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+          </DialogContent>
+        </Dialog>
 
-      {/* Print Dialog */}
-      <Dialog open={showPrint} onOpenChange={setShowPrint}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Pedido Finalizado</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="text-center py-4">
-              <p className="text-lg font-semibold text-foreground mb-2">✅ Pedido Confirmado!</p>
-              <p className="text-muted-foreground">Deseja imprimir o cupom?</p>
+        {/* Print Dialog */}
+        <Dialog open={showPrint} onOpenChange={setShowPrint}>
+          <DialogContent className="bg-background border border-border">
+            <DialogHeader>
+              <DialogTitle className="text-foreground">Imprimir Cupom?</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <p className="text-muted-foreground">Deseja imprimir o cupom do pedido?</p>
+              <div className="flex gap-3">
+                <Button
+                  onClick={() => setShowPrint(false)}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  Não
+                </Button>
+                <Button
+                  onClick={handlePrint}
+                  className="flex-1 bg-gradient-to-r from-primary to-secondary text-white"
+                >
+                  Imprimir
+                </Button>
+              </div>
             </div>
-            <div className="flex gap-2">
-              <Button
-                onClick={handlePrint}
-                className="flex-1 bg-gradient-to-r from-primary to-secondary"
-              >
-                Imprimir Cupom
-              </Button>
-              <Button
-                onClick={() => setShowPrint(false)}
-                variant="outline"
-                className="flex-1"
-              >
-                Fechar
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+          </DialogContent>
+        </Dialog>
+      </div>
     </div>
   );
 }
