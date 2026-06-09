@@ -1,6 +1,6 @@
-import { eq } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users } from "../drizzle/schema";
+import { InsertUser, users, cashierResponsibles, products, weeklyMenus, menuItems, cashierSessions, orders, orderItems, stockHistory } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -89,4 +89,149 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-// TODO: add feature queries here as your schema grows.
+/**
+ * Funções para Responsáveis pelo Caixa
+ */
+export async function getCashierResponsibleByUserId(userId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(cashierResponsibles).where(eq(cashierResponsibles.userId, userId)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function createCashierResponsible(data: any) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(cashierResponsibles).values(data);
+  return result;
+}
+
+/**
+ * Funções para Produtos
+ */
+export async function getAllProducts() {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(products);
+}
+
+export async function getProductById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(products).where(eq(products.id, id)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function createProduct(data: any) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(products).values(data);
+  return result;
+}
+
+export async function updateProduct(id: number, data: any) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return await db.update(products).set(data).where(eq(products.id, id));
+}
+
+/**
+ * Funções para Cardápio Semanal
+ */
+export async function getWeeklyMenuByDate(saturdayDate: Date | string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const dateStr = typeof saturdayDate === 'string' ? saturdayDate : saturdayDate.toISOString().split('T')[0];
+  const result = await db.select().from(weeklyMenus).where(eq(weeklyMenus.saturdayDate, dateStr as any)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function createWeeklyMenu(data: any) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(weeklyMenus).values(data);
+  return result;
+}
+
+export async function getMenuItemsByMenuId(menuId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(menuItems).where(eq(menuItems.menuId, menuId));
+}
+
+export async function createMenuItem(data: any) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return await db.insert(menuItems).values(data);
+}
+
+export async function updateMenuItem(id: number, data: any) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return await db.update(menuItems).set(data).where(eq(menuItems.id, id));
+}
+
+/**
+ * Funções para Sessão de Caixa
+ */
+export async function createCashierSession(data: any) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return await db.insert(cashierSessions).values(data);
+}
+
+export async function getOpenCashierSession(responsibleId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(cashierSessions)
+    .where(and(eq(cashierSessions.responsibleId, responsibleId), eq(cashierSessions.status, "open")))
+    .limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function closeCashierSession(id: number, finalBalance: any) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return await db.update(cashierSessions).set({
+    status: "closed",
+    closedAt: new Date(),
+    finalBalance: finalBalance
+  }).where(eq(cashierSessions.id, id));
+}
+
+/**
+ * Funções para Pedidos
+ */
+export async function createOrder(data: any) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(orders).values(data);
+  return result;
+}
+
+export async function createOrderItem(data: any) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return await db.insert(orderItems).values(data);
+}
+
+export async function getOrdersByCashierSession(cashierSessionId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(orders).where(eq(orders.cashierSessionId, cashierSessionId));
+}
+
+export async function getOrderItemsByOrderId(orderId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(orderItems).where(eq(orderItems.orderId, orderId));
+}
+
+/**
+ * Funções para Histórico de Estoque
+ */
+export async function createStockHistory(data: any) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return await db.insert(stockHistory).values(data);
+}
