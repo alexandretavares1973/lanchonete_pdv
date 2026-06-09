@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useLocation } from "wouter";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { trpc } from "@/lib/trpc";
+import { toast } from "sonner";
 
 interface Product {
   id: number;
@@ -16,36 +18,49 @@ interface Product {
 
 export default function ProductsPage() {
   const [, setLocation] = useLocation();
-  const [products, setProducts] = useState<Product[]>([
-    { id: 1, name: "Hamburger", price: 25.00, quantity: 10, isUnlimited: false, isAvailable: true },
-    { id: 2, name: "Pizza", price: 35.00, quantity: 5, isUnlimited: false, isAvailable: true },
-    { id: 3, name: "Refrigerante", price: 8.00, quantity: null, isUnlimited: true, isAvailable: true },
-  ]);
-
+  const [products, setProducts] = useState<Product[]>([]);
   const [showDialog, setShowDialog] = useState(false);
   const [formData, setFormData] = useState({ name: "", price: "", quantity: "", isUnlimited: false });
   const [editingId, setEditingId] = useState<number | null>(null);
 
-  const handleAddProduct = () => {
-    if (formData.name && formData.price) {
-      const newProduct: Product = {
-        id: editingId || Date.now(),
+  // Queries e mutations
+  const { data: productsData, isLoading } = trpc.pdv.products.list.useQuery();
+  const createProductMutation = trpc.pdv.products.create.useMutation();
+  const updateProductMutation = trpc.pdv.products.update.useMutation();
+
+  useEffect(() => {
+    if (productsData) {
+      setProducts(productsData.map(p => ({
+        id: p.id,
+        name: p.name,
+        price: typeof p.price === 'string' ? parseFloat(p.price) : p.price,
+        quantity: p.quantity,
+        isUnlimited: p.isUnlimited,
+        isAvailable: p.isAvailable,
+      })));
+    }
+  }, [productsData]);
+
+  const handleAddProduct = async () => {
+    if (!formData.name || !formData.price) {
+      toast.error("Preencha todos os campos obrigatórios");
+      return;
+    }
+
+    try {
+      await createProductMutation.mutateAsync({
         name: formData.name,
         price: parseFloat(formData.price),
         quantity: formData.isUnlimited ? null : parseInt(formData.quantity) || 0,
         isUnlimited: formData.isUnlimited,
-        isAvailable: true,
-      };
+      });
 
-      if (editingId) {
-        setProducts(products.map(p => p.id === editingId ? newProduct : p));
-      } else {
-        setProducts([...products, newProduct]);
-      }
-
+      toast.success(editingId ? "Produto atualizado!" : "Produto criado!");
       setFormData({ name: "", price: "", quantity: "", isUnlimited: false });
       setEditingId(null);
       setShowDialog(false);
+    } catch (error) {
+      toast.error("Erro ao salvar produto");
     }
   };
 
@@ -60,21 +75,39 @@ export default function ProductsPage() {
     setShowDialog(true);
   };
 
-  const handleDeleteProduct = (id: number) => {
-    setProducts(products.filter(p => p.id !== id));
+  const handleToggleAvailability = async (id: number, isAvailable: boolean) => {
+    try {
+      await updateProductMutation.mutateAsync({
+        id,
+        isAvailable: !isAvailable,
+      });
+      toast.success("Disponibilidade atualizada!");
+    } catch (error) {
+      toast.error("Erro ao atualizar disponibilidade");
+    }
   };
 
-  const handleToggleAvailability = (id: number) => {
-    setProducts(products.map(p =>
-      p.id === id ? { ...p, isAvailable: !p.isAvailable } : p
-    ));
+  const handleUpdateQuantity = async (id: number, quantity: number) => {
+    try {
+      await updateProductMutation.mutateAsync({
+        id,
+        quantity: Math.max(0, quantity),
+      });
+    } catch (error) {
+      toast.error("Erro ao atualizar quantidade");
+    }
   };
 
-  const handleUpdateQuantity = (id: number, quantity: number) => {
-    setProducts(products.map(p =>
-      p.id === id ? { ...p, quantity: Math.max(0, quantity) } : p
-    ));
-  };
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-foreground/60">Carregando produtos...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
@@ -154,7 +187,7 @@ export default function ProductsPage() {
                     </td>
                     <td className="py-3 px-4">
                       <Button
-                        onClick={() => handleToggleAvailability(product.id)}
+                        onClick={() => handleToggleAvailability(product.id, product.isAvailable)}
                         variant={product.isAvailable ? "default" : "destructive"}
                         size="sm"
                       >
@@ -169,13 +202,6 @@ export default function ProductsPage() {
                           size="sm"
                         >
                           Editar
-                        </Button>
-                        <Button
-                          onClick={() => handleDeleteProduct(product.id)}
-                          variant="destructive"
-                          size="sm"
-                        >
-                          Deletar
                         </Button>
                       </div>
                     </td>
@@ -241,8 +267,9 @@ export default function ProductsPage() {
                 <Button
                   onClick={handleAddProduct}
                   className="flex-1 bg-gradient-to-r from-primary to-secondary"
+                  disabled={createProductMutation.isPending}
                 >
-                  {editingId ? "Atualizar" : "Adicionar"}
+                  {createProductMutation.isPending ? "Salvando..." : editingId ? "Atualizar" : "Adicionar"}
                 </Button>
                 <Button
                   onClick={() => setShowDialog(false)}

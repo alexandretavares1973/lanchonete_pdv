@@ -4,6 +4,8 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
+import { toast } from "sonner";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 interface CartItem {
   id: number;
@@ -13,34 +15,54 @@ interface CartItem {
   subtotal: number;
 }
 
+interface Product {
+  id: number;
+  name: string;
+  price: number | string;
+  quantity: number | null;
+  isUnlimited: boolean;
+  isAvailable: boolean;
+}
+
 export default function POSPage() {
   const [, setLocation] = useLocation();
   const [cart, setCart] = useState<CartItem[]>([]);
   const [paymentMethod, setPaymentMethod] = useState<"pix" | "card" | "cash">("cash");
   const [searchTerm, setSearchTerm] = useState("");
+  const [showConfirmation, setShowConfirmation] = useState(false);
 
-  const handleAddToCart = (id: number, name: string, price: number) => {
-    const existingItem = cart.find(item => item.id === id);
+  // Queries e mutations
+  const { data: productsData, isLoading } = trpc.pdv.products.list.useQuery();
+  const createOrderMutation = trpc.pdv.orders.create.useMutation();
+
+  const filteredProducts = (productsData || [])
+    .filter((p: Product) => p.isAvailable && p.name.toLowerCase().includes(searchTerm.toLowerCase()))
+    .slice(0, 12);
+
+  const handleAddToCart = (product: Product) => {
+    const price = typeof product.price === 'string' ? parseFloat(product.price) : product.price;
+    const existingItem = cart.find(item => item.id === product.id);
     
     if (existingItem) {
       setCart(cart.map(item =>
-        item.id === id
+        item.id === product.id
           ? {
               ...item,
               quantity: item.quantity + 1,
-              subtotal: (item.quantity + 1) * item.price
+              subtotal: (item.quantity + 1) * price
             }
           : item
       ));
     } else {
       setCart([...cart, {
-        id,
-        name,
+        id: product.id,
+        name: product.name,
         price,
         quantity: 1,
         subtotal: price
       }]);
     }
+    toast.success(`${product.name} adicionado ao carrinho!`);
   };
 
   const handleRemoveFromCart = (id: number) => {
@@ -63,7 +85,43 @@ export default function POSPage() {
     }
   };
 
+  const handleFinishOrder = async () => {
+    if (cart.length === 0) {
+      toast.error("Carrinho vazio!");
+      return;
+    }
+
+    try {
+      await createOrderMutation.mutateAsync({
+        cashierSessionId: 1, // TODO: usar sessão real
+        items: cart.map(item => ({
+          productId: item.id,
+          quantity: item.quantity,
+          unitPrice: item.price,
+        })),
+        paymentMethod,
+      });
+
+      toast.success("Pedido finalizado com sucesso!");
+      setCart([]);
+      setShowConfirmation(false);
+    } catch (error) {
+      toast.error("Erro ao finalizar pedido");
+    }
+  };
+
   const total = cart.reduce((sum, item) => sum + item.subtotal, 0);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-foreground/60">Carregando produtos...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
@@ -97,22 +155,31 @@ export default function POSPage() {
 
             {/* Products Grid */}
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              {/* Placeholder Products */}
-              {[1, 2, 3, 4, 5, 6].map((item) => (
+              {filteredProducts.map((product: Product) => (
                 <Card
-                  key={item}
+                  key={product.id}
                   className="p-4 hover:shadow-lg transition-shadow cursor-pointer"
-                  onClick={() => handleAddToCart(item, `Produto ${item}`, 15.00 + item)}
+                  onClick={() => handleAddToCart(product)}
                 >
                   <div className="aspect-square bg-gradient-to-br from-primary/10 to-secondary/10 rounded-lg mb-3 flex items-center justify-center">
                     <span className="text-3xl">🍔</span>
                   </div>
-                  <h3 className="font-semibold text-foreground">Produto {item}</h3>
-                  <p className="text-sm text-muted-foreground">Descrição</p>
-                  <p className="text-lg font-bold text-primary mt-2">R$ {(15.00 + item).toFixed(2)}</p>
+                  <h3 className="font-semibold text-foreground truncate">{product.name}</h3>
+                  <p className="text-sm text-muted-foreground">
+                    {product.isUnlimited ? "Ilimitado" : `${product.quantity} disponível`}
+                  </p>
+                  <p className="text-lg font-bold text-primary mt-2">
+                    R$ {(typeof product.price === 'string' ? parseFloat(product.price) : product.price).toFixed(2)}
+                  </p>
                 </Card>
               ))}
             </div>
+
+            {filteredProducts.length === 0 && (
+              <Card className="p-8 text-center">
+                <p className="text-muted-foreground">Nenhum produto disponível</p>
+              </Card>
+            )}
           </div>
 
           {/* Cart Section */}
@@ -197,10 +264,11 @@ export default function POSPage() {
               {/* Action Buttons */}
               <div className="mt-6 space-y-2">
                 <Button
-                  disabled={cart.length === 0}
+                  disabled={cart.length === 0 || createOrderMutation.isPending}
+                  onClick={() => setShowConfirmation(true)}
                   className="w-full bg-gradient-to-r from-primary to-secondary"
                 >
-                  Finalizar Pedido
+                  {createOrderMutation.isPending ? "Processando..." : "Finalizar Pedido"}
                 </Button>
                 <Button
                   onClick={() => setCart([])}
@@ -214,6 +282,45 @@ export default function POSPage() {
           </div>
         </div>
       </div>
+
+      {/* Confirmation Dialog */}
+      <Dialog open={showConfirmation} onOpenChange={setShowConfirmation}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirmar Pedido</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <p className="text-sm text-muted-foreground">Total do pedido:</p>
+              <p className="text-2xl font-bold text-primary">R$ {total.toFixed(2)}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Forma de pagamento:</p>
+              <p className="text-lg font-semibold text-foreground">
+                {paymentMethod === "cash" && "Dinheiro"}
+                {paymentMethod === "card" && "Cartão"}
+                {paymentMethod === "pix" && "PIX"}
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                onClick={handleFinishOrder}
+                className="flex-1 bg-gradient-to-r from-primary to-secondary"
+                disabled={createOrderMutation.isPending}
+              >
+                {createOrderMutation.isPending ? "Processando..." : "Confirmar"}
+              </Button>
+              <Button
+                onClick={() => setShowConfirmation(false)}
+                variant="outline"
+                className="flex-1"
+              >
+                Cancelar
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

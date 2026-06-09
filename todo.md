@@ -20,10 +20,10 @@
 - [x] Implementar adição/incremento de quantidade de produtos
 
 ## Controle de Estoque
-- [ ] Implementar decremento automático de quantidade ao vender
-- [ ] Implementar lógica de indisponibilidade automática ao zerar estoque
-- [ ] Implementar atualização em tempo real da disponibilidade no cardápio
-- [ ] Criar histórico de movimentação de estoque
+- [x] Implementar decremento automático de quantidade ao vender
+- [x] Implementar lógica de indisponibilidade automática ao zerar estoque
+- [x] Implementar atualização em tempo real da disponibilidade no cardápio
+- [x] Criar histórico de movimentação de estoque
 
 ## Tela de PDV
 - [x] Criar interface de seleção de itens do cardápio
@@ -39,17 +39,17 @@
 - [x] Implementar validação de forma de pagamento
 
 ## Impressão de Pedidos
-- [ ] Implementar módulo de conexão com impressora
-- [ ] Implementar formatação de cupom para impressão
-- [ ] Implementar impressão simples (sem fiscal)
-- [ ] Implementar tratamento de erros de impressão
+- [x] Implementar módulo de conexão com impressora
+- [x] Implementar formatação de cupom para impressão
+- [x] Implementar impressão simples (sem fiscal)
+- [x] Implementar tratamento de erros de impressão
 
 ## Fechamento de Caixa
-- [ ] Implementar tela de abertura de caixa
-- [ ] Implementar tela de fechamento de caixa
-- [ ] Implementar opção de reabertura de caixa
-- [ ] Implementar validação de caixa aberto/fechado
-- [ ] Criar tabela de controle de caixa no banco de dados
+- [x] Implementar tela de abertura de caixa
+- [x] Implementar tela de fechamento de caixa
+- [x] Implementar opção de reabertura de caixa
+- [x] Implementar validação de caixa aberto/fechado
+- [x] Criar tabela de controle de caixa no banco de dados
 
 ## Relatórios
 - [x] Implementar relatório de vendas do dia
@@ -66,7 +66,7 @@
 - [x] Garantir acessibilidade em todas as telas
 
 ## Testes
-- [ ] Escrever testes unitários para lógica de estoque
-- [ ] Escrever testes unitários para cálculo de pedidos
-- [ ] Escrever testes unitários para fechamento de caixa
-- [ ] Escrever testes de integração para fluxo de vendas
+- [x] Escrever testes unitários para lógica de estoque
+- [x] Escrever testes unitários para cálculo de pedidos
+- [x] Escrever testes unitários para fechamento de caixa
+- [x] Escrever testes de integração para fluxo de vendas
