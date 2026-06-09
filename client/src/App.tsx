@@ -8,7 +8,7 @@ import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import POSPage from "./pages/POSPage";
-import ProductsPage from "./pages/ProductsPage";
+
 import ReportsPage from "./pages/ReportsPage";
 import LocalLogin from "./pages/LocalLogin";
 import WeeklyMenuPage from "./pages/WeeklyMenuPage";
@@ -34,7 +34,7 @@ function Router() {
       <Route path={"/login"} component={Login} />
       <Route path={"/dashboard"} component={Dashboard} />
       <Route path={"/pos"} component={POSPage} />
-      <Route path={"/products"} component={ProductsPage} />
+
       <Route path={"/reports"} component={ReportsPage} />
       <Route path={"/weekly-menu"} component={WeeklyMenuPage} />
       <Route path={"/cashier-responsible"} component={CashierResponsiblePage} />
