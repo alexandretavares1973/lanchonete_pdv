@@ -126,6 +126,18 @@ export default function Dashboard() {
                 </div>
               </div>
             </Card>
+
+            <Card className="p-8 hover:shadow-lg transition-all cursor-pointer border-2 border-blue-500/20 hover:border-blue-500/40" onClick={() => setLocation("/customers")}>
+              <div className="text-center space-y-4">
+                <div className="w-16 h-16 bg-gradient-to-br from-blue-500/20 to-cyan-500/20 rounded-xl flex items-center justify-center mx-auto">
+                  <span className="text-3xl">👥</span>
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-foreground">Clientes</h3>
+                  <p className="text-sm text-muted-foreground">Gerenciar clientes</p>
+                </div>
+              </div>
+            </Card>
           </div>
         </div>
       </div>

@@ -13,6 +13,7 @@ import ReportsPage from "./pages/ReportsPage";
 import LocalLogin from "./pages/LocalLogin";
 import WeeklyMenuPage from "./pages/WeeklyMenuPage";
 import CashierResponsiblePage from "./pages/CashierResponsiblePage";
+import CustomersPage from "./pages/CustomersPage";
 import { useAuth } from "@/_core/hooks/useAuth";
 
 function Router() {
@@ -39,6 +40,7 @@ function Router() {
       <Route path={"/weekly-menu"} component={WeeklyMenuPage} />
       <Route path={"/cashier-responsible"} component={CashierResponsiblePage} />
       <Route path={""} component={isAuthenticated ? Dashboard : Login} />
+      <Route path={"/customers"} component={CustomersPage} />
       <Route path={"/404"} component={NotFound} />
       <Route component={NotFound} />
     </Switch>

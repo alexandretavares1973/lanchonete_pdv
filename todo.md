@@ -116,3 +116,16 @@
 - [x] Permitir vendas apenas com cardápio aberto
 - [x] Mostrar mensagem de erro se tentar vender com cardápio fechado
 - [x] Atualizar relatórios para mostrar status do cardápio
+
+
+## Cadastro de Clientes
+
+- [x] Criar página de gerenciamento de clientes
+- [x] Implementar tabela de clientes no localStorage
+- [x] Criar cliente "GERAL" padrão automaticamente
+- [x] Permitir adicionar/editar/remover clientes
+- [x] Adicionar seleção de cliente no PDV
+- [x] Usar cliente "GERAL" como padrão
+- [x] Exibir cliente no cupom impresso
+- [ ] Discriminar clientes no relatório de vendas
+- [ ] Integrar cliente aos dados de pedidos

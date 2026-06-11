@@ -33,6 +33,15 @@ interface CartItem {
   subtotal: number;
 }
 
+interface Customer {
+  id: number;
+  name: string;
+  phone?: string;
+  email?: string;
+  isDefault?: boolean;
+  createdAt: Date;
+}
+
 export default function POSPage() {
   const [, setLocation] = useLocation();
   const [menus, setMenus] = useState<any[]>([]);
@@ -47,6 +56,8 @@ export default function POSPage() {
   const [lastOrderTotal, setLastOrderTotal] = useState<number>(0);
   const [lastPaymentMethod, setLastPaymentMethod] = useState<'pix' | 'card' | 'cash'>('pix');
   const [lastAmountReceived, setLastAmountReceived] = useState<number>(0);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
 
   useEffect(() => {
     const storedMenus = localStorage.getItem("weeklyMenus");
@@ -58,6 +69,18 @@ export default function POSPage() {
       const openMenu = parsed.find((m: any) => m.status === "open");
       if (openMenu) {
         setSelectedMenu(openMenu);
+      }
+    }
+
+    // Carregar clientes
+    const storedCustomers = localStorage.getItem("customers");
+    if (storedCustomers) {
+      const parsed = JSON.parse(storedCustomers);
+      setCustomers(parsed);
+      // Selecionar cliente GERAL por padrão
+      const generalCustomer = parsed.find((c: Customer) => c.isDefault);
+      if (generalCustomer) {
+        setSelectedCustomer(generalCustomer);
       }
     }
   }, []);
@@ -455,6 +478,7 @@ export default function POSPage() {
             <p>CUPOM DE VENDA</p>
             <p>━━━━━━━━━━━━━━━━━━━━━━━</p>
             <p><strong>Cardápio:</strong> ${selectedMenu ? getSaturdayLabel(selectedMenu.saturdayOrder) : "N/A"}</p>
+            <p><strong>Cliente:</strong> ${selectedCustomer?.name || "GERAL"}</p>
             <p><strong>Data:</strong> ${timestamp.toLocaleDateString("pt-BR")}</p>
             <p><strong>Hora:</strong> ${timestamp.toLocaleTimeString("pt-BR")}</p>
           </div>
@@ -560,6 +584,27 @@ export default function POSPage() {
                 {openMenus.map((menu: any) => (
                   <option key={menu.id} value={menu.id}>
                     {getSaturdayLabel(menu.saturdayOrder)} - {new Date(menu.saturdayDate).toLocaleDateString("pt-BR")}
+                  </option>
+                ))}
+              </select>
+            </Card>
+
+            <Card className="p-4 mb-6">
+              <label className="text-sm font-medium text-foreground block mb-2">
+                Selecione o Cliente
+              </label>
+              <select
+                value={selectedCustomer?.id || ""}
+                onChange={(e) => {
+                  const customer = customers.find((c: Customer) => c.id === parseInt(e.target.value));
+                  setSelectedCustomer(customer || null);
+                }}
+                className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground"
+              >
+                <option value="">Selecione um cliente</option>
+                {customers.map((customer: Customer) => (
+                  <option key={customer.id} value={customer.id}>
+                    {customer.name} {customer.isDefault ? "(Padrão)" : ""}
                   </option>
                 ))}
               </select>
