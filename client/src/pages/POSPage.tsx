@@ -196,12 +196,14 @@ export default function POSPage() {
 
     const currentItem = cart.find(item => item.id === productId);
     const product = selectedMenu?.items.find((p: MenuItem) => p.id === productId);
-    if (product && !product.isUnlimited && product.quantity !== null && newQuantity > product.quantity) {
-      toast.error("❌ Quantidade máxima atingida!");
-      return;
+
+    if (currentItem && newQuantity > currentItem.quantity) {
+      if (product && !product.isUnlimited && product.quantity !== null && product.quantity <= 0) {
+        toast.error("❌ Quantidade máxima atingida!");
+        return;
+      }
     }
 
-    // Calcular diferença de quantidade para ajustar estoque
     if (currentItem && product && !product.isUnlimited) {
       const quantityDifference = currentItem.quantity - newQuantity;
       const updatedMenus = menus.map(menu =>
@@ -217,22 +219,15 @@ export default function POSPage() {
           : menu
       );
       setMenus(updatedMenus);
-      // Atualizar selectedMenu com o novo cardápio
       const updatedSelectedMenu = updatedMenus.find(m => m.id === selectedMenu.id);
-      if (updatedSelectedMenu) {
-        setSelectedMenu(updatedSelectedMenu);
-      }
+      if (updatedSelectedMenu) setSelectedMenu(updatedSelectedMenu);
       localStorage.setItem("weeklyMenus", JSON.stringify(updatedMenus));
     }
 
     setCart(
       cart.map(item =>
         item.id === productId
-          ? {
-              ...item,
-              quantity: newQuantity,
-              subtotal: newQuantity * item.price,
-            }
+          ? { ...item, quantity: newQuantity, subtotal: newQuantity * item.price }
           : item
       )
     );
