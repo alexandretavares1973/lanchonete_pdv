@@ -55,6 +55,11 @@ export default function WeeklyMenuPage() {
     isUnlimited: false,
   });
 
+  const [editingProductId, setEditingProductId] = useState<string | null>(null);
+  const [editingProductForm, setEditingProductForm] = useState({
+    quantity: "",
+  });
+
   // Carregar responsáveis do localStorage
   useEffect(() => {
     const stored = localStorage.getItem("cashierResponsibles");
@@ -135,6 +140,42 @@ export default function WeeklyMenuPage() {
     
     toast.success("Produto adicionado!");
     setProductForm({ productName: "", price: "", quantity: "", isUnlimited: false });
+  };
+
+  const handleEditProductQuantity = (item: any) => {
+    setEditingProductId(item.id);
+    setEditingProductForm({ quantity: item.quantity?.toString() || "" });
+  };
+
+  const handleSaveProductQuantity = (menuId: number, productId: string) => {
+    if (!editingProductForm.quantity) {
+      toast.error("Informe a quantidade");
+      return;
+    }
+
+    const newQuantity = parseInt(editingProductForm.quantity);
+    if (newQuantity < 0) {
+      toast.error("Quantidade não pode ser negativa");
+      return;
+    }
+
+    const updatedMenus = menus.map(menu =>
+      menu.id === menuId
+        ? {
+            ...menu,
+            items: menu.items.map((item: any) =>
+              item.id === productId
+                ? { ...item, quantity: newQuantity }
+                : item
+            ),
+          }
+        : menu
+    );
+
+    setMenus(updatedMenus);
+    localStorage.setItem("weeklyMenus", JSON.stringify(updatedMenus));
+    setEditingProductId(null);
+    toast.success("Quantidade atualizada!");
   };
 
   const handleRemoveProduct = (menuId: number, productId: string) => {
@@ -533,13 +574,48 @@ export default function WeeklyMenuPage() {
                             R$ {item.price.toFixed(2)} • {item.isUnlimited ? "Ilimitado" : `${item.quantity} un`}
                           </p>
                         </div>
-                        <Button
-                          onClick={() => handleRemoveProduct(currentEditingMenu.id, item.id)}
-                          variant="destructive"
-                          size="sm"
-                        >
-                          Remover
-                        </Button>
+                        {editingProductId === item.id ? (
+                          <div className="flex gap-2 items-center">
+                            <Input
+                              type="number"
+                              min="0"
+                              value={editingProductForm.quantity}
+                              onChange={(e) => setEditingProductForm({ quantity: e.target.value })}
+                              className="w-20 h-8"
+                            />
+                            <Button
+                              onClick={() => handleSaveProductQuantity(currentEditingMenu.id, item.id)}
+                              size="sm"
+                              className="bg-green-600 hover:bg-green-700"
+                            >
+                              OK
+                            </Button>
+                            <Button
+                              onClick={() => setEditingProductId(null)}
+                              size="sm"
+                              variant="outline"
+                            >
+                              X
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="flex gap-2">
+                            <Button
+                              onClick={() => handleEditProductQuantity(item)}
+                              variant="outline"
+                              size="sm"
+                            >
+                              Editar Qtd
+                            </Button>
+                            <Button
+                              onClick={() => handleRemoveProduct(currentEditingMenu.id, item.id)}
+                              variant="destructive"
+                              size="sm"
+                            >
+                              Remover
+                            </Button>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
