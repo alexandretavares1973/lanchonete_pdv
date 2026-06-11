@@ -48,11 +48,21 @@ interface CashierSession {
   orders: Order[];
 }
 
+interface Customer {
+  id: number;
+  name: string;
+  phone?: string;
+  email?: string;
+  isDefault?: boolean;
+  createdAt: Date;
+}
+
 export default function ReportsPage() {
   const [, setLocation] = useLocation();
   const [menus, setMenus] = useState<WeeklyMenu[]>([]);
   const [sessions, setSessions] = useState<CashierSession[]>([]);
   const [selectedMenuId, setSelectedMenuId] = useState<number | null>(null);
+  const [customers, setCustomers] = useState<Customer[]>([]);
   const [selectedSession, setSelectedSession] = useState<CashierSession | null>(null);
   const [showDetails, setShowDetails] = useState(false);
 
@@ -65,6 +75,10 @@ export default function ReportsPage() {
     const storedSessions = localStorage.getItem("cashierSessions");
     if (storedSessions) {
       setSessions(JSON.parse(storedSessions));
+    const storedCustomers = localStorage.getItem("customers");
+    if (storedCustomers) {
+      setCustomers(JSON.parse(storedCustomers));
+    }
     }
   }, []);
 

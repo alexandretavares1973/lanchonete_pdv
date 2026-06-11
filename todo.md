@@ -127,5 +127,5 @@
 - [x] Adicionar seleção de cliente no PDV
 - [x] Usar cliente "GERAL" como padrão
 - [x] Exibir cliente no cupom impresso
-- [ ] Discriminar clientes no relatório de vendas
-- [ ] Integrar cliente aos dados de pedidos
+- [x] Discriminar clientes no relatório de vendas
+- [x] Integrar cliente aos dados de pedidos

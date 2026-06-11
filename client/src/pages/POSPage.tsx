@@ -297,6 +297,8 @@ export default function POSPage() {
       amountReceived: paymentMethod === "cash" ? amountReceived : null,
       change: paymentMethod === "cash" ? change : null,
       items: cart,
+      customerId: selectedCustomer?.id || 1,
+      customerName: selectedCustomer?.name || "GERAL",
       createdAt: new Date().toISOString(),
     };
 
