@@ -80,7 +80,9 @@ export default function POSPage() {
     if (existingItem) {
       // Validar quantidade máxima
       if (!product.isUnlimited && product.quantity !== null) {
-        if (existingItem.quantity >= product.quantity) {
+        // Calcular quantidade original do produto (quantidade atual + quantidade no carrinho)
+        const originalQuantity = product.quantity + existingItem.quantity;
+        if (existingItem.quantity >= originalQuantity) {
           toast.error("❌ Quantidade máxima atingida!");
           return;
         }
