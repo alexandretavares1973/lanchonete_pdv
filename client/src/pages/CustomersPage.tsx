@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Trash2, Plus, Edit2 } from "lucide-react";
+import { Trash2, Plus, Edit2, Eye, EyeOff } from "lucide-react";
 
 interface Customer {
   id: number;
@@ -12,6 +12,7 @@ interface Customer {
   phone?: string;
   email?: string;
   isDefault?: boolean;
+  isActive: boolean;
   createdAt: Date;
 }
 
@@ -38,6 +39,7 @@ export default function CustomersPage() {
         phone: "",
         email: "",
         isDefault: true,
+        isActive: true,
         createdAt: new Date(),
       };
       setCustomers([defaultCustomer]);
@@ -69,6 +71,7 @@ export default function CustomersPage() {
         phone: formData.phone,
         email: formData.email,
         isDefault: false,
+        isActive: true,
         createdAt: new Date(),
       };
       const updated = [...customers, newCustomer];
@@ -96,6 +99,20 @@ export default function CustomersPage() {
     setShowDialog(true);
   };
 
+  const handleToggleActive = (id: number) => {
+    const customer = customers.find(c => c.id === id);
+    if (customer?.isDefault) {
+      toast.error("Não é possível inativar o cliente GERAL");
+      return;
+    }
+    const updated = customers.map(c =>
+      c.id === id ? { ...c, isActive: !c.isActive } : c
+    );
+    setCustomers(updated);
+    localStorage.setItem("customers", JSON.stringify(updated));
+    toast.success(customer?.isActive ? "Cliente inativado!" : "Cliente ativado!");
+  };
+
   const handleDeleteCustomer = (id: number) => {
     const customer = customers.find(c => c.id === id);
     if (customer?.isDefault) {
@@ -120,7 +137,7 @@ export default function CustomersPage() {
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-foreground mb-2">Gerenciar Clientes</h1>
-          <p className="text-muted-foreground">Cadastre e gerencie os clientes da sua lanchonete</p>
+          <p className="text-muted-foreground">Cadastre, edite, inative ou remova clientes da sua lanchonete</p>
         </div>
 
         {/* Botão Adicionar */}
@@ -134,48 +151,79 @@ export default function CustomersPage() {
 
         {/* Lista de Clientes */}
         <div className="grid gap-4">
-          {customers.map(customer => (
-            <Card key={customer.id} className="p-4 hover:shadow-lg transition-shadow">
-              <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-semibold text-foreground text-lg">{customer.name}</h3>
-                    {customer.isDefault && (
-                      <span className="px-2 py-1 bg-primary/20 text-primary text-xs font-medium rounded">
-                        Padrão
-                      </span>
+          {customers.length === 0 ? (
+            <Card className="p-8 text-center">
+              <p className="text-muted-foreground">Nenhum cliente cadastrado</p>
+            </Card>
+          ) : (
+            customers.map(customer => (
+              <Card 
+                key={customer.id} 
+                className={`p-4 hover:shadow-lg transition-all ${!customer.isActive ? 'opacity-60 bg-muted/30' : ''}`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <h3 className={`font-semibold text-lg ${customer.isActive ? 'text-foreground' : 'text-muted-foreground line-through'}`}>
+                        {customer.name}
+                      </h3>
+                      {customer.isDefault && (
+                        <span className="px-2 py-1 bg-primary/20 text-primary text-xs font-medium rounded">
+                          Padrão
+                        </span>
+                      )}
+                      {!customer.isActive && (
+                        <span className="px-2 py-1 bg-destructive/20 text-destructive text-xs font-medium rounded">
+                          Inativo
+                        </span>
+                      )}
+                    </div>
+                    {customer.phone && (
+                      <p className="text-sm text-muted-foreground">📱 {customer.phone}</p>
+                    )}
+                    {customer.email && (
+                      <p className="text-sm text-muted-foreground">📧 {customer.email}</p>
                     )}
                   </div>
-                  {customer.phone && (
-                    <p className="text-sm text-muted-foreground">📱 {customer.phone}</p>
-                  )}
-                  {customer.email && (
-                    <p className="text-sm text-muted-foreground">📧 {customer.email}</p>
-                  )}
+                  <div className="flex gap-2">
+                    {!customer.isDefault && (
+                      <>
+                        <Button
+                          onClick={() => handleEditCustomer(customer)}
+                          variant="outline"
+                          size="sm"
+                          title={customer.isActive ? "Editar cliente" : "Não é possível editar cliente inativo"}
+                          disabled={!customer.isActive}
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          onClick={() => handleToggleActive(customer.id)}
+                          variant={customer.isActive ? "outline" : "default"}
+                          size="sm"
+                          title={customer.isActive ? "Inativar cliente" : "Ativar cliente"}
+                        >
+                          {customer.isActive ? (
+                            <Eye className="w-4 h-4" />
+                          ) : (
+                            <EyeOff className="w-4 h-4" />
+                          )}
+                        </Button>
+                        <Button
+                          onClick={() => handleDeleteCustomer(customer.id)}
+                          variant="destructive"
+                          size="sm"
+                          title="Deletar cliente"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </>
+                    )}
+                  </div>
                 </div>
-                <div className="flex gap-2">
-                  {!customer.isDefault && (
-                    <>
-                      <Button
-                        onClick={() => handleEditCustomer(customer)}
-                        variant="outline"
-                        size="sm"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        onClick={() => handleDeleteCustomer(customer.id)}
-                        variant="destructive"
-                        size="sm"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </>
-                  )}
-                </div>
-              </div>
-            </Card>
-          ))}
+              </Card>
+            ))
+          )}
         </div>
 
         {/* Dialog Adicionar/Editar */}
