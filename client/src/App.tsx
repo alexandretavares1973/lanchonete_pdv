@@ -33,6 +33,7 @@ function Router() {
   return (
     <Switch>
       <Route path={"/login"} component={Login} />
+      <Route path={"/local-login"} component={LocalLogin} />
       <Route path={"/dashboard"} component={Dashboard} />
       <Route path={"/pos"} component={POSPage} />
 

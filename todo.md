@@ -129,3 +129,28 @@
 - [x] Exibir cliente no cupom impresso
 - [x] Discriminar clientes no relatório de vendas
 - [x] Integrar cliente aos dados de pedidos
+
+
+## Correções e Melhorias - Sessão Atual
+
+### Problemas Identificados e Resolvidos
+- [x] Adicionar import faltante de `useAuth` no Dashboard
+- [x] Adicionar rota `/local-login` em App.tsx para acesso ao login local
+- [x] Criar testes Vitest para funcionalidade de editar e inativar clientes
+- [x] Verificar lógica de proteção do cliente GERAL (padrão)
+
+### Testes Implementados (8 novos testes)
+- [x] Teste: Editar cliente com sucesso
+- [x] Teste: Inativar cliente com sucesso
+- [x] Teste: Ativar cliente inativo com sucesso
+- [x] Teste: Prevenir edição do cliente GERAL
+- [x] Teste: Prevenir inativação do cliente GERAL
+- [x] Teste: Deletar cliente com sucesso
+- [x] Teste: Prevenir deleção do cliente GERAL
+- [x] Teste: Gerenciar múltiplos clientes corretamente
+
+### Status Final
+- Total de testes: 29 (todos passando ✅)
+- Funcionalidade de Editar e Inativar: Verificada e funcionando
+- Proteção do cliente GERAL: Implementada e testada
+- Integração com localStorage: Funcionando corretamente
