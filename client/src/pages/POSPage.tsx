@@ -39,6 +39,7 @@ interface Customer {
   phone?: string;
   email?: string;
   isDefault?: boolean;
+  isActive?: boolean;
   createdAt: Date;
 }
 
@@ -604,7 +605,7 @@ export default function POSPage() {
                 className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground"
               >
                 <option value="">Selecione um cliente</option>
-                {customers.map((customer: Customer) => (
+                {customers.filter((c: Customer) => c.isActive !== false).map((customer: Customer) => (
                   <option key={customer.id} value={customer.id}>
                     {customer.name} {customer.isDefault ? "(Padrão)" : ""}
                   </option>
