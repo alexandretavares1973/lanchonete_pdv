@@ -2,14 +2,58 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useLocation } from "wouter";
+import { useState } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
+
+interface Customer {
+  id: number;
+  name: string;
+  phone?: string;
+  email?: string;
+  isDefault?: boolean;
+  isActive?: boolean;
+  createdAt: Date;
+}
 
 export default function Dashboard() {
   const { user, logout } = useAuth();
   const [, setLocation] = useLocation();
+  const [showAddCustomer, setShowAddCustomer] = useState(false);
+  const [newCustomerName, setNewCustomerName] = useState("");
+  const [newCustomerPhone, setNewCustomerPhone] = useState("");
+  const [newCustomerEmail, setNewCustomerEmail] = useState("");
 
   const handleLogout = async () => {
     await logout();
     setLocation("/login");
+  };
+
+  const handleAddCustomer = () => {
+    if (!newCustomerName.trim()) {
+      toast.error("❌ Nome do cliente é obrigatório!");
+      return;
+    }
+
+    const customers = JSON.parse(localStorage.getItem("customers") || "[]");
+    const newCustomer: Customer = {
+      id: Math.max(...customers.map((c: Customer) => c.id), 0) + 1,
+      name: newCustomerName,
+      phone: newCustomerPhone || undefined,
+      email: newCustomerEmail || undefined,
+      isActive: true,
+      createdAt: new Date(),
+    };
+
+    customers.push(newCustomer);
+    localStorage.setItem("customers", JSON.stringify(customers));
+    
+    toast.success(`✅ Cliente "${newCustomerName}" cadastrado com sucesso!`);
+    setNewCustomerName("");
+    setNewCustomerPhone("");
+    setNewCustomerEmail("");
+    setShowAddCustomer(false);
   };
 
   return (
@@ -139,7 +183,7 @@ export default function Dashboard() {
               </div>
             </Card>
 
-            <Card className="p-8 hover:shadow-lg transition-all cursor-pointer border-2 border-orange-500/20 hover:border-orange-500/40" onClick={() => setLocation("/customers")}>
+            <Card className="p-8 hover:shadow-lg transition-all cursor-pointer border-2 border-orange-500/20 hover:border-orange-500/40" onClick={() => setShowAddCustomer(true)}>
               <div className="text-center space-y-4">
                 <div className="w-16 h-16 bg-gradient-to-br from-orange-500/20 to-amber-500/20 rounded-xl flex items-center justify-center mx-auto">
                   <span className="text-3xl">➕</span>
@@ -153,6 +197,65 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* Dialog de Cadastro de Cliente */}
+      <Dialog open={showAddCustomer} onOpenChange={setShowAddCustomer}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Cadastrar Novo Cliente</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium text-foreground block mb-2">
+                Nome do Cliente *
+              </label>
+              <Input
+                placeholder="Ex: João Silva"
+                value={newCustomerName}
+                onChange={(e) => setNewCustomerName(e.target.value)}
+                className="w-full"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-foreground block mb-2">
+                Telefone
+              </label>
+              <Input
+                placeholder="Ex: (11) 98765-4321"
+                value={newCustomerPhone}
+                onChange={(e) => setNewCustomerPhone(e.target.value)}
+                className="w-full"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-foreground block mb-2">
+                Email
+              </label>
+              <Input
+                placeholder="Ex: joao@email.com"
+                value={newCustomerEmail}
+                onChange={(e) => setNewCustomerEmail(e.target.value)}
+                className="w-full"
+              />
+            </div>
+            <div className="flex gap-3 pt-4">
+              <Button
+                variant="outline"
+                onClick={() => setShowAddCustomer(false)}
+                className="flex-1"
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleAddCustomer}
+                className="flex-1"
+              >
+                Cadastrar
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
