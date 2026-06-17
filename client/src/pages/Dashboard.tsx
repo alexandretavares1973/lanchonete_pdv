@@ -183,6 +183,18 @@ export default function Dashboard() {
               </div>
             </Card>
 
+            <Card className="p-8 hover:shadow-lg transition-all cursor-pointer border-2 border-indigo-500/20 hover:border-indigo-500/40" onClick={() => setLocation("/customer-report")}>
+              <div className="text-center space-y-4">
+                <div className="w-16 h-16 bg-gradient-to-br from-indigo-500/20 to-purple-500/20 rounded-xl flex items-center justify-center mx-auto">
+                  <span className="text-3xl">📊</span>
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-foreground">Relatório Clientes</h3>
+                  <p className="text-sm text-muted-foreground">Análise e exportação</p>
+                </div>
+              </div>
+            </Card>
+
             <Card className="p-8 hover:shadow-lg transition-all cursor-pointer border-2 border-orange-500/20 hover:border-orange-500/40" onClick={() => setShowAddCustomer(true)}>
               <div className="text-center space-y-4">
                 <div className="w-16 h-16 bg-gradient-to-br from-orange-500/20 to-amber-500/20 rounded-xl flex items-center justify-center mx-auto">

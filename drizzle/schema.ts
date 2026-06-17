@@ -114,11 +114,28 @@ export type CashierSession = typeof cashierSessions.$inferSelect;
 export type InsertCashierSession = typeof cashierSessions.$inferInsert;
 
 /**
+ * Tabela de clientes
+ */
+export const customers = mysqlTable("customers", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  phone: varchar("phone", { length: 20 }),
+  email: varchar("email", { length: 320 }),
+  isActive: boolean("isActive").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Customer = typeof customers.$inferSelect;
+export type InsertCustomer = typeof customers.$inferInsert;
+
+/**
  * Tabela de pedidos
  */
 export const orders = mysqlTable("orders", {
   id: int("id").autoincrement().primaryKey(),
   cashierSessionId: int("cashierSessionId").notNull(),
+  customerId: int("customerId"),
   totalAmount: decimal("totalAmount", { precision: 10, scale: 2 }).notNull(),
   paymentMethod: mysqlEnum("paymentMethod", ["pix", "card", "cash"]).notNull(),
   status: mysqlEnum("status", ["pending", "completed", "cancelled"]).default("pending").notNull(),
@@ -160,3 +177,10 @@ export const stockHistory = mysqlTable("stock_history", {
 
 export type StockHistory = typeof stockHistory.$inferSelect;
 export type InsertStockHistory = typeof stockHistory.$inferInsert;
+
+/**
+ * Relação entre clientes e pedidos para relatório
+ */
+export interface OrderWithCustomer extends Order {
+  customer?: Customer;
+}

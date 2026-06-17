@@ -1,6 +1,6 @@
 import { eq, desc, and, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, cashierResponsibles, products, weeklyMenus, menuItems, cashierSessions, orders, orderItems, stockHistory } from "../drizzle/schema";
+import { InsertUser, users, cashierResponsibles, products, weeklyMenus, menuItems, cashierSessions, orders, orderItems, stockHistory, customers } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -247,4 +247,68 @@ export async function createStockHistory(data: any) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   return await db.insert(stockHistory).values(data);
+}
+
+
+/**
+ * Funções para Clientes
+ */
+export async function getAllCustomers() {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(customers).orderBy(desc(customers.createdAt));
+}
+
+export async function getCustomerById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(customers).where(eq(customers.id, id)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function getDefaultCustomer() {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(customers).where(eq(customers.name, "GERAL")).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function createCustomer(data: any) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(customers).values(data);
+  return result;
+}
+
+export async function updateCustomer(id: number, data: any) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return await db.update(customers).set(data).where(eq(customers.id, id));
+}
+
+export async function deleteCustomer(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return await db.delete(customers).where(eq(customers.id, id));
+}
+
+export async function getOrdersByCustomerId(customerId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(orders).where(eq(orders.customerId, customerId)).orderBy(desc(orders.createdAt));
+}
+
+export async function getOrdersWithCustomersByDateRange(startDate: Date, endDate: Date) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select({
+    order: orders,
+    customer: customers
+  }).from(orders)
+    .leftJoin(customers, eq(orders.customerId, customers.id))
+    .where(and(
+      sql`${orders.createdAt} >= ${startDate}`,
+      sql`${orders.createdAt} <= ${endDate}`
+    ))
+    .orderBy(desc(orders.createdAt));
 }

@@ -217,5 +217,77 @@ export const pdvRouter = router({
       .mutation(async ({ input }) => {
         return await db.closeCashierSession(input.sessionId, input.finalBalance);
       }),
+
+    // Clientes
+    getOrdersByCustomer: publicProcedure
+      .input(z.object({ customerId: z.number() }))
+      .query(async ({ input }) => {
+        return await db.getOrdersByCustomerId(input.customerId);
+      }),
+  }),
+
+  customers: router({
+    list: publicProcedure.query(async () => {
+      return await db.getAllCustomers();
+    }),
+
+    getById: publicProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ input }) => {
+        return await db.getCustomerById(input.id);
+      }),
+
+    getDefault: publicProcedure.query(async () => {
+      return await db.getDefaultCustomer();
+    }),
+
+    create: protectedProcedure
+      .input(
+        z.object({
+          name: z.string(),
+          phone: z.string().optional(),
+          email: z.string().optional(),
+        })
+      )
+      .mutation(async ({ input }) => {
+        return await db.createCustomer({
+          name: input.name,
+          phone: input.phone || null,
+          email: input.email || null,
+          isActive: true,
+        });
+      }),
+
+    update: protectedProcedure
+      .input(
+        z.object({
+          id: z.number(),
+          name: z.string().optional(),
+          phone: z.string().optional(),
+          email: z.string().optional(),
+          isActive: z.boolean().optional(),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const { id, ...data } = input;
+        return await db.updateCustomer(id, data);
+      }),
+
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        return await db.deleteCustomer(input.id);
+      }),
+
+    getOrdersWithCustomers: publicProcedure
+      .input(
+        z.object({
+          startDate: z.date(),
+          endDate: z.date(),
+        })
+      )
+      .query(async ({ input }) => {
+        return await db.getOrdersWithCustomersByDateRange(input.startDate, input.endDate);
+      }),
   }),
 });

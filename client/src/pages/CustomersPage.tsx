@@ -1,12 +1,12 @@
-import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Trash2, Plus, Edit2, Eye, EyeOff, ArrowLeft } from "lucide-react";
+import { Trash2, Plus, Edit2, Eye, EyeOff, ArrowLeft, Download, Upload } from "lucide-react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { useState, useEffect } from "react";
 
 interface Customer {
   id: number;
@@ -137,6 +137,82 @@ export default function CustomersPage() {
     setFormData({ name: "", phone: "", email: "" });
   };
 
+  const handleExportCSV = () => {
+    const csvContent = [
+      ["Nome", "Telefone", "Email", "Status"],
+      ...customers.map((c: Customer) => [
+        c.name,
+        c.phone || "",
+        c.email || "",
+        c.isActive ? "Ativo" : "Inativo",
+      ]),
+    ]
+      .map((row: any[]) => row.map((cell: any) => `"${cell}"`).join(","))
+      .join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `clientes-${new Date().toISOString().split("T")[0]}.csv`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    toast.success("✅ Clientes exportados com sucesso!");
+  };
+
+  const handleImportCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const csv = event.target?.result as string;
+        const lines = csv.split("\n");
+        const newCustomers: Customer[] = [];
+
+        // Pular header
+        for (let i = 1; i < lines.length; i++) {
+          const line = lines[i].trim();
+          if (!line) continue;
+
+          const parts = line.split(",").map((p) => p.replace(/"/g, ""));
+          if (parts.length >= 1) {
+            newCustomers.push({
+              id: Date.now() + i,
+              name: parts[0],
+              phone: parts[1] || undefined,
+              email: parts[2] || undefined,
+              isActive: parts[3] !== "Inativo",
+              createdAt: new Date(),
+            });
+          }
+        }
+
+        // Mesclar com clientes existentes
+        const mergedCustomers = [...customers];
+        newCustomers.forEach((newCustomer) => {
+          if (!mergedCustomers.find((c) => c.name === newCustomer.name)) {
+            mergedCustomers.push(newCustomer);
+          }
+        });
+
+        setCustomers(mergedCustomers);
+        localStorage.setItem("customers", JSON.stringify(mergedCustomers));
+
+        toast.success(`✅ ${newCustomers.length} cliente(s) importado(s) com sucesso!`);
+      } catch (error) {
+        toast.error("❌ Erro ao importar arquivo CSV!");
+        console.error(error);
+      }
+    };
+
+    reader.readAsText(file);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-secondary/5">
       {/* Header com botão de voltar */}
@@ -166,14 +242,42 @@ export default function CustomersPage() {
           <p className="text-muted-foreground">Cadastre, edite, inative ou remova clientes da sua lanchonete</p>
         </div>
 
-        {/* Botão Adicionar */}
-        <Button
-          onClick={() => setShowDialog(true)}
-          className="mb-6 bg-gradient-to-r from-primary to-secondary"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Adicionar Cliente
-        </Button>
+        {/* Botões de Ação */}
+        <div className="flex gap-2 mb-6 flex-wrap">
+          <Button
+            onClick={() => setShowDialog(true)}
+            className="bg-gradient-to-r from-primary to-secondary"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Adicionar Cliente
+          </Button>
+          <Button
+            onClick={handleExportCSV}
+            variant="outline"
+            className="gap-2"
+          >
+            <Download className="w-4 h-4" />
+            Exportar CSV
+          </Button>
+          <label>
+            <Button
+              variant="outline"
+              className="gap-2"
+              asChild
+            >
+              <span>
+                <Upload className="w-4 h-4" />
+                Importar CSV
+              </span>
+            </Button>
+            <input
+              type="file"
+              accept=".csv"
+              onChange={handleImportCSV}
+              className="hidden"
+            />
+          </label>
+        </div>
 
         {/* Lista de Clientes */}
         <div className="grid gap-4">

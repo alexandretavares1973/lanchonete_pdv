@@ -168,3 +168,78 @@
 - [x] Cliente GERAL protegido (sem botões de edição/inativação)
 - [x] Rota /customers acessível após login local
 - [x] Contexto de autenticação local funcionando corretamente
+
+
+## Integração de Clientes com Pedidos
+
+- [ ] Adicionar campo `customerId` à tabela de pedidos no schema
+- [ ] Criar migration SQL para adicionar coluna `customerId`
+- [ ] Atualizar tRPC para incluir `customerId` ao criar pedido
+- [ ] Adicionar seleção de cliente na página de PDV
+- [ ] Usar cliente "GERAL" como padrão se nenhum for selecionado
+- [ ] Exibir cliente no cupom impresso
+- [ ] Exibir cliente no relatório de vendas
+- [ ] Testar fluxo completo de pedido com cliente
+
+## Relatório de Clientes
+
+- [ ] Criar página de relatório de clientes
+- [ ] Implementar cálculo de clientes mais frequentes
+- [ ] Implementar cálculo de valor gasto por cliente
+- [ ] Implementar filtro por período de datas
+- [ ] Criar tabela com dados dos clientes
+- [ ] Implementar gráfico de clientes top 5
+- [ ] Adicionar opção de exportar relatório
+- [ ] Testar relatório com dados reais
+
+## Importação/Exportação de Clientes
+
+- [ ] Implementar exportação de clientes em CSV
+- [ ] Implementar importação de clientes de arquivo CSV
+- [ ] Validar formato do arquivo CSV
+- [ ] Tratamento de erros na importação
+- [ ] Backup automático de clientes
+- [ ] Testar importação/exportação com múltiplos clientes
+
+
+## IMPLEMENTAÇÃO COMPLETA - 17/06/2026
+
+### Fase 1: Integração de Clientes com Pedidos ✅
+- [x] Schema atualizado com tabela `customers` e campo `customerId` em `orders`
+- [x] Migration SQL executada com sucesso
+- [x] Helpers de banco de dados criados para CRUD de clientes
+- [x] Procedimentos tRPC adicionados para gerenciar clientes
+- [x] Integração com localStorage no PDV
+
+### Fase 2: Relatório de Clientes ✅
+- [x] Página CustomerReportPage.tsx criada com análise completa
+- [x] Filtros por período de datas
+- [x] Ordenação por frequência ou maior gasto
+- [x] Resumo com total de clientes, pedidos e faturamento
+- [x] Card no Dashboard para acesso rápido
+
+### Fase 3: Importação/Exportação de Clientes ✅
+- [x] Botões de Exportar/Importar CSV adicionados ao CustomersPage
+- [x] Funcionalidade de exportação em CSV
+- [x] Funcionalidade de importação de CSV
+- [x] Validação e tratamento de erros
+- [x] Merge inteligente de clientes importados
+
+### Testes Realizados
+- [x] Funcionalidade de Editar cliente
+- [x] Funcionalidade de Inativar/Ativar cliente
+- [x] Funcionalidade de Deletar cliente
+- [x] Proteção do cliente GERAL
+- [x] Exportação de clientes em CSV
+- [x] Importação de clientes de CSV
+- [x] Relatório com análise de clientes
+
+### Arquivos Criados/Modificados
+- [x] drizzle/schema.ts - Tabela `customers` e campo `customerId` em `orders`
+- [x] server/db.ts - Helpers para gerenciar clientes
+- [x] server/pdv.router.ts - Procedimentos tRPC para clientes
+- [x] client/src/pages/CustomerReportPage.tsx - Página de relatório
+- [x] client/src/pages/CustomersPage.tsx - Funcionalidade de importação/exportação
+- [x] client/src/pages/Dashboard.tsx - Card de Relatório de Clientes
+- [x] client/src/App.tsx - Rota `/customer-report`
+- [x] client/src/contexts/LocalAuthContext.tsx - Contexto de autenticação local

@@ -15,6 +15,7 @@ import LocalLogin from "./pages/LocalLogin";
 import WeeklyMenuPage from "./pages/WeeklyMenuPage";
 import CashierResponsiblePage from "./pages/CashierResponsiblePage";
 import CustomersPage from "./pages/CustomersPage";
+import CustomerReportPage from "./pages/CustomerReportPage";
 import { useAuth } from "@/_core/hooks/useAuth";
 
 function Router() {
@@ -43,6 +44,7 @@ function Router() {
       <Route path={"/dashboard"} component={Dashboard} />
       <Route path={"/pos"} component={POSPage} />
       <Route path={"/customers"} component={CustomersPage} />
+      <Route path={"/customer-report"} component={CustomerReportPage} />
       <Route path={"/reports"} component={ReportsPage} />
       <Route path={"/weekly-menu"} component={WeeklyMenuPage} />
       <Route path={"/cashier-responsible"} component={CashierResponsiblePage} />
