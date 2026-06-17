@@ -4,6 +4,7 @@ import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
+import { LocalAuthProvider, useLocalAuth } from "./contexts/LocalAuthContext";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
@@ -17,9 +18,14 @@ import CustomersPage from "./pages/CustomersPage";
 import { useAuth } from "@/_core/hooks/useAuth";
 
 function Router() {
+  const { isAuthenticated: localAuth, loading: localLoading } = useLocalAuth();
   const { isAuthenticated, loading } = useAuth();
 
-  if (loading) {
+  // Usar autenticação local se disponível, caso contrário usar autenticação do servidor
+  const isUserAuthenticated = localAuth || isAuthenticated;
+  const isLoading = localLoading || loading;
+
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
@@ -36,12 +42,11 @@ function Router() {
       <Route path={"/local-login"} component={LocalLogin} />
       <Route path={"/dashboard"} component={Dashboard} />
       <Route path={"/pos"} component={POSPage} />
-
+      <Route path={"/customers"} component={CustomersPage} />
       <Route path={"/reports"} component={ReportsPage} />
       <Route path={"/weekly-menu"} component={WeeklyMenuPage} />
       <Route path={"/cashier-responsible"} component={CashierResponsiblePage} />
-      <Route path={""} component={isAuthenticated ? Dashboard : Login} />
-      <Route path={"/customers"} component={CustomersPage} />
+      <Route path={""} component={isUserAuthenticated ? Dashboard : Login} />
       <Route path={"/404"} component={NotFound} />
       <Route component={NotFound} />
     </Switch>
@@ -51,14 +56,16 @@ function Router() {
 function App() {
   return (
     <ErrorBoundary>
-      <ThemeProvider
-        defaultTheme="light"
-      >
-        <TooltipProvider>
-          <Toaster />
-          <Router />
-        </TooltipProvider>
-      </ThemeProvider>
+      <LocalAuthProvider>
+        <ThemeProvider
+          defaultTheme="light"
+        >
+          <TooltipProvider>
+            <Toaster />
+            <Router />
+          </TooltipProvider>
+        </ThemeProvider>
+      </LocalAuthProvider>
     </ErrorBoundary>
   );
 }

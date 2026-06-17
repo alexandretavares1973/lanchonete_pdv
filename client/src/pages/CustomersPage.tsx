@@ -4,7 +4,9 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Trash2, Plus, Edit2, Eye, EyeOff } from "lucide-react";
+import { Trash2, Plus, Edit2, Eye, EyeOff, ArrowLeft } from "lucide-react";
+import { useLocation } from "wouter";
+import { useAuth } from "@/_core/hooks/useAuth";
 
 interface Customer {
   id: number;
@@ -17,6 +19,8 @@ interface Customer {
 }
 
 export default function CustomersPage() {
+  const [, setLocation] = useLocation();
+  const { user, loading } = useAuth();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [showDialog, setShowDialog] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -25,6 +29,8 @@ export default function CustomersPage() {
     phone: "",
     email: "",
   });
+
+
 
   // Carregar clientes do localStorage
   useEffect(() => {
@@ -132,11 +138,31 @@ export default function CustomersPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-secondary/5 p-4 md:p-8">
-      <div className="max-w-4xl mx-auto">
-        {/* Header */}
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-secondary/5">
+      {/* Header com botão de voltar */}
+      <div className="bg-card border-b border-border sticky top-0 z-50">
+        <div className="max-w-4xl mx-auto px-4 md:px-8 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Button
+              onClick={() => setLocation("/dashboard")}
+              variant="outline"
+              size="sm"
+              className="gap-2"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Voltar
+            </Button>
+            <h1 className="text-2xl font-bold text-foreground">Gerenciar Clientes</h1>
+          </div>
+          <div className="text-right">
+            <p className="text-sm font-medium text-foreground">{user?.name}</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-4xl mx-auto p-4 md:p-8">
+        {/* Descrição */}
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-foreground mb-2">Gerenciar Clientes</h1>
           <p className="text-muted-foreground">Cadastre, edite, inative ou remova clientes da sua lanchonete</p>
         </div>
 

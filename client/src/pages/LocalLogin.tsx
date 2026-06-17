@@ -4,9 +4,11 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
+import { useLocalAuth } from "@/contexts/LocalAuthContext";
 
 export default function LocalLogin() {
   const [, setLocation] = useLocation();
+  const { login } = useLocalAuth();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -22,10 +24,8 @@ export default function LocalLogin() {
     setIsLoading(true);
 
     try {
-      // Simular autenticação local
-      // Em produção, isso seria uma chamada tRPC
-      if (username === "admin" && password === "admin") {
-        localStorage.setItem("localAuth", JSON.stringify({ username, timestamp: Date.now() }));
+      const success = login(username, password);
+      if (success) {
         toast.success("Login realizado com sucesso!");
         setLocation("/dashboard");
       } else {

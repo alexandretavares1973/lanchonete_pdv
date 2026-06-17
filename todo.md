@@ -154,3 +154,17 @@
 - Funcionalidade de Editar e Inativar: Verificada e funcionando
 - Proteção do cliente GERAL: Implementada e testada
 - Integração com localStorage: Funcionando corretamente
+
+### Teste Completo em Navegador (17/06/2026)
+- [x] Página de Gerenciar Clientes acessível e carregando corretamente
+- [x] Botão "Adicionar Cliente" funcionando
+- [x] Formulário de adição com validação de campos
+- [x] Cliente "João Silva" adicionado com sucesso
+- [x] Botão "Editar" funcionando - diálogo abre com dados preenchidos
+- [x] Botão "Inativar" funcionando - cliente marcado como inativo com badge
+- [x] Botão "Ativar" funcionando - cliente retorna ao estado ativo
+- [x] Botão "Deletar" funcionando - cliente removido da lista
+- [x] Toast de confirmação exibindo para cada ação
+- [x] Cliente GERAL protegido (sem botões de edição/inativação)
+- [x] Rota /customers acessível após login local
+- [x] Contexto de autenticação local funcionando corretamente
