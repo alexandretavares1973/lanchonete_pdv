@@ -73,6 +73,8 @@ export default function CustomerBehaviorAnalysisPage() {
   const [endDate, setEndDate] = useState<string>("");
   const [sortBy, setSortBy] = useState<"spending" | "frequency" | "recent">("spending");
   const [selectedCustomer, setSelectedCustomer] = useState<number | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<string | null>(null);
+  const [allProducts, setAllProducts] = useState<string[]>([]);
 
   useEffect(() => {
     const storedSessions = localStorage.getItem("cashierSessions");
@@ -85,6 +87,18 @@ export default function CustomerBehaviorAnalysisPage() {
       setCustomers(JSON.parse(storedCustomers));
     }
   }, []);
+
+  useEffect(() => {
+    const products = new Set<string>();
+    sessions.forEach((session) => {
+      session.orders?.forEach((order) => {
+        order.items?.forEach((item) => {
+          products.add(item.productName);
+        });
+      });
+    });
+    setAllProducts(Array.from(products).sort());
+  }, [sessions]);
 
   useEffect(() => {
     if (sessions.length === 0 || customers.length === 0) return;
@@ -302,6 +316,23 @@ export default function CustomerBehaviorAnalysisPage() {
                 {behaviors.map((behavior) => (
                   <option key={behavior.customer.id} value={behavior.customer.id}>
                     {behavior.customer.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Produto
+              </label>
+              <select
+                value={selectedProduct || ""}
+                onChange={(e) => setSelectedProduct(e.target.value || null)}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+              >
+                <option value="">Todos os produtos</option>
+                {allProducts.map((product) => (
+                  <option key={product} value={product}>
+                    {product}
                   </option>
                 ))}
               </select>

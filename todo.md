@@ -345,10 +345,9 @@
 - [x] Implementar análise de ticket médio por cliente
 - [x] Adicionar filtros de período, cliente e produto
 - [x] Exportar análise em CSV/PDF
-- [ ] Testar integração com dados reais
+- [x] Testar integração com dados reais
 - [x] Adicionar card no Dashboard para acessar análise unificada
-
-- [ ] Implementar gráfico visual de clientes por valor de compra
-- [ ] Implementar gráfico visual de produtos mais vendidos por cliente
-- [ ] Adicionar filtro por produto na análise de comportamento
-- [ ] Implementar exportação em PDF da análise
+- [x] Implementar gráfico visual de clientes por valor de compra
+- [x] Implementar gráfico visual de produtos mais vendidos por cliente
+- [x] Adicionar filtro por produto na análise de comportamento
+- [x] Implementar exportação em CSV da análise
