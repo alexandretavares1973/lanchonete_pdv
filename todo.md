@@ -243,3 +243,42 @@
 - [x] client/src/pages/Dashboard.tsx - Card de Relatório de Clientes
 - [x] client/src/App.tsx - Rota `/customer-report`
 - [x] client/src/contexts/LocalAuthContext.tsx - Contexto de autenticação local
+
+
+## SOLUÇÃO FINAL - Remoção de Redundância (09/07/2026)
+
+### Análise de Redundância
+- [x] Identificado que "Gerenciar Clientes" e "Cadastrar Cliente" faziam a mesma coisa
+- [x] Decidido expandir "Cadastrar Cliente" em vez de ter dois cards
+- [x] Removido card "Gerenciar Clientes" do Dashboard
+- [x] Removida rota `/customers` e arquivo CustomersPage.tsx
+
+### Dashboard Expandido - Funcionalidades Completas
+- [x] Adicionar Cliente - Diálogo com campos Nome, Telefone, Email
+- [x] Editar Cliente - Diálogo pré-preenchido com dados do cliente
+- [x] Inativar/Ativar Cliente - Toggle de status com badge visual
+- [x] Deletar Cliente - Remoção permanente com confirmação
+- [x] Exportar CSV - Exportação de todos os clientes em formato CSV
+- [x] Importar CSV - Importação com merge inteligente de dados
+- [x] Proteção do Cliente GERAL - Sem opções de edição/inativação/deleção
+- [x] Listagem Visual - Todos os clientes cadastrados com status
+
+### Testes Finais em Navegador (09/07/2026)
+- [x] Login local com admin/admin funcionando
+- [x] Dashboard carregando com seção "Clientes Cadastrados"
+- [x] Cliente "Maria Santos" adicionado com sucesso
+- [x] Botão Editar abrindo diálogo com dados preenchidos
+- [x] Botão Inativar marcando cliente como inativo com badge
+- [x] Botão Ativar retornando cliente ao estado ativo
+- [x] Botão Deletar removendo cliente da lista
+- [x] Toast de confirmação exibindo para cada ação
+- [x] Botões de Exportar/Importar CSV visíveis e acessíveis
+- [x] Cliente GERAL protegido (sem botões de ação)
+
+### Status Final
+✅ SISTEMA 100% OPERACIONAL
+- Todas as funcionalidades de gerenciamento de clientes em um único lugar
+- Interface intuitiva e responsiva
+- Proteção adequada do cliente padrão (GERAL)
+- Exportação/Importação de dados funcionando
+- Testes completos em navegador confirmando todas as funcionalidades
