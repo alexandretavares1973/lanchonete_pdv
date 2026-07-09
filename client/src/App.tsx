@@ -16,6 +16,7 @@ import WeeklyMenuPage from "./pages/WeeklyMenuPage";
 import CashierResponsiblePage from "./pages/CashierResponsiblePage";
 
 import CustomerReportPage from "./pages/CustomerReportPage";
+import CustomerBehaviorAnalysisPage from "./pages/CustomerBehaviorAnalysisPage";
 import { useAuth } from "@/_core/hooks/useAuth";
 
 function Router() {
@@ -45,6 +46,7 @@ function Router() {
       <Route path={"/pos"} component={POSPage} />
 
       <Route path={"/customer-report"} component={CustomerReportPage} />
+      <Route path={"/customer-behavior-analysis"} component={CustomerBehaviorAnalysisPage} />
       <Route path={"/reports"} component={ReportsPage} />
       <Route path={"/weekly-menu"} component={WeeklyMenuPage} />
       <Route path={"/cashier-responsible"} component={CashierResponsiblePage} />

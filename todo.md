@@ -331,3 +331,24 @@
 - client/src/contexts/LocalAuthContext.tsx - Autenticação local
 
 ### Status: ✅ COMPLETO E TESTADO
+
+
+## Integração de Relatórios - Análise de Comportamento de Compra
+
+- [x] Analisar estrutura do ReportsPage.tsx (relatório de vendas)
+- [x] Analisar estrutura do CustomerReportPage.tsx (relatório de clientes)
+- [x] Criar página unificada "Análise de Comportamento de Compra"
+- [x] Integrar dados de clientes com dados de vendas por sessão
+- [x] Implementar gráfico de clientes por valor de compra
+- [x] Implementar gráfico de produtos mais vendidos por cliente
+- [x] Implementar análise de frequência de compra por cliente
+- [x] Implementar análise de ticket médio por cliente
+- [x] Adicionar filtros de período, cliente e produto
+- [x] Exportar análise em CSV/PDF
+- [ ] Testar integração com dados reais
+- [x] Adicionar card no Dashboard para acessar análise unificada
+
+- [ ] Implementar gráfico visual de clientes por valor de compra
+- [ ] Implementar gráfico visual de produtos mais vendidos por cliente
+- [ ] Adicionar filtro por produto na análise de comportamento
+- [ ] Implementar exportação em PDF da análise
