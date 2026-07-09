@@ -390,10 +390,11 @@ export default function CustomerReportPage() {
               <p className="text-sm text-slate-600 mb-1">Ticket Médio Geral</p>
               <p className="text-2xl font-bold text-slate-900">
                 R${" "}
-                {(
-                  stats.reduce((sum, s) => sum + s.totalSpent, 0) /
-                  stats.reduce((sum, s) => sum + s.orderCount, 0)
-                ).toFixed(2)}
+                {(() => {
+                  const totalOrders = stats.reduce((sum, s) => sum + s.orderCount, 0);
+                  const totalSpent = stats.reduce((sum, s) => sum + s.totalSpent, 0);
+                  return totalOrders > 0 ? (totalSpent / totalOrders).toFixed(2) : "0.00";
+                })()}
               </p>
             </Card>
           </div>
