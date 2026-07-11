@@ -206,7 +206,7 @@ export default function CustomerBehaviorAnalysisPage() {
 
   const handleExportCSV = () => {
     const csvContent = [
-      ["Cliente", "Telefone", "Email", "Total de Compras", "Valor Total", "Ticket Médio", "Última Compra", "Primeira Compra"],
+      ["Cliente", "Telefone", "Email", "Total de Compras", "Valor Total", "Ticket Médio", "Produtos Favoritos", "Última Compra", "Primeira Compra"],
       ...behaviors.map((behavior) => [
         behavior.customer.name,
         behavior.customer.phone || "",
@@ -214,6 +214,7 @@ export default function CustomerBehaviorAnalysisPage() {
         behavior.totalPurchases,
         `R$ ${behavior.totalSpent.toFixed(2)}`,
         `R$ ${behavior.averageTicket.toFixed(2)}`,
+        behavior.favoriteProducts.slice(0, 3).map(p => `${p.name} (${p.quantity}x)`).join("; ") || "N/A",
         behavior.lastPurchase ? new Date(behavior.lastPurchase).toLocaleDateString("pt-BR") : "N/A",
         behavior.firstPurchase ? new Date(behavior.firstPurchase).toLocaleDateString("pt-BR") : "N/A",
       ]),
@@ -351,6 +352,7 @@ export default function CustomerBehaviorAnalysisPage() {
                   <th className="px-6 py-3 text-right text-sm font-semibold text-slate-900">Compras</th>
                   <th className="px-6 py-3 text-right text-sm font-semibold text-slate-900">Total Gasto</th>
                   <th className="px-6 py-3 text-right text-sm font-semibold text-slate-900">Ticket Médio</th>
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-slate-900">Produtos Favoritos</th>
                   <th className="px-6 py-3 text-left text-sm font-semibold text-slate-900">Última Compra</th>
                   <th className="px-6 py-3 text-left text-sm font-semibold text-slate-900">Primeira Compra</th>
                 </tr>
@@ -358,7 +360,7 @@ export default function CustomerBehaviorAnalysisPage() {
               <tbody>
                 {behaviors.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-6 py-8 text-center text-slate-500">
+                    <td colSpan={7} className="px-6 py-8 text-center text-slate-500">
                       Nenhum dado de compra encontrado no período selecionado
                     </td>
                   </tr>
@@ -382,6 +384,17 @@ export default function CustomerBehaviorAnalysisPage() {
                         </td>
                         <td className="px-6 py-4 text-sm text-right font-medium text-slate-900">
                           R$ {behavior.averageTicket.toFixed(2)}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-slate-600">
+                          <div className="space-y-1">
+                            {behavior.favoriteProducts.slice(0, 3).map((product, pidx) => (
+                              <div key={pidx} className="text-xs">
+                                <span className="font-medium">{product.name}</span>
+                                <span className="text-slate-500"> ({product.quantity}x)</span>
+                              </div>
+                            ))}
+                            {behavior.favoriteProducts.length === 0 && <span>-</span>}
+                          </div>
                         </td>
                         <td className="px-6 py-4 text-sm text-slate-600">
                           {behavior.lastPurchase ? new Date(behavior.lastPurchase).toLocaleDateString("pt-BR") : "N/A"}
