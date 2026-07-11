@@ -351,3 +351,10 @@
 - [x] Implementar gráfico visual de produtos mais vendidos por cliente
 - [x] Adicionar filtro por produto na análise de comportamento
 - [x] Implementar exportação em CSV da análise
+
+
+## Correções - 11/07/2026
+
+- [x] Corrigir CustomerReportPage para ler pedidos de cashierSessions em vez de localStorage "orders"
+- [x] Atualizar campo totalAmount para total na estrutura de Order
+- [x] Validar cálculos de total de pedidos e total gasto por cliente

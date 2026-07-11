@@ -18,9 +18,18 @@ interface Customer {
 interface Order {
   id: number;
   customerId?: number;
-  totalAmount: number;
+  total: number;
   paymentMethod: "pix" | "card" | "cash";
-  createdAt: Date;
+  createdAt: string;
+  items?: Array<{productName: string; quantity: number; price?: number}>;
+}
+
+interface CashierSession {
+  id: number;
+  weeklyMenuId: number;
+  openedAt: string;
+  closedAt: string | null;
+  orders: Order[];
 }
 
 interface CustomerStats {
@@ -41,16 +50,23 @@ export default function CustomerReportPage() {
   const [sortBy, setSortBy] = useState<"frequency" | "spending">("spending");
 
   useEffect(() => {
-    // Carregar clientes e pedidos do localStorage
+    // Carregar clientes do localStorage
     const storedCustomers = localStorage.getItem("customers");
-    const storedOrders = localStorage.getItem("orders");
-
     if (storedCustomers) {
       setCustomers(JSON.parse(storedCustomers));
     }
 
-    if (storedOrders) {
-      setOrders(JSON.parse(storedOrders));
+    // Carregar pedidos de cashierSessions
+    const storedSessions = localStorage.getItem("cashierSessions");
+    if (storedSessions) {
+      const sessions: CashierSession[] = JSON.parse(storedSessions);
+      const allOrders: Order[] = [];
+      sessions.forEach((session) => {
+        if (session.orders) {
+          allOrders.push(...session.orders);
+        }
+      });
+      setOrders(allOrders);
     }
 
     // Definir período padrão (últimos 30 dias)
@@ -89,7 +105,7 @@ export default function CustomerReportPage() {
 
       if (stat) {
         stat.orderCount += 1;
-        stat.totalSpent += order.totalAmount;
+        stat.totalSpent += order.total || 0;
         stat.lastOrder = new Date(order.createdAt);
       }
     });
@@ -120,7 +136,7 @@ export default function CustomerReportPage() {
         stat.customer.name,
         stat.customer.phone || "",
         stat.customer.email || "",
-        stat.orderCount,
+        stat.orderCount.toString(),
         `R$ ${stat.totalSpent.toFixed(2)}`,
         `R$ ${stat.averageOrderValue.toFixed(2)}`,
         stat.lastOrder ? new Date(stat.lastOrder).toLocaleDateString("pt-BR") : "N/A",
