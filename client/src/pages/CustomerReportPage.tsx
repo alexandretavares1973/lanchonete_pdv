@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -53,20 +53,28 @@ export default function CustomerReportPage() {
     // Carregar clientes do localStorage
     const storedCustomers = localStorage.getItem("customers");
     if (storedCustomers) {
-      setCustomers(JSON.parse(storedCustomers));
+      try {
+        setCustomers(JSON.parse(storedCustomers));
+      } catch (e) {
+        console.error("Erro ao carregar clientes:", e);
+      }
     }
 
     // Carregar pedidos de cashierSessions
     const storedSessions = localStorage.getItem("cashierSessions");
     if (storedSessions) {
-      const sessions: CashierSession[] = JSON.parse(storedSessions);
-      const allOrders: Order[] = [];
-      sessions.forEach((session) => {
-        if (session.orders) {
-          allOrders.push(...session.orders);
-        }
-      });
-      setOrders(allOrders);
+      try {
+        const sessions: CashierSession[] = JSON.parse(storedSessions);
+        const allOrders: Order[] = [];
+        sessions.forEach((session) => {
+          if (session.orders && Array.isArray(session.orders)) {
+            allOrders.push(...session.orders);
+          }
+        });
+        setOrders(allOrders);
+      } catch (e) {
+        console.error("Erro ao carregar pedidos:", e);
+      }
     }
 
     // Definir período padrão (últimos 30 dias)
@@ -80,6 +88,7 @@ export default function CustomerReportPage() {
     // Calcular estatísticas
     const statsMap = new Map<number, CustomerStats>();
 
+    // Inicializar mapa com todos os clientes
     customers.forEach((customer) => {
       statsMap.set(customer.id, {
         customer,
@@ -89,25 +98,44 @@ export default function CustomerReportPage() {
       });
     });
 
-    // Filtrar pedidos por período
-    const filteredOrders = orders.filter((order) => {
-      const orderDate = new Date(order.createdAt);
-      const start = new Date(startDate);
-      const end = new Date(endDate);
-      end.setHours(23, 59, 59, 999);
-      return orderDate >= start && orderDate <= end;
-    });
+    // Se não há data inicial/final definida, usar todos os pedidos
+    let filteredOrders = orders;
+    
+    if (startDate && endDate) {
+      // Filtrar pedidos por período
+      filteredOrders = orders.filter((order) => {
+        if (!order.createdAt) return false;
+        try {
+          const orderDate = new Date(order.createdAt);
+          const start = new Date(startDate);
+          const end = new Date(endDate);
+          end.setHours(23, 59, 59, 999);
+          return orderDate >= start && orderDate <= end;
+        } catch (e) {
+          return false;
+        }
+      });
+    }
 
     // Contar pedidos e valor gasto por cliente
     filteredOrders.forEach((order) => {
       const customerId = order.customerId || 1; // Cliente GERAL padrão
-      const stat = statsMap.get(customerId);
+      let stat = statsMap.get(customerId);
 
-      if (stat) {
-        stat.orderCount += 1;
-        stat.totalSpent += order.total || 0;
-        stat.lastOrder = new Date(order.createdAt);
+      // Se o cliente não existe no mapa, criar entrada
+      if (!stat) {
+        stat = {
+          customer: { id: customerId, name: `Cliente ${customerId}`, createdAt: new Date() },
+          orderCount: 0,
+          totalSpent: 0,
+          averageOrderValue: 0,
+        };
+        statsMap.set(customerId, stat);
       }
+
+      stat.orderCount += 1;
+      stat.totalSpent += order.total || 0;
+      stat.lastOrder = new Date(order.createdAt);
     });
 
     // Calcular média
@@ -149,13 +177,12 @@ export default function CustomerReportPage() {
     const link = document.createElement("a");
     const url = URL.createObjectURL(blob);
     link.setAttribute("href", url);
-    link.setAttribute("download", `relatorio-clientes-${new Date().toISOString().split("T")[0]}.csv`);
+    link.setAttribute("download", `relatorio_clientes_${new Date().toISOString().split("T")[0]}.csv`);
     link.style.visibility = "hidden";
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-
-    toast.success("✅ Relatório exportado com sucesso!");
+    toast.success("Relatório exportado com sucesso!");
   };
 
   const handleImportCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -167,41 +194,35 @@ export default function CustomerReportPage() {
       try {
         const csv = event.target?.result as string;
         const lines = csv.split("\n");
-        const newCustomers: Customer[] = [];
+        const importedCustomers: Customer[] = [];
 
-        // Pular header
         for (let i = 1; i < lines.length; i++) {
-          const line = lines[i].trim();
-          if (!line) continue;
+          if (!lines[i].trim()) continue;
 
-          const parts = line.split(",").map((p) => p.replace(/"/g, ""));
-          if (parts.length >= 1) {
-            newCustomers.push({
-              id: Date.now() + i,
-              name: parts[0],
-              phone: parts[1] || undefined,
-              email: parts[2] || undefined,
-              isActive: true,
-              createdAt: new Date(),
-            });
-          }
+          const cells = lines[i].split(",").map((cell) => cell.replace(/"/g, ""));
+          if (cells.length < 3) continue;
+
+          importedCustomers.push({
+            id: Math.random(),
+            name: cells[0],
+            phone: cells[1] || undefined,
+            email: cells[2] || undefined,
+            createdAt: new Date(),
+          });
         }
 
-        // Mesclar com clientes existentes
-        const mergedCustomers = [...customers];
-        newCustomers.forEach((newCustomer) => {
-          if (!mergedCustomers.find((c) => c.name === newCustomer.name)) {
-            mergedCustomers.push(newCustomer);
+        const merged = [...customers];
+        importedCustomers.forEach((imported) => {
+          if (!merged.find((c) => c.name === imported.name)) {
+            merged.push(imported);
           }
         });
 
-        localStorage.setItem("customers", JSON.stringify(mergedCustomers));
-        setCustomers(mergedCustomers);
-
-        toast.success(`✅ ${newCustomers.length} cliente(s) importado(s) com sucesso!`);
+        localStorage.setItem("customers", JSON.stringify(merged));
+        setCustomers(merged);
+        toast.success(`${importedCustomers.length} cliente(s) importado(s)!`);
       } catch (error) {
-        toast.error("❌ Erro ao importar arquivo CSV!");
-        console.error(error);
+        toast.error("Erro ao importar arquivo CSV");
       }
     };
 
@@ -209,10 +230,9 @@ export default function CustomerReportPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4 md:p-8">
-      <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+    <div className="min-h-screen bg-slate-50 p-6">
+      <Card className="p-6">
+        <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
             <Button
               variant="outline"
@@ -343,7 +363,7 @@ export default function CustomerReportPage() {
                 {stats.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="px-6 py-8 text-center text-slate-500">
-                      Nenhum cliente encontrado no período selecionado
+                      Nenhum cliente encontrado
                     </td>
                   </tr>
                 ) : (
@@ -383,7 +403,7 @@ export default function CustomerReportPage() {
           </div>
         </Card>
 
-        {/* Resumo */}
+        {/* Resumo Geral */}
         {stats.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-6">
             <Card className="p-4">
@@ -406,16 +426,15 @@ export default function CustomerReportPage() {
               <p className="text-sm text-slate-600 mb-1">Ticket Médio Geral</p>
               <p className="text-2xl font-bold text-slate-900">
                 R${" "}
-                {(() => {
-                  const totalOrders = stats.reduce((sum, s) => sum + s.orderCount, 0);
-                  const totalSpent = stats.reduce((sum, s) => sum + s.totalSpent, 0);
-                  return totalOrders > 0 ? (totalSpent / totalOrders).toFixed(2) : "0.00";
-                })()}
+                {(
+                  stats.reduce((sum, s) => sum + s.totalSpent, 0) /
+                  Math.max(stats.reduce((sum, s) => sum + s.orderCount, 0), 1)
+                ).toFixed(2)}
               </p>
             </Card>
           </div>
         )}
-      </div>
+      </Card>
     </div>
   );
 }
