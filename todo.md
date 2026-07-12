@@ -365,3 +365,10 @@
 - [x] Renomear "Análise de Comportamento de Compra" para "Relatório de Vendas" no Dashboard
 - [x] Renomear título da página CustomerBehaviorAnalysisPage.tsx
 - [x] Verificar outras referências no código
+
+
+## Melhorias no Relatório de Vendas (12/07/2026)
+
+- [x] Expandir coluna "Produtos Favoritos" para exibir TODOS os produtos comprados
+- [x] Adicionar botão de impressão no Relatório de Vendas
+- [ ] Adicionar botão de exportação para PDF (requer biblioteca jsPDF)

@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useLocation } from "wouter";
-import { ArrowLeft, Download } from "lucide-react";
+import { ArrowLeft, Download, Printer } from "lucide-react";
 import { toast } from "sonner";
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 
@@ -214,7 +214,7 @@ export default function CustomerBehaviorAnalysisPage() {
         behavior.totalPurchases,
         `R$ ${behavior.totalSpent.toFixed(2)}`,
         `R$ ${behavior.averageTicket.toFixed(2)}`,
-        behavior.favoriteProducts.slice(0, 3).map(p => `${p.name} (${p.quantity}x)`).join("; ") || "N/A",
+        behavior.favoriteProducts.map(p => `${p.name} (${p.quantity}x)`).join("; ") || "N/A",
         behavior.lastPurchase ? new Date(behavior.lastPurchase).toLocaleDateString("pt-BR") : "N/A",
         behavior.firstPurchase ? new Date(behavior.firstPurchase).toLocaleDateString("pt-BR") : "N/A",
       ]),
@@ -254,15 +254,85 @@ export default function CustomerBehaviorAnalysisPage() {
             </Button>
             <h1 className="text-3xl font-bold text-slate-900">Relatório de Vendas</h1>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleExportCSV}
-            className="gap-2"
-          >
-            <Download className="w-4 h-4" />
-            Exportar CSV
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportCSV}
+              className="gap-2"
+            >
+              <Download className="w-4 h-4" />
+              Exportar CSV
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const printWindow = window.open("", "_blank");
+                if (!printWindow) {
+                  toast.error("Erro ao abrir janela de impressão");
+                  return;
+                }
+
+                const html = `
+                  <!DOCTYPE html>
+                  <html>
+                  <head>
+                    <title>Relatório de Vendas</title>
+                    <style>
+                      body { font-family: Arial, sans-serif; margin: 20px; }
+                      h1 { text-align: center; }
+                      table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+                      th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+                      th { background-color: #f2f2f2; font-weight: bold; }
+                      tr:nth-child(even) { background-color: #f9f9f9; }
+                      .date { text-align: center; color: #666; margin-bottom: 20px; }
+                    </style>
+                  </head>
+                  <body>
+                    <h1>Relatório de Vendas</h1>
+                    <div class="date">Gerado em: ${new Date().toLocaleDateString("pt-BR")}</div>
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Cliente</th>
+                          <th>Compras</th>
+                          <th>Total Gasto</th>
+                          <th>Ticket Médio</th>
+                          <th>Produtos Comprados</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        ${behaviors
+                          .map(
+                            (behavior) => `
+                        <tr>
+                          <td>${behavior.customer.name}</td>
+                          <td>${behavior.totalPurchases}</td>
+                          <td>R$ ${behavior.totalSpent.toFixed(2)}</td>
+                          <td>R$ ${behavior.averageTicket.toFixed(2)}</td>
+                          <td>${behavior.favoriteProducts.map(p => `${p.name} (${p.quantity}x)`).join(", ") || "N/A"}</td>
+                        </tr>
+                      `
+                          )
+                          .join("")}
+                      </tbody>
+                    </table>
+                  </body>
+                  </html>
+                `;
+
+                printWindow.document.write(html);
+                printWindow.document.close();
+                printWindow.print();
+                toast.success("✅ Relatório enviado para impressão!");
+              }}
+              className="gap-2"
+            >
+              <Printer className="w-4 h-4" />
+              Imprimir
+            </Button>
+          </div>
         </div>
 
         {/* Filtros */}
@@ -387,7 +457,7 @@ export default function CustomerBehaviorAnalysisPage() {
                         </td>
                         <td className="px-6 py-4 text-sm text-slate-600">
                           <div className="space-y-1">
-                            {behavior.favoriteProducts.slice(0, 3).map((product, pidx) => (
+                            {behavior.favoriteProducts.map((product, pidx) => (
                               <div key={pidx} className="text-xs">
                                 <span className="font-medium">{product.name}</span>
                                 <span className="text-slate-500"> ({product.quantity}x)</span>
