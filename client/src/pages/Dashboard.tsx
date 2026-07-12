@@ -349,7 +349,7 @@ export default function Dashboard() {
                   <span className="text-3xl">🔍</span>
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold text-foreground">Relatório de Vendas</h3>
+                  <h3 className="text-lg font-semibold text-foreground">Análise Comportamento</h3>
                   <p className="text-sm text-muted-foreground">Padrões de compra</p>
                 </div>
               </div>
