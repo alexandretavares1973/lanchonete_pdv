@@ -252,7 +252,7 @@ export default function CustomerBehaviorAnalysisPage() {
               <ArrowLeft className="w-4 h-4" />
               Voltar
             </Button>
-            <h1 className="text-3xl font-bold text-slate-900">Relatório de Vendas</h1>
+            <h1 className="text-3xl font-bold text-slate-900">Análise de Comportamento de Compra</h1>
           </div>
           <div className="flex gap-2">
             <Button
