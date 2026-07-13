@@ -206,7 +206,7 @@ export default function CustomerBehaviorAnalysisPage() {
 
   const handleExportCSV = () => {
     const csvContent = [
-      ["Cliente", "Telefone", "Email", "Total de Compras", "Valor Total", "Ticket Médio", "Produtos Favoritos", "Última Compra", "Primeira Compra"],
+      ["Cliente", "Telefone", "Email", "Total de Compras", "Valor Total", "Ticket Médio", "Produtos Favoritos", "Última Compra", "Primeira Compra", "Período"],
       ...behaviors.map((behavior) => [
         behavior.customer.name,
         behavior.customer.phone || "",
@@ -217,6 +217,7 @@ export default function CustomerBehaviorAnalysisPage() {
         behavior.favoriteProducts.map(p => `${p.name} (${p.quantity}x)`).join("; ") || "N/A",
         behavior.lastPurchase ? new Date(behavior.lastPurchase).toLocaleDateString("pt-BR") : "N/A",
         behavior.firstPurchase ? new Date(behavior.firstPurchase).toLocaleDateString("pt-BR") : "N/A",
+        startDate && endDate ? `${startDate} a ${endDate}` : "Todos os periodos",
       ]),
     ]
       .map((row) => row.map((cell) => `"${cell}"`).join(","))
@@ -226,13 +227,15 @@ export default function CustomerBehaviorAnalysisPage() {
     const link = document.createElement("a");
     const url = URL.createObjectURL(blob);
     link.setAttribute("href", url);
-    link.setAttribute("download", `analise-comportamento-${new Date().toISOString().split("T")[0]}.csv`);
+    const periodStr = startDate && endDate ? `${startDate}_${endDate}` : new Date().toISOString().split("T")[0];
+    link.setAttribute("download", `relatorio-vendas-${periodStr}.csv`);
     link.style.visibility = "hidden";
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
 
-    toast.success("✅ Análise exportada com sucesso!");
+    const periodText = startDate && endDate ? ` (${startDate} a ${endDate})` : "";
+    toast.success(`✅ Relatório exportado com sucesso${periodText}!`);
   };
 
   const selectedBehavior = behaviors.find(b => b.customer.id === selectedCustomer);
@@ -291,7 +294,10 @@ export default function CustomerBehaviorAnalysisPage() {
                   </head>
                   <body>
                     <h1>Relatório de Vendas</h1>
-                    <div class="date">Gerado em: ${new Date().toLocaleDateString("pt-BR")}</div>
+                    <div class="date">
+                      <div>Gerado em: ${new Date().toLocaleDateString("pt-BR")}</div>
+                      <div>Período: ${startDate && endDate ? `${new Date(startDate).toLocaleDateString("pt-BR")} a ${new Date(endDate).toLocaleDateString("pt-BR")}` : "Todos os períodos"}</div>
+                    </div>
                     <table>
                       <thead>
                         <tr>
@@ -359,6 +365,65 @@ export default function CustomerBehaviorAnalysisPage() {
                 onChange={(e) => setEndDate(e.target.value)}
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg"
               />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Atalhos de Período
+              </label>
+              <div className="flex gap-2 flex-wrap">
+                <button
+                  onClick={() => {
+                    const today = new Date();
+                    setStartDate(today.toISOString().split('T')[0]);
+                    setEndDate(today.toISOString().split('T')[0]);
+                  }}
+                  className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+                >
+                  Hoje
+                </button>
+                <button
+                  onClick={() => {
+                    const today = new Date();
+                    const sevenDaysAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+                    setStartDate(sevenDaysAgo.toISOString().split('T')[0]);
+                    setEndDate(today.toISOString().split('T')[0]);
+                  }}
+                  className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+                >
+                  Últimos 7 dias
+                </button>
+                <button
+                  onClick={() => {
+                    const today = new Date();
+                    const thirtyDaysAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+                    setStartDate(thirtyDaysAgo.toISOString().split('T')[0]);
+                    setEndDate(today.toISOString().split('T')[0]);
+                  }}
+                  className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+                >
+                  Últimos 30 dias
+                </button>
+                <button
+                  onClick={() => {
+                    const today = new Date();
+                    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+                    setStartDate(firstDay.toISOString().split('T')[0]);
+                    setEndDate(today.toISOString().split('T')[0]);
+                  }}
+                  className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+                >
+                  Mês atual
+                </button>
+                <button
+                  onClick={() => {
+                    setStartDate("");
+                    setEndDate("");
+                  }}
+                  className="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
+                >
+                  Limpar
+                </button>
+              </div>
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">

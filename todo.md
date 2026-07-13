@@ -372,3 +372,12 @@
 - [x] Expandir coluna "Produtos Favoritos" para exibir TODOS os produtos comprados
 - [x] Adicionar botão de impressão no Relatório de Vendas
 - [ ] Adicionar botão de exportação para PDF (requer biblioteca jsPDF)
+
+
+## Filtro de Período no Relatório de Vendas (13/07/2026)
+
+- [x] Adicionar filtro de período (Data Inicial e Data Final) no Relatório de Vendas
+- [x] Aplicar filtro ao calcular dados de comportamento de compra
+- [x] Aplicar filtro à exportação em CSV
+- [x] Aplicar filtro à impressão do relatório
+- [x] Adicionar botões de atalho para períodos comuns (Hoje, Últimos 7 dias, Últimos 30 dias, Mês atual)
