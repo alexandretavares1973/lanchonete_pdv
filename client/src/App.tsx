@@ -8,6 +8,8 @@ import { LocalAuthProvider, useLocalAuth } from "./contexts/LocalAuthContext";
 import Home from "./pages/Home";
 import Login from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
+import ForgotPasswordPage from "./pages/ForgotPasswordPage";
+import ProfilePage from "./pages/ProfilePage";
 import Dashboard from "./pages/Dashboard";
 import POSPage from "./pages/POSPage";
 
@@ -43,6 +45,8 @@ function Router() {
     <Switch>
       <Route path={"/login"} component={Login} />
       <Route path={"/register"} component={RegisterPage} />
+      <Route path={"/forgot-password"} component={ForgotPasswordPage} />
+      <Route path={"/profile"} component={ProfilePage} />
       <Route path={"/local-login"} component={LocalLogin} />
       <Route path={"/dashboard"} component={Dashboard} />
       <Route path={"/pos"} component={POSPage} />

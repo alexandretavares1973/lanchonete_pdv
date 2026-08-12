@@ -3,7 +3,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router } from "./_core/trpc";
 import { pdvRouter } from "./pdv.router";
-import { getLocalUserById, getLocalUserByUsername, createLocalUser } from "./db";
+import { getLocalUserById, getLocalUserByUsername, createLocalUser, updateLocalUserPassword } from "./db";
 import { getUserIdFromReq, setLocalSessionCookie, clearLocalSessionCookie } from "./_core/localAuth";
 import * as bcrypt from "bcrypt";
 import { TRPCError } from "@trpc/server";
@@ -77,6 +77,44 @@ export const appRouter = router({
         success: true,
       } as const;
     }),
+
+    resetPassword: publicProcedure
+      .input(z.object({
+        username: z.string(),
+        newPassword: z.string().min(6, "A nova senha deve ter pelo menos 6 caracteres"),
+      }))
+      .mutation(async ({ input }) => {
+        const user = await getLocalUserByUsername(input.username);
+        if (!user) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Usuário não encontrado" });
+        }
+        const passwordHash = await bcrypt.hash(input.newPassword, 10);
+        await updateLocalUserPassword(user.id, passwordHash);
+        return { success: true };
+      }),
+
+    updatePassword: publicProcedure
+      .input(z.object({
+        currentPassword: z.string(),
+        newPassword: z.string().min(6, "A nova senha deve ter pelo menos 6 caracteres"),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const localUserId = getUserIdFromReq(ctx.req);
+        if (!localUserId) {
+          throw new TRPCError({ code: "UNAUTHORIZED", message: "Usuário não autenticado localmente" });
+        }
+        const user = await getLocalUserById(localUserId);
+        if (!user) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Usuário não encontrado" });
+        }
+        const valid = await bcrypt.compare(input.currentPassword, user.passwordHash);
+        if (!valid) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Senha atual incorreta" });
+        }
+        const passwordHash = await bcrypt.hash(input.newPassword, 10);
+        await updateLocalUserPassword(user.id, passwordHash);
+        return { success: true };
+      }),
   }),
 
 

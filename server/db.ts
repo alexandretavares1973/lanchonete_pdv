@@ -340,3 +340,10 @@ export async function createLocalUser(data: { username: string; passwordHash: st
   const [result] = await db.insert(localUsers).values(data);
   return result;
 }
+
+
+export async function updateLocalUserPassword(userId: number, passwordHash: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return await db.update(localUsers).set({ passwordHash }).where(eq(localUsers.id, userId));
+}

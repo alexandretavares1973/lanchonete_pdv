@@ -57,15 +57,22 @@ export default function LoginPage() {
                 required
               />
             </div>
-            <Button type="submit" className="w-full" disabled={loginMutation.isPending || loginMutation.isSuccess}>
+            <Button type="submit" className="w-full bg-amber-600 hover:bg-amber-700 text-white font-semibold py-2 transition-all" disabled={loginMutation.isPending || loginMutation.isSuccess}>
               {loginMutation.isPending ? "Entrando..." : "Entrar"}
             </Button>
           </form>
-          <div className="mt-4 text-center text-sm">
-            Não tem uma conta?{" "}
-            <a href="/register" className="underline">
-              Criar conta
-            </a>
+          <div className="mt-4 text-center text-sm space-y-2">
+            <div>
+              <a href="/forgot-password" className="text-amber-600 hover:underline text-xs font-medium">
+                Esqueceu sua senha?
+              </a>
+            </div>
+            <div>
+              Não tem uma conta?{" "}
+              <a href="/register" className="text-amber-600 hover:underline font-medium">
+                Criar conta
+              </a>
+            </div>
           </div>
         </CardContent>
       </Card>

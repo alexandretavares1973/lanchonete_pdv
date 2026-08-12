@@ -381,3 +381,15 @@
 - [x] Aplicar filtro à exportação em CSV
 - [x] Aplicar filtro à impressão do relatório
 - [x] Adicionar botões de atalho para períodos comuns (Hoje, Últimos 7 dias, Últimos 30 dias, Mês atual)
+
+
+## Melhorias de Autenticação e Perfil de Usuário (13/07/2026)
+
+- [x] Adicionar colunas de recuperação de senha na tabela `local_users` (pergunta/resposta de segurança ou token de redefinição)
+- [x] Implementar procedimento tRPC para redefinição/recuperação de senha
+- [x] Implementar procedimento tRPC para alteração de senha autenticada
+- [x] Criar página de Recuperação de Senha (`ForgotPasswordPage.tsx`)
+- [x] Aprimorar `LoginPage.tsx` e `RegisterPage.tsx` com tratamento robusto de erros e estados de carregamento claros
+- [x] Criar página de Perfil do Usuário (`ProfilePage.tsx`) para alteração de senha e visualização de dados
+- [x] Integrar links de Perfil, Logout e Recuperação de Senha na navegação e nos formulários
+- [x] Validar todas as rotas e testar o fluxo completo de autenticação e recuperação

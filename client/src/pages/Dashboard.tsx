@@ -235,6 +235,14 @@ export default function Dashboard() {
                 <p className="text-xs text-muted-foreground">{user?.email}</p>
               </div>
               <Button
+                onClick={() => setLocation("/profile")}
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+              >
+                Perfil
+              </Button>
+              <Button
                 onClick={handleLogout}
                 variant="outline"
                 size="sm"
