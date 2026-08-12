@@ -36,6 +36,20 @@
       "when": 1781665308283,
       "tag": "0004_sloppy_cardiac",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1786500879121,
+      "tag": "0005_empty_cammi",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1786501107572,
+      "tag": "0006_same_pandemic",
+      "breakpoints": true
     }
   ]
 }

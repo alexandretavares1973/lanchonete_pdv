@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useLocation } from "wouter";
@@ -38,6 +38,7 @@ interface OrderItem {
 
 interface Order {
   id: number;
+  legacyId?: string | number;
   paymentMethod: "pix" | "card" | "cash";
   total: number;
   status?: "pending" | "completed" | "cancelled";
@@ -47,6 +48,8 @@ interface Order {
 
 interface CashierSession {
   id: number;
+  legacyId?: string | number;
+  responsibleId?: number | null;
   weeklyMenuId: number;
   openedAt: string;
   closedAt: string | null;
@@ -77,9 +80,16 @@ export default function ReportsPage() {
   } | null>(null);
   const [orderToCancel, setOrderToCancel] = useState<Order | null>(null);
   const [cancelReason, setCancelReason] = useState("");
+  const [selectedOrderIds, setSelectedOrderIds] = useState<number[]>([]);
+  const legacySyncAttempted = useRef(false);
   const utils = trpc.useUtils();
   const updatePaymentMethodMutation = trpc.pdv.orders.updatePaymentMethod.useMutation();
   const cancelOrderMutation = trpc.pdv.orders.cancel.useMutation();
+  const syncLegacyMutation = trpc.pdv.orders.syncLegacy.useMutation();
+  const refundAuditsQuery = trpc.pdv.orders.getRefundAudits.useQuery(
+    { orderIds: selectedOrderIds },
+    { enabled: showDetails && selectedOrderIds.length > 0 },
+  );
 
   const persistSessions = (nextSessions: CashierSession[]) => {
     setSessions(nextSessions);
@@ -205,6 +215,75 @@ export default function ReportsPage() {
     }
   }, []);
 
+  const synchronizeLegacyOrders = async (manual = false) => {
+    if (sessions.length === 0 || syncLegacyMutation.isPending) return;
+    if (!manual && legacySyncAttempted.current) return;
+    legacySyncAttempted.current = true;
+
+    const normalizePaymentMethod = (value: unknown): Order["paymentMethod"] =>
+      value === "pix" || value === "card" || value === "cash" ? value : "cash";
+
+    const payload = sessions.map((session) => ({
+      id: session.legacyId ?? session.id,
+      responsibleId: session.responsibleId ?? menus.find((menu) => menu.id === session.weeklyMenuId)?.responsibleId ?? null,
+      openedAt: session.openedAt,
+      closedAt: session.closedAt,
+      orders: (session.orders || []).map((order) => {
+        const legacyOrder = order as Order & { customerName?: string; customer?: { name?: string } };
+        return {
+          id: order.legacyId ?? order.id,
+          paymentMethod: normalizePaymentMethod(order.paymentMethod),
+          total: Number(order.total || 0),
+          status: order.status || "completed",
+          customerName: legacyOrder.customerName || legacyOrder.customer?.name,
+          createdAt: order.createdAt,
+          items: (order.items || []).map((item) => ({
+            id: item.id,
+            productId: item.productId,
+            productName: item.productName,
+            quantity: Number(item.quantity || 0),
+            price: Number(item.price ?? item.unitPrice ?? 0),
+            unitPrice: Number(item.unitPrice ?? item.price ?? 0),
+            subtotal: Number(item.subtotal || 0),
+          })),
+        };
+      }),
+    }));
+
+    try {
+      const result = await syncLegacyMutation.mutateAsync({ sessions: payload });
+      if (result.ordersCreated === 0 && result.ordersSkipped === 0) {
+        if (manual) toast.info("Nenhum pedido legado pendente foi encontrado.");
+        return;
+      }
+      const orderMapping = new Map(result.orderMappings.map((entry) => [entry.legacyKey, entry.officialId]));
+      const sessionMapping = new Map(result.sessionMappings.map((entry) => [String(entry.legacySessionId), entry.officialId]));
+      const nextSessions = sessions.map((session) => {
+        const legacySessionId = session.legacyId ?? session.id;
+        return {
+          ...session,
+          legacyId: session.legacyId ?? session.id,
+          id: sessionMapping.get(String(legacySessionId)) ?? session.id,
+          orders: (session.orders || []).map((order) => {
+            const legacyKey = `local:${String(legacySessionId)}:${String(order.legacyId ?? order.id)}`;
+            const officialId = orderMapping.get(legacyKey);
+            return officialId ? { ...order, legacyId: order.legacyId ?? order.id, id: officialId } : order;
+          }),
+        };
+      });
+      persistSessions(nextSessions);
+      toast.success(`${result.ordersCreated} novo(s) pedido(s) legado(s) integrado(s); ${result.ordersSkipped} já existente(s).`);
+    } catch (error: any) {
+      legacySyncAttempted.current = false;
+      if (manual) toast.error(error?.message || "Não foi possível integrar os pedidos legados.");
+      console.error("Falha ao sincronizar pedidos legados", error);
+    }
+  };
+
+  useEffect(() => {
+    void synchronizeLegacyOrders();
+  }, [sessions.length]);
+
   const getSaturdayLabel = (order: number) => {
     const labels = ["1º", "2º", "3º", "4º", "5º"];
     return `${labels[order - 1] || order}º Sábado`;
@@ -264,6 +343,7 @@ export default function ReportsPage() {
 
   const handleViewSession = (session: CashierSession) => {
     setSelectedSession(session);
+    setSelectedOrderIds((session.orders || []).map((order) => Number(order.id)).filter((id) => Number.isInteger(id) && id > 0));
     setShowDetails(true);
   };
 
@@ -486,8 +566,23 @@ export default function ReportsPage() {
         </div>
 
         {/* Menu Filter */}
-        <Card className="p-6 mb-6">
-          <h2 className="font-semibold text-foreground mb-4">Filtrar por Cardápio</h2>
+          <Card className="p-6 mb-6">
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="font-semibold text-foreground">Filtrar por Cardápio</h2>
+              <p className="text-xs text-muted-foreground">Pedidos locais são integrados ao banco de forma idempotente.</p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void synchronizeLegacyOrders(true)}
+              disabled={syncLegacyMutation.isPending || sessions.length === 0}
+              className="gap-2"
+            >
+              {syncLegacyMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
+              Integrar pedidos locais
+            </Button>
+          </div>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
             <Button
               onClick={() => setSelectedMenuId(null)}
@@ -650,6 +745,7 @@ export default function ReportsPage() {
                   <div className="space-y-3">
                     {(selectedSession.orders || []).map((order) => {
                       const orderStatus = order.status || "completed";
+                      const refundAudit = refundAuditsQuery.data?.find((audit) => audit.orderId === order.id);
                       const isCancelled = orderStatus === "cancelled";
                       const paymentLabel = order.paymentMethod === "pix" ? "PIX" : order.paymentMethod === "card" ? "Cartão" : "Dinheiro";
                       return (
@@ -676,6 +772,18 @@ export default function ReportsPage() {
                                   </div>
                                 ))}
                               </div>
+                              {isCancelled && (
+                                <div className="mt-3 rounded-md border border-red-200 bg-red-50 p-2 text-xs text-red-800 no-underline">
+                                  <p className="font-semibold">Auditoria do estorno</p>
+                                  {refundAudit ? (
+                                    <p className="mt-1">
+                                      Usuário: {refundAudit.username} · Data: {new Date(refundAudit.createdAt).toLocaleString("pt-BR")} · Motivo: {refundAudit.reason}
+                                    </p>
+                                  ) : (
+                                    <p className="mt-1">Auditoria ainda não disponível para este pedido.</p>
+                                  )}
+                                </div>
+                              )}
                             </div>
                             <div className="flex flex-wrap items-center gap-2 no-underline">
                               <select

@@ -1,6 +1,6 @@
-import { eq, desc, and, sql } from "drizzle-orm";
+import { eq, desc, and, inArray, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, cashierResponsibles, products, weeklyMenus, menuItems, cashierSessions, orders, orderItems, stockHistory, customers, localUsers } from "../drizzle/schema";
+import { InsertUser, users, cashierResponsibles, products, weeklyMenus, menuItems, cashierSessions, orders, orderItems, stockHistory, customers, localUsers, refundAudits } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -391,7 +391,17 @@ export async function getWeeklyMenuForCashierSession(responsibleId: number, open
   return result.length === 1 ? result[0] : undefined;
 }
 
-export async function cancelOrder(orderId: number, reason = "Estorno") {
+export interface RefundAuditActor {
+  userId?: number | null;
+  username: string;
+  loginMethod: string;
+}
+
+export async function cancelOrder(
+  orderId: number,
+  reason = "Estorno",
+  actor: RefundAuditActor = { username: "Sistema", loginMethod: "system", userId: null },
+) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
@@ -419,6 +429,7 @@ export async function cancelOrder(orderId: number, reason = "Estorno") {
     }
 
     const items = await tx.select().from(orderItems).where(eq(orderItems.orderId, orderId));
+    const auditItems: Array<Record<string, unknown>> = [];
     const sessionRows = await tx.select().from(cashierSessions)
       .where(eq(cashierSessions.id, order.cashierSessionId))
       .limit(1);
@@ -430,6 +441,13 @@ export async function cancelOrder(orderId: number, reason = "Estorno") {
     for (const item of items) {
       const productRows = await tx.select().from(products).where(eq(products.id, item.productId)).limit(1);
       const product = productRows[0];
+      auditItems.push({
+        productId: item.productId,
+        productName: product?.name || `Produto #${item.productId}`,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        subtotal: item.subtotal,
+      });
 
       if (product && !product.isUnlimited && product.quantity !== null) {
         const restoredQuantity = product.quantity + item.quantity;
@@ -464,11 +482,221 @@ export async function cancelOrder(orderId: number, reason = "Estorno") {
       }
     }
 
+    const auditReason = reason.trim() || "Estorno";
+    const [auditResult] = await tx.insert(refundAudits).values({
+      orderId,
+      userId: actor.userId ?? null,
+      username: actor.username,
+      loginMethod: actor.loginMethod,
+      reason: auditReason,
+      orderTotal: order.totalAmount,
+      itemsSnapshot: JSON.stringify(auditItems),
+    });
+
     const updatedOrderRows = await tx.select().from(orders).where(eq(orders.id, orderId)).limit(1);
     return {
       ok: true as const,
       order: updatedOrderRows[0],
       items,
+      auditId: Number((auditResult as any)?.insertId || 0),
     };
+  });
+}
+
+export async function getRefundAuditsByOrderIds(orderIds: number[]) {
+  const db = await getDb();
+  if (!db || orderIds.length === 0) return [];
+  return await db.select().from(refundAudits).where(inArray(refundAudits.orderId, orderIds)).orderBy(desc(refundAudits.createdAt));
+}
+
+
+export interface LegacyOrderItemInput {
+  id?: string | number;
+  productId?: number;
+  productName: string;
+  quantity: number;
+  price?: number;
+  unitPrice?: number;
+  subtotal?: number;
+}
+
+export interface LegacyOrderInput {
+  id: string | number;
+  paymentMethod: "pix" | "card" | "cash";
+  total?: number;
+  status?: "pending" | "completed" | "cancelled";
+  customerId?: number;
+  customerName?: string;
+  createdAt?: string;
+  items: LegacyOrderItemInput[];
+}
+
+export interface LegacySessionInput {
+  id: string | number;
+  responsibleId?: number | null;
+  openedAt?: string;
+  closedAt?: string | null;
+  orders: LegacyOrderInput[];
+}
+
+export interface LegacySyncResult {
+  sessionsCreated: number;
+  ordersCreated: number;
+  ordersSkipped: number;
+  sessionMappings: Array<{ legacySessionId: string | number; officialId: number }>;
+  orderMappings: Array<{ legacyKey: string; officialId: number; legacyOrderId: string | number }>;
+}
+
+function parseLegacyDate(value: string | undefined, fallback: Date): Date {
+  if (!value) return fallback;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? fallback : parsed;
+}
+
+export async function syncLegacySessions(sessions: LegacySessionInput[]): Promise<LegacySyncResult> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  return await db.transaction(async (tx) => {
+    const result: LegacySyncResult = {
+      sessionsCreated: 0,
+      ordersCreated: 0,
+      ordersSkipped: 0,
+      sessionMappings: [],
+      orderMappings: [],
+    };
+
+    const [fallbackResponsible] = await tx.select().from(cashierResponsibles).limit(1);
+
+    for (const legacySession of sessions) {
+      const legacyOrders = Array.isArray(legacySession.orders) ? legacySession.orders : [];
+      const firstOrderKey = legacyOrders[0]
+        ? `local:${String(legacySession.id)}:${String(legacyOrders[0].id)}`
+        : null;
+      let officialSessionId: number | null = null;
+
+      if (firstOrderKey) {
+        const existingFirstOrder = await tx.select().from(orders).where(eq(orders.legacyKey, firstOrderKey)).limit(1);
+        officialSessionId = existingFirstOrder[0]?.cashierSessionId ?? null;
+      }
+
+      if (!officialSessionId) {
+        const responsibleId = legacySession.responsibleId || fallbackResponsible?.id;
+        if (!responsibleId) continue;
+        const openedAt = parseLegacyDate(legacySession.openedAt, new Date());
+        const [sessionResult] = await tx.insert(cashierSessions).values({
+          responsibleId,
+          openedAt,
+          closedAt: legacySession.closedAt ? parseLegacyDate(legacySession.closedAt, openedAt) : null,
+          initialBalance: "0",
+          finalBalance: legacySession.closedAt ? "0" : null,
+          status: legacySession.closedAt ? "closed" : "open",
+        });
+        officialSessionId = Number((sessionResult as any)?.insertId || 0);
+        if (!officialSessionId) continue;
+        result.sessionsCreated += 1;
+      }
+
+      if (officialSessionId) {
+        result.sessionMappings.push({ legacySessionId: legacySession.id, officialId: officialSessionId });
+      }
+
+      for (const legacyOrder of legacyOrders) {
+        const legacyKey = `local:${String(legacySession.id)}:${String(legacyOrder.id)}`;
+        const existingOrder = await tx.select().from(orders).where(eq(orders.legacyKey, legacyKey)).limit(1);
+        if (existingOrder[0]) {
+          result.ordersSkipped += 1;
+          result.orderMappings.push({ legacyKey, officialId: existingOrder[0].id, legacyOrderId: legacyOrder.id });
+          continue;
+        }
+
+        let customerId: number | null = null;
+        const customerName = legacyOrder.customerName?.trim();
+        if (customerName) {
+          const existingCustomer = await tx.select().from(customers).where(eq(customers.name, customerName)).limit(1);
+          if (existingCustomer[0]) {
+            customerId = existingCustomer[0].id;
+          } else {
+            const [customerResult] = await tx.insert(customers).values({
+              name: customerName,
+              isActive: true,
+            });
+            customerId = Number((customerResult as any)?.insertId || 0) || null;
+          }
+        }
+
+        const resolvedItems: Array<{ productId: number; quantity: number; unitPrice: number; subtotal: number }> = [];
+        for (const legacyItem of legacyOrder.items || []) {
+          const productName = legacyItem.productName?.trim() || `Produto legado ${String(legacyItem.productId || legacyItem.id || "sem nome")}`;
+          const unitPrice = Number(legacyItem.unitPrice ?? legacyItem.price ?? 0);
+          const quantity = Math.max(1, Number(legacyItem.quantity || 1));
+          const subtotal = Number(legacyItem.subtotal ?? unitPrice * quantity);
+          let productRows = await tx.select().from(products).where(eq(products.name, productName)).limit(1);
+          let product = productRows[0];
+          if (!product) {
+            const [productResult] = await tx.insert(products).values({
+              name: productName,
+              price: unitPrice.toFixed(2),
+              quantity: null,
+              isUnlimited: true,
+              isAvailable: true,
+              description: "Produto importado de pedido legado",
+            });
+            const productId = Number((productResult as any)?.insertId || 0);
+            productRows = await tx.select().from(products).where(eq(products.id, productId)).limit(1);
+            product = productRows[0];
+          }
+          if (product) resolvedItems.push({ productId: product.id, quantity, unitPrice, subtotal });
+        }
+
+        if (resolvedItems.length === 0) continue;
+        const totalAmount = Number(legacyOrder.total ?? resolvedItems.reduce((sum, item) => sum + item.subtotal, 0));
+        const status = legacyOrder.status || "completed";
+        const [orderResult] = await tx.insert(orders).values({
+          cashierSessionId: officialSessionId,
+          customerId,
+          totalAmount: totalAmount.toFixed(2),
+          paymentMethod: legacyOrder.paymentMethod,
+          status,
+          legacyKey,
+          createdAt: parseLegacyDate(legacyOrder.createdAt, new Date()),
+        });
+        const officialOrderId = Number((orderResult as any)?.insertId || 0);
+        if (!officialOrderId) continue;
+
+        for (const item of resolvedItems) {
+          await tx.insert(orderItems).values({
+            orderId: officialOrderId,
+            productId: item.productId,
+            quantity: item.quantity,
+            unitPrice: item.unitPrice.toFixed(2),
+            subtotal: item.subtotal.toFixed(2),
+          });
+
+          if (status === "completed") {
+            await tx.insert(stockHistory).values({
+              productId: item.productId,
+              orderId: officialOrderId,
+              quantityChange: -item.quantity,
+              reason: "Importação de pedido legado",
+            });
+            const productRows = await tx.select().from(products).where(eq(products.id, item.productId)).limit(1);
+            const product = productRows[0];
+            if (product && !product.isUnlimited && product.quantity !== null) {
+              const nextQuantity = Math.max(0, product.quantity - item.quantity);
+              await tx.update(products).set({
+                quantity: nextQuantity,
+                isAvailable: nextQuantity > 0,
+              }).where(eq(products.id, item.productId));
+            }
+          }
+        }
+
+        result.ordersCreated += 1;
+        result.orderMappings.push({ legacyKey, officialId: officialOrderId, legacyOrderId: legacyOrder.id });
+      }
+    }
+
+    return result;
   });
 }

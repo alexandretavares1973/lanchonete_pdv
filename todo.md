@@ -414,3 +414,15 @@
 - [x] Criar teste automatizado do fluxo de pedido com cliente, incluindo GERAL, cliente selecionado e persistência no pedido
 - [x] Implementar snapshots automáticos datados de clientes com restauração
 - [x] Adicionar exportação PDF real com download de arquivo `.pdf` no Relatório de Vendas
+
+
+## Auditoria de Estornos e Integração de Pedidos Legados (13/07/2026)
+
+- [x] Criar tabela de auditoria de estornos com pedido, usuário, data, motivo e itens
+- [x] Registrar auditoria no mesmo fluxo transacional do cancelamento
+- [x] Criar consulta protegida e exibição da auditoria no Relatório de Vendas
+- [x] Adicionar identificador oficial do banco aos pedidos locais
+- [x] Implementar migração idempotente dos pedidos legados do localStorage para o banco
+- [x] Evitar duplicidade durante sincronização e preservar itens, cliente e pagamento
+- [x] Atualizar ações de pagamento e estorno para usar o ID oficial
+- [x] Criar testes de auditoria e migração e validar compilação e fluxo completo

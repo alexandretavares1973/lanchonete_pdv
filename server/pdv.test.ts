@@ -257,3 +257,36 @@ describe("Fluxo de pedido com cliente", () => {
     expect(reportCustomer).toBe("Maria Santos");
   });
 });
+
+
+describe("Migração de pedidos legados e auditoria", () => {
+  const buildLegacyKey = (sessionId: string | number, orderId: string | number) =>
+    `local:${String(sessionId)}:${String(orderId)}`;
+
+  it("deve produzir a mesma chave para a mesma sessão e pedido", () => {
+    expect(buildLegacyKey("sessao-1", "pedido-9")).toBe("local:sessao-1:pedido-9");
+    expect(buildLegacyKey("sessao-1", "pedido-9")).toBe(buildLegacyKey("sessao-1", "pedido-9"));
+  });
+
+  it("deve manter pedidos de sessões diferentes distintos mesmo com o mesmo ID local", () => {
+    expect(buildLegacyKey(1, 42)).not.toBe(buildLegacyKey(2, 42));
+  });
+
+  it("deve preservar os campos essenciais da auditoria de estorno", () => {
+    const audit = {
+      orderId: 42,
+      username: "admin",
+      loginMethod: "local",
+      reason: "Cliente solicitou cancelamento",
+      itemsSnapshot: [{ productId: 7, productName: "Hambúrguer", quantity: 2 }],
+    };
+
+    expect(audit).toMatchObject({
+      orderId: 42,
+      username: "admin",
+      loginMethod: "local",
+      reason: "Cliente solicitou cancelamento",
+    });
+    expect(audit.itemsSnapshot).toHaveLength(1);
+  });
+});

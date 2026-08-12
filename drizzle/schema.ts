@@ -139,6 +139,7 @@ export const orders = mysqlTable("orders", {
   totalAmount: decimal("totalAmount", { precision: 10, scale: 2 }).notNull(),
   paymentMethod: mysqlEnum("paymentMethod", ["pix", "card", "cash"]).notNull(),
   status: mysqlEnum("status", ["pending", "completed", "cancelled"]).default("pending").notNull(),
+  legacyKey: varchar("legacyKey", { length: 191 }).unique(),
   printedAt: timestamp("printedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -191,6 +192,26 @@ export const stockHistory = mysqlTable("stock_history", {
 
 export type StockHistory = typeof stockHistory.$inferSelect;
 export type InsertStockHistory = typeof stockHistory.$inferInsert;
+
+/**
+ * Auditoria imutável dos estornos realizados.
+ * O snapshot preserva os itens no momento do cancelamento, mesmo que o pedido
+ * seja alterado ou que o usuário local seja removido posteriormente.
+ */
+export const refundAudits = mysqlTable("refund_audits", {
+  id: int("id").autoincrement().primaryKey(),
+  orderId: int("orderId").notNull(),
+  userId: int("userId"),
+  username: varchar("username", { length: 255 }).notNull(),
+  loginMethod: varchar("loginMethod", { length: 64 }).notNull(),
+  reason: varchar("reason", { length: 255 }).notNull(),
+  orderTotal: decimal("orderTotal", { precision: 10, scale: 2 }).notNull(),
+  itemsSnapshot: text("itemsSnapshot").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type RefundAudit = typeof refundAudits.$inferSelect;
+export type InsertRefundAudit = typeof refundAudits.$inferInsert;
 
 /**
  * Relação entre clientes e pedidos para relatório

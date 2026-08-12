@@ -205,8 +205,12 @@ export const pdvRouter = router({
         orderId: z.number().int().positive(),
         reason: z.string().trim().max(255).optional(),
       }))
-      .mutation(async ({ input }) => {
-        const result = await db.cancelOrder(input.orderId, input.reason || "Estorno");
+      .mutation(async ({ input, ctx }) => {
+        const result = await db.cancelOrder(input.orderId, input.reason || "Estorno", {
+          userId: ctx.user.id,
+          username: ctx.user.name || ctx.user.email || `Usuário #${ctx.user.id}`,
+          loginMethod: ctx.user.loginMethod || "oauth",
+        });
         if (!result.ok) {
           if (result.code === "NOT_FOUND") {
             throw new TRPCError({ code: "NOT_FOUND", message: "Pedido não encontrado." });
@@ -220,6 +224,43 @@ export const pdvRouter = router({
           throw new TRPCError({ code: "CONFLICT", message: "O pedido já foi processado por outra operação." });
         }
         return result;
+      }),
+
+    getRefundAudits: protectedProcedure
+      .input(z.object({ orderIds: z.array(z.number().int().positive()).max(200) }))
+      .query(async ({ input }) => {
+        return await db.getRefundAuditsByOrderIds(input.orderIds);
+      }),
+
+    syncLegacy: protectedProcedure
+      .input(z.object({
+        sessions: z.array(z.object({
+          id: z.union([z.string(), z.number()]),
+          responsibleId: z.number().nullable().optional(),
+          openedAt: z.string().optional(),
+          closedAt: z.string().nullable().optional(),
+          orders: z.array(z.object({
+            id: z.union([z.string(), z.number()]),
+            paymentMethod: z.enum(["pix", "card", "cash"]),
+            total: z.number().optional(),
+            status: z.enum(["pending", "completed", "cancelled"]).optional(),
+            customerId: z.number().optional(),
+            customerName: z.string().optional(),
+            createdAt: z.string().optional(),
+            items: z.array(z.object({
+              id: z.union([z.string(), z.number()]).optional(),
+              productId: z.number().optional(),
+              productName: z.string(),
+              quantity: z.number(),
+              price: z.number().optional(),
+              unitPrice: z.number().optional(),
+              subtotal: z.number().optional(),
+            })),
+          })),
+        })),
+      }))
+      .mutation(async ({ input }) => {
+        return await db.syncLegacySessions(input.sessions);
       }),
   }),
 
