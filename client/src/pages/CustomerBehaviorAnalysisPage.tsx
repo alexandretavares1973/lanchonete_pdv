@@ -177,7 +177,7 @@ export default function CustomerBehaviorAnalysisPage() {
         behavior.favoriteProducts.forEach((product) => {
           product.percentage = (product.quantity / totalProductQuantity) * 100;
         });
-        behavior.favoriteProducts.sort((a, b) => b.quantity - a.quantity).slice(0, 5);
+        behavior.favoriteProducts = behavior.favoriteProducts.sort((a, b) => b.quantity - a.quantity).slice(0, 5);
 
         // Calcular percentual de métodos de pagamento
         behavior.paymentMethods.forEach((payment) => {

@@ -6,7 +6,8 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { LocalAuthProvider, useLocalAuth } from "./contexts/LocalAuthContext";
 import Home from "./pages/Home";
-import Login from "./pages/Login";
+import Login from "./pages/LoginPage";
+import RegisterPage from "./pages/RegisterPage";
 import Dashboard from "./pages/Dashboard";
 import POSPage from "./pages/POSPage";
 
@@ -41,6 +42,7 @@ function Router() {
   return (
     <Switch>
       <Route path={"/login"} component={Login} />
+      <Route path={"/register"} component={RegisterPage} />
       <Route path={"/local-login"} component={LocalLogin} />
       <Route path={"/dashboard"} component={Dashboard} />
       <Route path={"/pos"} component={POSPage} />

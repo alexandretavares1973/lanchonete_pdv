@@ -1,6 +1,6 @@
 import { eq, desc, and, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, cashierResponsibles, products, weeklyMenus, menuItems, cashierSessions, orders, orderItems, stockHistory, customers } from "../drizzle/schema";
+import { InsertUser, users, cashierResponsibles, products, weeklyMenus, menuItems, cashierSessions, orders, orderItems, stockHistory, customers, localUsers } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -206,13 +206,16 @@ export async function createOrder(data: any) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
-  // Inserir o pedido
-  const insertResult = await db.insert(orders).values(data);
+  // Inserir o pedido e obter o insertId com segurança
+  const [insertResult] = await db.insert(orders).values(data);
+  const orderId = (insertResult as any).insertId;
   
-  // Buscar o pedido criado para obter o ID (ordena por ID descendente para pegar o mais recente)
+  if (!orderId) {
+    throw new Error("Failed to retrieve created order ID");
+  }
+  
   const createdOrder = await db.select().from(orders)
-    .where(eq(orders.cashierSessionId, data.cashierSessionId))
-    .orderBy(desc(orders.id))
+    .where(eq(orders.id, orderId))
     .limit(1);
   
   if (createdOrder.length === 0) {
@@ -311,4 +314,29 @@ export async function getOrdersWithCustomersByDateRange(startDate: Date, endDate
       sql`${orders.createdAt} <= ${endDate}`
     ))
     .orderBy(desc(orders.createdAt));
+}
+
+
+/**
+ * Funções para Usuários Locais
+ */
+export async function getLocalUserByUsername(username: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(localUsers).where(eq(localUsers.username, username)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function getLocalUserById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(localUsers).where(eq(localUsers.id, id)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function createLocalUser(data: { username: string; passwordHash: string }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [result] = await db.insert(localUsers).values(data);
+  return result;
 }
