@@ -2,8 +2,9 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useLocation } from "wouter";
-import { ArrowLeft, Download, Printer } from "lucide-react";
+import { ArrowLeft, Download, FileDown, Printer } from "lucide-react";
 import { toast } from "sonner";
+import { downloadTextPdf } from "@/lib/simplePdf";
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 
 interface MenuItem {
@@ -239,6 +240,22 @@ export default function CustomerBehaviorAnalysisPage() {
     toast.success(`✅ Relatório exportado com sucesso${periodText}!`);
   };
 
+  const handleExportPDF = () => {
+    const period = startDate && endDate ? `${startDate} a ${endDate}` : "Todos os períodos";
+    const lines = [
+      `Período: ${period}`,
+      `Gerado em: ${new Date().toLocaleString("pt-BR")}`,
+      "",
+      "Cliente | Compras | Total gasto | Ticket médio | Produtos",
+      ...behaviors.map((behavior) =>
+        `${behavior.customer.name} | ${behavior.totalPurchases} | R$ ${behavior.totalSpent.toFixed(2)} | R$ ${behavior.averageTicket.toFixed(2)} | ${behavior.favoriteProducts.map((product) => `${product.name} (${product.quantity}x)`).join(", ") || "N/A"}`,
+      ),
+    ];
+    const periodFile = startDate && endDate ? `${startDate}_${endDate}` : new Date().toISOString().split("T")[0];
+    downloadTextPdf(`relatorio-vendas-${periodFile}.pdf`, "Relatório de Vendas", lines);
+    toast.success("✅ PDF do relatório baixado com sucesso!");
+  };
+
   const selectedBehavior = behaviors.find(b => b.customer.id === selectedCustomer);
 
   return (
@@ -256,7 +273,7 @@ export default function CustomerBehaviorAnalysisPage() {
               <ArrowLeft className="w-4 h-4" />
               Voltar
             </Button>
-            <h1 className="text-3xl font-bold text-slate-900">Análise de Comportamento de Compra</h1>
+            <h1 className="text-3xl font-bold text-slate-900">Relatório de Vendas</h1>
           </div>
           <div className="flex gap-2">
             <Button
@@ -267,6 +284,15 @@ export default function CustomerBehaviorAnalysisPage() {
             >
               <Download className="w-4 h-4" />
               Exportar CSV
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportPDF}
+              className="gap-2"
+            >
+              <FileDown className="w-4 h-4" />
+              Exportar PDF
             </Button>
             <Button
               variant="outline"

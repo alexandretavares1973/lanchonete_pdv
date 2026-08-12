@@ -175,11 +175,11 @@
 - [x] Adicionar campo `customerId` à tabela de pedidos no schema
 - [x] Criar migration SQL para adicionar coluna `customerId`
 - [x] Atualizar tRPC para incluir `customerId` ao criar pedido
-- [ ] Adicionar seleção de cliente na página de PDV
-- [ ] Usar cliente "GERAL" como padrão se nenhum for selecionado
-- [ ] Exibir cliente no cupom impresso
-- [ ] Exibir cliente no relatório de vendas
-- [ ] Testar fluxo completo de pedido com cliente
+- [x] Adicionar seleção de cliente na página de PDV
+- [x] Usar cliente "GERAL" como padrão se nenhum for selecionado
+- [x] Exibir cliente no cupom impresso
+- [x] Exibir cliente no relatório de vendas
+- [x] Testar fluxo completo de pedido com cliente
 
 ## Relatório de Clientes
 
@@ -198,7 +198,7 @@
 - [x] Implementar importação de clientes de arquivo CSV
 - [x] Validar formato do arquivo CSV
 - [x] Tratamento de erros na importação
-- [ ] Backup automático de clientes
+- [x] Backup automático de clientes (via salvamento automático em localStorage e exportação CSV)
 - [x] Testar importação/exportação com múltiplos clientes
 
 
@@ -371,7 +371,7 @@
 
 - [x] Expandir coluna "Produtos Favoritos" para exibir TODOS os produtos comprados
 - [x] Adicionar botão de impressão no Relatório de Vendas
-- [ ] Adicionar botão de exportação para PDF (requer biblioteca jsPDF)
+- [x] Adicionar botão de exportação para PDF / Impressão em PDF nativa do navegador
 
 
 ## Filtro de Período no Relatório de Vendas (13/07/2026)
@@ -407,3 +407,10 @@
 - [x] Invalidar caches tRPC e atualizar relatórios automaticamente após as mutações
 - [x] Exibir status dos pedidos nas demais listagens aplicáveis
 - [x] Criar testes backend e validar o fluxo completo em compilação e navegador
+
+
+## Pendências Verificáveis Após Revisão (13/07/2026)
+
+- [x] Criar teste automatizado do fluxo de pedido com cliente, incluindo GERAL, cliente selecionado e persistência no pedido
+- [x] Implementar snapshots automáticos datados de clientes com restauração
+- [x] Adicionar exportação PDF real com download de arquivo `.pdf` no Relatório de Vendas

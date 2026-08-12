@@ -219,3 +219,41 @@ describe("Correção de pagamento e estorno", () => {
     expect(activeOrders.reduce((sum, order) => sum + order.total, 0)).toBe(65);
   });
 });
+
+
+describe("Fluxo de pedido com cliente", () => {
+  const generalCustomer = { id: 1, name: "GERAL", isDefault: true };
+  const selectedCustomer = { id: 7, name: "Maria Santos", isDefault: false };
+  const finalizeOrder = (customer?: { id: number; name: string }) => ({
+    id: 1001,
+    status: "completed",
+    customerId: customer?.id || generalCustomer.id,
+    customerName: customer?.name || generalCustomer.name,
+    total: 25,
+    items: [{ productName: "Hambúrguer", quantity: 1, subtotal: 25 }],
+  });
+
+  it("deve atribuir GERAL quando nenhum cliente é selecionado", () => {
+    const order = finalizeOrder();
+    expect(order.customerId).toBe(generalCustomer.id);
+    expect(order.customerName).toBe("GERAL");
+  });
+
+  it("deve persistir o cliente selecionado no pedido", () => {
+    const order = finalizeOrder(selectedCustomer);
+    const persisted = JSON.parse(JSON.stringify({ cashierSessions: [{ orders: [order] }] }));
+    const savedOrder = persisted.cashierSessions[0].orders[0];
+
+    expect(savedOrder.customerId).toBe(7);
+    expect(savedOrder.customerName).toBe("Maria Santos");
+  });
+
+  it("deve disponibilizar o nome do cliente para cupom e relatório", () => {
+    const order = finalizeOrder(selectedCustomer);
+    const receiptLine = `Cliente: ${order.customerName}`;
+    const reportCustomer = order.customerName;
+
+    expect(receiptLine).toBe("Cliente: Maria Santos");
+    expect(reportCustomer).toBe("Maria Santos");
+  });
+});

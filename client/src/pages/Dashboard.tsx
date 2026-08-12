@@ -6,7 +6,8 @@ import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Trash2, Plus, Edit2, Eye, EyeOff, Download, Upload } from "lucide-react";
+import { Trash2, Plus, Edit2, Eye, EyeOff, Download, Upload, History, RotateCcw, Save } from "lucide-react";
+import { CustomerBackup, readCustomerBackups, restoreCustomerBackup, saveCustomerBackup } from "@/lib/customerBackups";
 
 interface Customer {
   id: number;
@@ -24,6 +25,9 @@ export default function Dashboard() {
   
   // Estados para gerenciamento de clientes
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [customersLoaded, setCustomersLoaded] = useState(false);
+  const [backups, setBackups] = useState<CustomerBackup<Customer>[]>([]);
+  const [showBackupsDialog, setShowBackupsDialog] = useState(false);
   const [showCustomerDialog, setShowCustomerDialog] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState({
@@ -50,7 +54,31 @@ export default function Dashboard() {
       setCustomers([defaultCustomer]);
       localStorage.setItem("customers", JSON.stringify([defaultCustomer]));
     }
+    setBackups(readCustomerBackups<Customer>(localStorage));
+    setCustomersLoaded(true);
   }, []);
+
+  // Cria snapshots automaticamente sempre que a lista de clientes muda.
+  useEffect(() => {
+    if (!customersLoaded || customers.length === 0) return;
+    setBackups(saveCustomerBackup(customers, localStorage));
+  }, [customers, customersLoaded]);
+
+  const handleCreateManualBackup = () => {
+    const nextBackups = saveCustomerBackup(customers, localStorage);
+    setBackups(nextBackups);
+    toast.success("✅ Backup de clientes salvo com data e hora.");
+  };
+
+  const handleRestoreBackup = (backup: CustomerBackup<Customer>) => {
+    if (!window.confirm(`Restaurar o backup de ${new Date(backup.createdAt).toLocaleString("pt-BR")} com ${backup.customers.length} cliente(s)?`)) return;
+    saveCustomerBackup(customers, localStorage);
+    const restoredCustomers = restoreCustomerBackup(backup, localStorage);
+    setCustomers(restoredCustomers);
+    setBackups(readCustomerBackups<Customer>(localStorage));
+    toast.success("✅ Backup restaurado com sucesso.");
+    setShowBackupsDialog(false);
+  };
 
   const handleLogout = async () => {
     await logout();
@@ -357,8 +385,8 @@ export default function Dashboard() {
                   <span className="text-3xl">🔍</span>
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold text-foreground">Análise Comportamento</h3>
-                  <p className="text-sm text-muted-foreground">Padrões de compra</p>
+                  <h3 className="text-lg font-semibold text-foreground">Relatório de Vendas</h3>
+                  <p className="text-sm text-muted-foreground">Vendas e padrões de compra</p>
                 </div>
               </div>
             </Card>
@@ -389,6 +417,24 @@ export default function Dashboard() {
                 >
                   <Download className="w-4 h-4" />
                   Exportar CSV
+                </Button>
+                <Button
+                  onClick={() => setShowBackupsDialog(true)}
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                >
+                  <History className="w-4 h-4" />
+                  Backups ({backups.length})
+                </Button>
+                <Button
+                  onClick={handleCreateManualBackup}
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                >
+                  <Save className="w-4 h-4" />
+                  Backup agora
                 </Button>
                 <label>
                   <Button
@@ -528,6 +574,37 @@ export default function Dashboard() {
                 {editingId ? "Atualizar" : "Cadastrar"}
               </Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showBackupsDialog} onOpenChange={setShowBackupsDialog}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Backups automáticos de clientes</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Os últimos 10 snapshots são mantidos localmente para recuperação rápida dos dados.
+            </p>
+            {backups.length === 0 ? (
+              <p className="rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground">Nenhum backup disponível.</p>
+            ) : (
+              <div className="max-h-80 space-y-2 overflow-y-auto">
+                {backups.map((backup) => (
+                  <div key={backup.id} className="flex items-center justify-between gap-3 rounded-lg border border-border p-3">
+                    <div>
+                      <p className="text-sm font-medium text-foreground">{new Date(backup.createdAt).toLocaleString("pt-BR")}</p>
+                      <p className="text-xs text-muted-foreground">{backup.customers.length} cliente(s)</p>
+                    </div>
+                    <Button size="sm" variant="outline" className="gap-1" onClick={() => handleRestoreBackup(backup)}>
+                      <RotateCcw className="h-3.5 w-3.5" />
+                      Restaurar
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>
