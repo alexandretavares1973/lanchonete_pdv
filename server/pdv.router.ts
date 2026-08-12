@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import * as db from "./db";
 
@@ -181,6 +182,44 @@ export const pdvRouter = router({
       .input(z.object({ orderId: z.number() }))
       .query(async ({ input }) => {
         return await db.getOrderItemsByOrderId(input.orderId);
+      }),
+
+    updatePaymentMethod: protectedProcedure
+      .input(z.object({
+        orderId: z.number().int().positive(),
+        paymentMethod: z.enum(["pix", "card", "cash"]),
+      }))
+      .mutation(async ({ input }) => {
+        const order = await db.getOrderById(input.orderId);
+        if (!order) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Pedido não encontrado." });
+        }
+        if (order.status === "cancelled") {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Não é possível alterar o pagamento de um pedido cancelado." });
+        }
+        return await db.updateOrderPaymentMethod(input.orderId, input.paymentMethod);
+      }),
+
+    cancel: protectedProcedure
+      .input(z.object({
+        orderId: z.number().int().positive(),
+        reason: z.string().trim().max(255).optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const result = await db.cancelOrder(input.orderId, input.reason || "Estorno");
+        if (!result.ok) {
+          if (result.code === "NOT_FOUND") {
+            throw new TRPCError({ code: "NOT_FOUND", message: "Pedido não encontrado." });
+          }
+          if (result.code === "INVALID_STATUS") {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: `Só é possível estornar pedidos concluídos. Status atual: ${result.status}.`,
+            });
+          }
+          throw new TRPCError({ code: "CONFLICT", message: "O pedido já foi processado por outra operação." });
+        }
+        return result;
       }),
   }),
 

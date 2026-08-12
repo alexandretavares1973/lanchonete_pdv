@@ -72,7 +72,10 @@ export const appRouter = router({
     logout: publicProcedure.mutation(({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
-      clearLocalSessionCookie(ctx.res);
+      const cookieHeader = ctx.req.headers.cookie || "";
+      if (cookieHeader.split(";").some((cookie) => cookie.trim().startsWith("local_session="))) {
+        clearLocalSessionCookie(ctx.res);
+      }
       return {
         success: true,
       } as const;

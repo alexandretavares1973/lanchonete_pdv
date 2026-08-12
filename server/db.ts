@@ -347,3 +347,128 @@ export async function updateLocalUserPassword(userId: number, passwordHash: stri
   if (!db) throw new Error("Database not available");
   return await db.update(localUsers).set({ passwordHash }).where(eq(localUsers.id, userId));
 }
+
+
+/**
+ * Operações de pós-venda: correção de pagamento e estorno.
+ * O estorno é executado em uma transação para que o pedido, estoque e histórico
+ * permaneçam consistentes mesmo se uma das etapas falhar.
+ */
+export async function getOrderById(orderId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(orders).where(eq(orders.id, orderId)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function updateOrderPaymentMethod(
+  orderId: number,
+  paymentMethod: "pix" | "card" | "cash"
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  await db.update(orders).set({ paymentMethod }).where(eq(orders.id, orderId));
+  return await getOrderById(orderId);
+}
+
+export async function getCashierSessionById(sessionId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(cashierSessions).where(eq(cashierSessions.id, sessionId)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+/** Retorna o cardápio somente quando há uma associação inequívoca por responsável e data. */
+export async function getWeeklyMenuForCashierSession(responsibleId: number, openedAt: Date) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const dateStr = openedAt.toISOString().split("T")[0];
+  const result = await db.select().from(weeklyMenus).where(and(
+    eq(weeklyMenus.responsibleId, responsibleId),
+    eq(weeklyMenus.saturdayDate, dateStr as any),
+  )).limit(2);
+  return result.length === 1 ? result[0] : undefined;
+}
+
+export async function cancelOrder(orderId: number, reason = "Estorno") {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  return await db.transaction(async (tx) => {
+    const orderRows = await tx.select().from(orders).where(eq(orders.id, orderId)).limit(1);
+    const order = orderRows[0];
+    if (!order) {
+      return { ok: false as const, code: "NOT_FOUND" as const };
+    }
+    if (order.status !== "completed") {
+      return {
+        ok: false as const,
+        code: "INVALID_STATUS" as const,
+        status: order.status,
+      };
+    }
+
+    // Atualização condicional: em chamadas concorrentes apenas a primeira pode estornar.
+    const updateResult: any = await tx.update(orders)
+      .set({ status: "cancelled" })
+      .where(and(eq(orders.id, orderId), eq(orders.status, "completed")));
+    const affectedRows = updateResult?.affectedRows ?? updateResult?.rowsAffected ?? 1;
+    if (affectedRows === 0) {
+      return { ok: false as const, code: "ALREADY_PROCESSED" as const };
+    }
+
+    const items = await tx.select().from(orderItems).where(eq(orderItems.orderId, orderId));
+    const sessionRows = await tx.select().from(cashierSessions)
+      .where(eq(cashierSessions.id, order.cashierSessionId))
+      .limit(1);
+    const session = sessionRows[0];
+    const menu = session
+      ? await getWeeklyMenuForCashierSession(session.responsibleId, session.openedAt)
+      : undefined;
+
+    for (const item of items) {
+      const productRows = await tx.select().from(products).where(eq(products.id, item.productId)).limit(1);
+      const product = productRows[0];
+
+      if (product && !product.isUnlimited && product.quantity !== null) {
+        const restoredQuantity = product.quantity + item.quantity;
+        await tx.update(products).set({
+          quantity: restoredQuantity,
+          isAvailable: restoredQuantity > 0,
+        }).where(eq(products.id, item.productId));
+      }
+
+      await tx.insert(stockHistory).values({
+        productId: item.productId,
+        orderId,
+        quantityChange: Math.abs(item.quantity),
+        reason: reason.trim() || "Estorno",
+      });
+
+      if (menu) {
+        const menuItemRows = await tx.select().from(menuItems).where(and(
+          eq(menuItems.menuId, menu.id),
+          eq(menuItems.productId, item.productId),
+        )).limit(1);
+        const menuItem = menuItemRows[0];
+        if (menuItem) {
+          const restoredMenuQuantity = menuItem.availableQuantity === null
+            ? null
+            : menuItem.availableQuantity + item.quantity;
+          await tx.update(menuItems).set({
+            availableQuantity: restoredMenuQuantity,
+            isAvailable: restoredMenuQuantity === null ? true : restoredMenuQuantity > 0,
+          }).where(eq(menuItems.id, menuItem.id));
+        }
+      }
+    }
+
+    const updatedOrderRows = await tx.select().from(orders).where(eq(orders.id, orderId)).limit(1);
+    return {
+      ok: true as const,
+      order: updatedOrderRows[0],
+      items,
+    };
+  });
+}

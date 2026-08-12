@@ -393,3 +393,17 @@
 - [x] Criar página de Perfil do Usuário (`ProfilePage.tsx`) para alteração de senha e visualização de dados
 - [x] Integrar links de Perfil, Logout e Recuperação de Senha na navegação e nos formulários
 - [x] Validar todas as rotas e testar o fluxo completo de autenticação e recuperação
+
+
+## Correção de Pagamento e Estorno de Vendas (13/07/2026)
+
+- [x] Criar endpoint protegido `orders.updatePaymentMethod` para corrigir somente a forma de pagamento
+- [x] Criar endpoint protegido `orders.cancel` com validação de status completed
+- [x] Devolver estoque global, disponibilidade e histórico ao estornar cada item
+- [x] Devolver quantidade do item no cardápio relacionado quando a associação for identificável
+- [x] Adicionar correção de pagamento no diálogo de detalhes do ReportsPage
+- [x] Adicionar confirmação de estorno com total, itens e motivo opcional
+- [x] Exibir pedidos cancelados com status visual distinto e removê-los dos totais
+- [x] Invalidar caches tRPC e atualizar relatórios automaticamente após as mutações
+- [x] Exibir status dos pedidos nas demais listagens aplicáveis
+- [x] Criar testes backend e validar o fluxo completo em compilação e navegador

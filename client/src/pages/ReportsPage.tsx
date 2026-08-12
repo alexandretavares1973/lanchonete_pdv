@@ -3,7 +3,10 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useLocation } from "wouter";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ArrowLeft, Printer } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
+import { trpc } from "@/lib/trpc";
+import { AlertTriangle, ArrowLeft, CheckCircle2, Loader2, Printer, RotateCcw } from "lucide-react";
 
 interface MenuItem {
   id: string;
@@ -11,6 +14,7 @@ interface MenuItem {
   price: number;
   quantity: number | null;
   isUnlimited: boolean;
+  isAvailable?: boolean;
 }
 
 interface WeeklyMenu {
@@ -36,6 +40,7 @@ interface Order {
   id: number;
   paymentMethod: "pix" | "card" | "cash";
   total: number;
+  status?: "pending" | "completed" | "cancelled";
   items: OrderItem[];
   createdAt: string;
 }
@@ -65,6 +70,124 @@ export default function ReportsPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [selectedSession, setSelectedSession] = useState<CashierSession | null>(null);
   const [showDetails, setShowDetails] = useState(false);
+  const [pendingPaymentChange, setPendingPaymentChange] = useState<{
+    orderId: number;
+    previousPaymentMethod: Order["paymentMethod"];
+    paymentMethod: Order["paymentMethod"];
+  } | null>(null);
+  const [orderToCancel, setOrderToCancel] = useState<Order | null>(null);
+  const [cancelReason, setCancelReason] = useState("");
+  const utils = trpc.useUtils();
+  const updatePaymentMethodMutation = trpc.pdv.orders.updatePaymentMethod.useMutation();
+  const cancelOrderMutation = trpc.pdv.orders.cancel.useMutation();
+
+  const persistSessions = (nextSessions: CashierSession[]) => {
+    setSessions(nextSessions);
+    localStorage.setItem("cashierSessions", JSON.stringify(nextSessions));
+    if (selectedSession) {
+      const refreshed = nextSessions.find((session) => session.id === selectedSession.id);
+      if (refreshed) setSelectedSession(refreshed);
+    }
+  };
+
+  const updateOrderInLocalStorage = (orderId: number, patch: Partial<Order>) => {
+    const nextSessions = sessions.map((session) => ({
+      ...session,
+      orders: (session.orders || []).map((order) => order.id === orderId ? { ...order, ...patch } : order),
+    }));
+    persistSessions(nextSessions);
+  };
+
+  const restoreLocalMenuStock = (order: Order) => {
+    const session = sessions.find((candidate) => (candidate.orders || []).some((candidateOrder) => candidateOrder.id === order.id));
+    if (!session) return;
+    const productIds = new Map<string, number>();
+    order.items.forEach((item) => {
+      const productId = item.productId ?? item.id;
+      if (productId !== undefined) productIds.set(String(productId), (productIds.get(String(productId)) || 0) + item.quantity);
+    });
+    const nextMenus = menus.map((menu) => menu.id !== session.weeklyMenuId ? menu : ({
+      ...menu,
+      items: menu.items.map((item) => {
+        const restored = productIds.get(String(item.id));
+        if (!restored || item.isUnlimited || item.quantity === null) return item;
+        const quantity = item.quantity + restored;
+        return { ...item, quantity, isAvailable: quantity > 0 };
+      }),
+    }));
+    setMenus(nextMenus);
+    localStorage.setItem("weeklyMenus", JSON.stringify(nextMenus));
+  };
+
+  const isOrderMissingInBackend = (error: any) => error?.data?.code === "NOT_FOUND" || /pedido não encontrado/i.test(error?.message || "");
+
+  const handleRequestPaymentChange = (order: Order, paymentMethod: Order["paymentMethod"]) => {
+    if (order.status === "cancelled" || order.paymentMethod === paymentMethod) return;
+    setPendingPaymentChange({
+      orderId: order.id,
+      previousPaymentMethod: order.paymentMethod,
+      paymentMethod,
+    });
+  };
+
+  const handleConfirmPaymentChange = async () => {
+    if (!pendingPaymentChange) return;
+    try {
+      await updatePaymentMethodMutation.mutateAsync({
+        orderId: pendingPaymentChange.orderId,
+        paymentMethod: pendingPaymentChange.paymentMethod,
+      });
+      updateOrderInLocalStorage(pendingPaymentChange.orderId, {
+        paymentMethod: pendingPaymentChange.paymentMethod,
+      });
+      await utils.pdv.orders.getBySession.invalidate();
+      await utils.pdv.orders.getItems.invalidate({ orderId: pendingPaymentChange.orderId });
+      toast.success("Forma de pagamento corrigida com sucesso.");
+      setPendingPaymentChange(null);
+    } catch (error: any) {
+      if (isOrderMissingInBackend(error)) {
+        // Pedidos criados no fluxo legado ficam apenas no localStorage; ainda assim
+        // permitimos a correção local sem mascarar erros de autenticação ou banco.
+        updateOrderInLocalStorage(pendingPaymentChange.orderId, {
+          paymentMethod: pendingPaymentChange.paymentMethod,
+        });
+        toast.success("Forma de pagamento corrigida no registro local do relatório.");
+        setPendingPaymentChange(null);
+        return;
+      }
+      toast.error(error?.message || "Não foi possível corrigir a forma de pagamento.");
+    }
+  };
+
+  const handleConfirmCancellation = async () => {
+    if (!orderToCancel) return;
+    try {
+      await cancelOrderMutation.mutateAsync({
+        orderId: orderToCancel.id,
+        reason: cancelReason.trim() || undefined,
+      });
+      updateOrderInLocalStorage(orderToCancel.id, { status: "cancelled" });
+      await Promise.all([
+        utils.pdv.orders.getBySession.invalidate(),
+        utils.pdv.orders.getItems.invalidate({ orderId: orderToCancel.id }),
+        utils.pdv.products.list.invalidate(),
+        utils.pdv.menu.getItems.invalidate(),
+      ]);
+      toast.success("Venda estornada. O estoque foi devolvido e os totais foram atualizados.");
+      setOrderToCancel(null);
+      setCancelReason("");
+    } catch (error: any) {
+      if (isOrderMissingInBackend(error)) {
+        restoreLocalMenuStock(orderToCancel);
+        updateOrderInLocalStorage(orderToCancel.id, { status: "cancelled" });
+        toast.success("Venda estornada no registro local do relatório e estoque do cardápio restaurado.");
+        setOrderToCancel(null);
+        setCancelReason("");
+        return;
+      }
+      toast.error(error?.message || "Não foi possível estornar a venda.");
+    }
+  };
 
   useEffect(() => {
     const storedMenus = localStorage.getItem("weeklyMenus");
@@ -93,7 +216,7 @@ export default function ReportsPage() {
 
   const calculateReportData = (session: CashierSession) => {
     const menu = menus.find(m => m.id === session.weeklyMenuId);
-    const orders = session.orders || [];
+    const orders = (session.orders || []).filter((order) => order.status !== "cancelled");
 
     // Agrupar vendas por produto
     const productSales: Record<string, { name: string; quantity: number; unitPrice: number; subtotal: number }> = {};
@@ -518,6 +641,78 @@ export default function ReportsPage() {
                   </div>
                 </div>
 
+                {/* Individual Orders */}
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-semibold text-foreground">Pedidos da Sessão</h3>
+                    <span className="text-xs text-muted-foreground">{(selectedSession.orders || []).length} pedido(s)</span>
+                  </div>
+                  <div className="space-y-3">
+                    {(selectedSession.orders || []).map((order) => {
+                      const orderStatus = order.status || "completed";
+                      const isCancelled = orderStatus === "cancelled";
+                      const paymentLabel = order.paymentMethod === "pix" ? "PIX" : order.paymentMethod === "card" ? "Cartão" : "Dinheiro";
+                      return (
+                        <div
+                          key={order.id}
+                          className={`rounded-lg border p-4 ${isCancelled ? "border-gray-200 bg-gray-100/70 opacity-70" : "border-border bg-background"}`}
+                        >
+                          <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                            <div className={isCancelled ? "text-gray-500 line-through" : ""}>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="font-semibold">Pedido #{order.id}</span>
+                                <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium no-underline ${isCancelled ? "bg-gray-200 text-gray-600" : "bg-emerald-100 text-emerald-700"}`}>
+                                  {isCancelled ? <RotateCcw className="h-3 w-3" /> : <CheckCircle2 className="h-3 w-3" />}
+                                  {isCancelled ? "Cancelado" : orderStatus === "pending" ? "Pendente" : "Concluído"}
+                                </span>
+                              </div>
+                              <p className="mt-1 text-xs text-muted-foreground no-underline">
+                                {new Date(order.createdAt).toLocaleString("pt-BR")} · Total: R$ {Number(order.total || 0).toFixed(2)}
+                              </p>
+                              <div className="mt-2 space-y-1 text-xs text-muted-foreground no-underline">
+                                {order.items.map((item, index) => (
+                                  <div key={`${order.id}-${item.productId ?? item.id ?? index}`}>
+                                    {item.quantity}× {item.productName} · R$ {Number(item.subtotal || 0).toFixed(2)}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2 no-underline">
+                              <select
+                                aria-label={`Forma de pagamento do pedido ${order.id}`}
+                                value={order.paymentMethod}
+                                disabled={isCancelled || updatePaymentMethodMutation.isPending}
+                                onChange={(event) => handleRequestPaymentChange(order, event.target.value as Order["paymentMethod"])}
+                                className="h-9 rounded-md border border-input bg-background px-2 text-sm text-foreground"
+                              >
+                                <option value="pix">PIX</option>
+                                <option value="card">Cartão</option>
+                                <option value="cash">Dinheiro</option>
+                              </select>
+                              <span className="text-xs text-muted-foreground">Atual: {paymentLabel}</span>
+                              {!isCancelled && (
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  className="gap-1"
+                                  onClick={() => {
+                                    setOrderToCancel(order);
+                                    setCancelReason("");
+                                  }}
+                                  disabled={cancelOrderMutation.isPending}
+                                >
+                                  <RotateCcw className="h-3.5 w-3.5" />
+                                  Estornar Venda
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
                 {/* Products Table */}
                 <div>
                   <h3 className="font-semibold text-foreground mb-3">Produtos Vendidos</h3>
@@ -570,6 +765,66 @@ export default function ReportsPage() {
               </div>
             );
           })()}
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirmation for payment correction */}
+      <Dialog open={Boolean(pendingPaymentChange)} onOpenChange={(open) => !open && setPendingPaymentChange(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Confirmar correção de pagamento</DialogTitle>
+          </DialogHeader>
+          {pendingPaymentChange && (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Confirma alterar o pagamento do pedido <strong>#{pendingPaymentChange.orderId}</strong> de <strong>{pendingPaymentChange.previousPaymentMethod === "pix" ? "PIX" : pendingPaymentChange.previousPaymentMethod === "card" ? "Cartão" : "Dinheiro"}</strong> para <strong>{pendingPaymentChange.paymentMethod === "pix" ? "PIX" : pendingPaymentChange.paymentMethod === "card" ? "Cartão" : "Dinheiro"}</strong>?
+              </p>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setPendingPaymentChange(null)} disabled={updatePaymentMethodMutation.isPending}>Cancelar</Button>
+                <Button onClick={handleConfirmPaymentChange} disabled={updatePaymentMethodMutation.isPending} className="gap-2">
+                  {updatePaymentMethodMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+                  Confirmar alteração
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirmation for cancellation */}
+      <Dialog open={Boolean(orderToCancel)} onOpenChange={(open) => { if (!open) { setOrderToCancel(null); setCancelReason(""); } }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive"><AlertTriangle className="h-5 w-5" /> Confirmar estorno da venda</DialogTitle>
+          </DialogHeader>
+          {orderToCancel && (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">O pedido <strong>#{orderToCancel.id}</strong> será cancelado. O total não entrará mais nos relatórios e o estoque será devolvido.</p>
+              <div className="rounded-lg border border-border bg-muted/40 p-3 text-sm">
+                <div className="mb-2 flex items-center justify-between font-semibold">
+                  <span>Itens do pedido</span>
+                  <span>R$ {Number(orderToCancel.total || 0).toFixed(2)}</span>
+                </div>
+                {orderToCancel.items.map((item, index) => (
+                  <div key={`${orderToCancel.id}-cancel-${item.productId ?? item.id ?? index}`} className="flex justify-between py-1 text-muted-foreground">
+                    <span>{item.quantity}× {item.productName}</span>
+                    <span>R$ {Number(item.subtotal || 0).toFixed(2)}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="space-y-2">
+                <label htmlFor="cancel-reason" className="text-sm font-medium">Motivo (opcional)</label>
+                <Input id="cancel-reason" value={cancelReason} onChange={(event) => setCancelReason(event.target.value)} placeholder="Ex.: pagamento lançado incorretamente" maxLength={255} disabled={cancelOrderMutation.isPending} />
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => { setOrderToCancel(null); setCancelReason(""); }} disabled={cancelOrderMutation.isPending}>Voltar</Button>
+                <Button variant="destructive" onClick={handleConfirmCancellation} disabled={cancelOrderMutation.isPending} className="gap-2">
+                  {cancelOrderMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+                  Confirmar estorno
+                </Button>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

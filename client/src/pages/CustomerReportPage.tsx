@@ -20,6 +20,7 @@ interface Order {
   customerId?: number;
   total: number;
   paymentMethod: "pix" | "card" | "cash";
+  status?: "pending" | "completed" | "cancelled";
   createdAt: string;
   items?: Array<{productName: string; quantity: number; price?: number}>;
 }
@@ -103,8 +104,9 @@ export default function CustomerReportPage() {
     
     if (startDate && endDate) {
       // Filtrar pedidos por período
-      filteredOrders = orders.filter((order) => {
-        if (!order.createdAt) return false;
+        filteredOrders = orders.filter((order) => {
+          if (order.status === "cancelled") return false;
+          if (!order.createdAt) return false;
         try {
           const orderDate = new Date(order.createdAt);
           const start = new Date(startDate);
@@ -116,6 +118,9 @@ export default function CustomerReportPage() {
         }
       });
     }
+
+    // Mesmo sem filtro de período, pedidos cancelados nunca entram nos totais.
+    filteredOrders = filteredOrders.filter((order) => order.status !== "cancelled");
 
     // Contar pedidos e valor gasto por cliente
     filteredOrders.forEach((order) => {

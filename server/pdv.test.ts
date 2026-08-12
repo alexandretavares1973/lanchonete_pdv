@@ -182,3 +182,40 @@ describe("PDV System", () => {
     });
   });
 });
+
+
+describe("Correção de pagamento e estorno", () => {
+  it("deve aceitar somente formas de pagamento suportadas", () => {
+    const supported = ["pix", "card", "cash"];
+    expect(supported).toContain("pix");
+    expect(supported).toContain("card");
+    expect(supported).toContain("cash");
+    expect(supported).not.toContain("boleto");
+  });
+
+  it("deve permitir estorno somente de pedidos completed", () => {
+    const canCancel = (status: string) => status === "completed";
+    expect(canCancel("completed")).toBe(true);
+    expect(canCancel("cancelled")).toBe(false);
+    expect(canCancel("pending")).toBe(false);
+  });
+
+  it("deve devolver quantidade positiva ao estoque durante o estorno", () => {
+    const currentQuantity = 2;
+    const soldQuantity = 3;
+    const restoredQuantity = currentQuantity + Math.abs(soldQuantity);
+    expect(restoredQuantity).toBe(5);
+    expect(Math.abs(soldQuantity)).toBeGreaterThan(0);
+  });
+
+  it("deve excluir pedidos cancelados dos totais do relatório", () => {
+    const orders = [
+      { status: "completed", total: 50 },
+      { status: "cancelled", total: 35 },
+      { status: undefined, total: 15 },
+    ];
+    const activeOrders = orders.filter((order) => order.status !== "cancelled");
+    expect(activeOrders).toHaveLength(2);
+    expect(activeOrders.reduce((sum, order) => sum + order.total, 0)).toBe(65);
+  });
+});

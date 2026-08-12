@@ -30,6 +30,7 @@ interface Order {
   customerName?: string;
   paymentMethod: "pix" | "card" | "cash";
   total: number;
+  status?: "pending" | "completed" | "cancelled";
   items: OrderItem[];
   createdAt: string;
 }
@@ -91,7 +92,7 @@ export default function CustomerBehaviorAnalysisPage() {
   useEffect(() => {
     const products = new Set<string>();
     sessions.forEach((session) => {
-      session.orders?.forEach((order) => {
+      session.orders?.filter((order) => order.status !== "cancelled").forEach((order) => {
         order.items?.forEach((item) => {
           products.add(item.productName);
         });
@@ -131,7 +132,7 @@ export default function CustomerBehaviorAnalysisPage() {
       const sessionDate = new Date(session.openedAt);
       if (sessionDate < start || sessionDate > end) return;
 
-      session.orders?.forEach((order) => {
+      session.orders?.filter((order) => order.status !== "cancelled").forEach((order) => {
         const customerId = order.customerId || 1; // Usar GERAL se não houver customerId
         const behavior = behaviorMap.get(customerId);
 

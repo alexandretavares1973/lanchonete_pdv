@@ -295,6 +295,7 @@ export default function POSPage() {
       id: Date.now(),
       paymentMethod,
       total: total,
+      status: "completed",
       amountReceived: paymentMethod === "cash" ? amountReceived : null,
       change: paymentMethod === "cash" ? change : null,
       items: cart,
