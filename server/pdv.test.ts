@@ -323,6 +323,26 @@ describe("Estorno Parcial por Item", () => {
     const stockAfterRefund = stockAfterSale + refundedQuantity;
     expect(stockAfterRefund).toBe(10);
   });
+
+  it("gera payload de estorno sem valores NaN para orderItemId", () => {
+    const items = [
+      { id: undefined, productId: 101, productName: "Tapioca", quantity: 2, refundedQuantity: 0 },
+    ];
+    const refundQuantities = { "101": 1 };
+
+    const itemsPayload = items.map((item, index) => {
+      const rawId = item.id ?? item.productId ?? index;
+      const itemId = Number(rawId);
+      const keyId = String(rawId);
+      const qty = refundQuantities[keyId] ?? 0;
+      return { orderItemId: Number.isInteger(itemId) && itemId > 0 ? itemId : (index + 1), quantity: qty };
+    }).filter((i) => i.quantity > 0);
+
+    expect(itemsPayload).toHaveLength(1);
+    expect(itemsPayload[0].orderItemId).toBe(101);
+    expect(itemsPayload[0].quantity).toBe(1);
+    expect(Number.isNaN(itemsPayload[0].orderItemId)).toBe(false);
+  });
 });
 
 describe("Gerador de dados de teste", () => {

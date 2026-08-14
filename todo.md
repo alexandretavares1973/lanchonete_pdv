@@ -551,3 +551,10 @@
 - [x] Corrigir a devolução de estoque global e cardápio semanal no frontend (`ReportsPage`) e backend (`db.ts`)
 - [x] Adicionar teste de regressão para estorno e verificação de estoque
 - [x] Validar testes, compilação TypeScript e build de produção
+
+
+## Correção do Erro NaN em orderItemId (14/08/2026)
+- [x] Rastrear o uso de `orderItemId` em `ReportsPage.tsx`
+- [x] Corrigir conversão e fallback para garantir que o ID numérico seja enviado corretamente
+- [x] Adicionar teste unitário para validar payload do estorno parcial
+- [x] Validar testes, compilação TypeScript e build de produção

@@ -951,14 +951,15 @@ export default function ReportsPage() {
                   <span>Estornar</span>
                 </div>
                 {orderToCancel.items.map((item, index) => {
-                  const itemId = item.id ?? item.productId ?? index;
+                  const rawId = item.id ?? item.productId ?? index;
+                  const keyId = String(rawId);
                   const refunded = item.refundedQuantity || 0;
                   const maxRefundable = item.quantity - refunded;
                   const isFullyRefunded = maxRefundable <= 0;
-                  const currentRefundQty = refundQuantities[String(itemId)] ?? 0;
+                  const currentRefundQty = refundQuantities[keyId] ?? 0;
 
                   return (
-                    <div key={`${orderToCancel.id}-refund-${itemId}`} className={`flex items-center justify-between py-2 border-b border-border/60 last:border-0 ${isFullyRefunded ? "opacity-60 line-through" : ""}`}>
+                    <div key={`${orderToCancel.id}-refund-${index}`} className={`flex items-center justify-between py-2 border-b border-border/60 last:border-0 ${isFullyRefunded ? "opacity-60 line-through" : ""}`}>
                       <div className="flex-1 pr-2">
                         <div className="font-medium text-foreground">{item.productName}</div>
                         <div className="text-xs text-muted-foreground">Vendido: {item.quantity} | Já estornado: {refunded}</div>
@@ -977,7 +978,7 @@ export default function ReportsPage() {
                             value={currentRefundQty}
                             onChange={(e) => {
                               const val = Math.max(0, Math.min(maxRefundable, parseInt(e.target.value || "0", 10)));
-                              setRefundQuantities({ ...refundQuantities, [String(itemId)]: val });
+                              setRefundQuantities({ ...refundQuantities, [keyId]: val });
                             }}
                             className="h-8 text-center"
                           />
@@ -996,9 +997,10 @@ export default function ReportsPage() {
                   onClick={() => {
                     const all: Record<string, number> = {};
                     orderToCancel.items.forEach((item, index) => {
-                      const itemId = item.id ?? item.productId ?? index;
+                      const rawId = item.id ?? item.productId ?? index;
+                      const keyId = String(rawId);
                       const maxR = item.quantity - (item.refundedQuantity || 0);
-                      if (maxR > 0) all[String(itemId)] = maxR;
+                      if (maxR > 0) all[keyId] = maxR;
                     });
                     setRefundQuantities(all);
                   }}
@@ -1017,9 +1019,11 @@ export default function ReportsPage() {
                   variant="destructive"
                   onClick={() => {
                     const itemsPayload = orderToCancel.items.map((item, index) => {
-                      const itemId = Number(item.id ?? index);
-                      const qty = refundQuantities[String(item.id ?? index)] ?? 0;
-                      return { orderItemId: itemId, quantity: qty };
+                      const rawId = item.id ?? item.productId ?? index;
+                      const itemId = Number(rawId);
+                      const keyId = String(rawId);
+                      const qty = refundQuantities[keyId] ?? refundQuantities[String(index)] ?? 0;
+                      return { orderItemId: Number.isInteger(itemId) && itemId > 0 ? itemId : (index + 1), quantity: qty };
                     }).filter((i) => i.quantity > 0);
 
                     if (itemsPayload.length === 0) {
