@@ -478,3 +478,11 @@
 - [x] Executar a exclusão estritamente na ordem solicitada (`stock_history` → `order_items` → `orders` → `cashier_sessions`)
 - [x] Atualizar o estoque global e do cardápio com os valores informados pelo usuário
 - [x] Validar e certificar contagens zeradas nas tabelas de vendas e contagens preservadas nos cadastros
+
+
+## Fluxo de Finalização do PDV (14/08/2026)
+- [x] Iniciar o seletor de cliente vazio com placeholder "Selecione um cliente"
+- [x] Bloquear a finalização sem seleção explícita e exibir o toast solicitado
+- [x] Manter GERAL como opção selecionável, sem pré-seleção
+- [x] Resetar cliente, pagamento, valor recebido, diálogo e carrinho após venda concluída
+- [x] Testar venda completa e tentativa de finalização sem cliente

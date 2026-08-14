@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { getSafeLegacyResponsibleId, getTestDataBlueprint } from "./db";
+import { getExplicitCustomer, getFreshOrderDefaults, DEFAULT_PAYMENT_METHOD } from "../shared/posOrderFlow";
 
 describe("PDV System", () => {
   describe("Cart Calculations", () => {
@@ -225,19 +226,21 @@ describe("Correção de pagamento e estorno", () => {
 describe("Fluxo de pedido com cliente", () => {
   const generalCustomer = { id: 1, name: "GERAL", isDefault: true };
   const selectedCustomer = { id: 7, name: "Maria Santos", isDefault: false };
-  const finalizeOrder = (customer?: { id: number; name: string }) => ({
-    id: 1001,
-    status: "completed",
-    customerId: customer?.id || generalCustomer.id,
-    customerName: customer?.name || generalCustomer.name,
-    total: 25,
-    items: [{ productName: "Hambúrguer", quantity: 1, subtotal: 25 }],
-  });
+  const finalizeOrder = (customer?: { id: number; name: string }) => {
+    const explicitCustomer = getExplicitCustomer(customer);
+    if (!explicitCustomer) return null;
+    return {
+      id: 1001,
+      status: "completed",
+      customerId: explicitCustomer.id,
+      customerName: explicitCustomer.name,
+      total: 25,
+      items: [{ productName: "Hambúrguer", quantity: 1, subtotal: 25 }],
+    };
+  };
 
-  it("deve atribuir GERAL quando nenhum cliente é selecionado", () => {
-    const order = finalizeOrder();
-    expect(order.customerId).toBe(generalCustomer.id);
-    expect(order.customerName).toBe("GERAL");
+  it("deve bloquear a finalização quando nenhum cliente é selecionado", () => {
+    expect(finalizeOrder()).toBeNull();
   });
 
   it("deve persistir o cliente selecionado no pedido", () => {
@@ -251,14 +254,25 @@ describe("Fluxo de pedido com cliente", () => {
 
   it("deve disponibilizar o nome do cliente para cupom e relatório", () => {
     const order = finalizeOrder(selectedCustomer);
-    const receiptLine = `Cliente: ${order.customerName}`;
-    const reportCustomer = order.customerName;
+    expect(order).not.toBeNull();
+    const receiptLine = `Cliente: ${order!.customerName}`;
+    const reportCustomer = order!.customerName;
 
     expect(receiptLine).toBe("Cliente: Maria Santos");
     expect(reportCustomer).toBe("Maria Santos");
   });
 });
 
+describe("Reset do novo pedido no POS", () => {
+  it("deve voltar ao estado vazio com PIX como pagamento padrão", () => {
+    const defaults = getFreshOrderDefaults();
+    expect(defaults.customer).toBeNull();
+    expect(defaults.paymentMethod).toBe(DEFAULT_PAYMENT_METHOD);
+    expect(defaults.amountReceived).toBe(0);
+    expect(defaults.showConfirm).toBe(false);
+    expect(defaults.cart).toHaveLength(0);
+  });
+});
 
 describe("Gerador de dados de teste", () => {
   it("deve oferecer um conjunto determinístico de produtos e pedidos válidos", () => {

@@ -6,6 +6,7 @@ import { useLocation } from "wouter";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { ShoppingCart, Trash2, Lock } from "lucide-react";
+import { DEFAULT_PAYMENT_METHOD, getExplicitCustomer } from "@shared/posOrderFlow";
 
 interface MenuItem {
   id: string;
@@ -48,7 +49,7 @@ export default function POSPage() {
   const [menus, setMenus] = useState<any[]>([]);
   const [selectedMenu, setSelectedMenu] = useState<any>(null);
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [paymentMethod, setPaymentMethod] = useState<"pix" | "card" | "cash">("pix");
+  const [paymentMethod, setPaymentMethod] = useState<"pix" | "card" | "cash">(DEFAULT_PAYMENT_METHOD);
   const [showConfirm, setShowConfirm] = useState(false);
   const [showPrint, setShowPrint] = useState(false);
   const [amountReceived, setAmountReceived] = useState<number>(0);
@@ -57,6 +58,7 @@ export default function POSPage() {
   const [lastOrderTotal, setLastOrderTotal] = useState<number>(0);
   const [lastPaymentMethod, setLastPaymentMethod] = useState<'pix' | 'card' | 'cash'>('pix');
   const [lastAmountReceived, setLastAmountReceived] = useState<number>(0);
+  const [lastCustomerName, setLastCustomerName] = useState<string>("");
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
 
@@ -78,11 +80,8 @@ export default function POSPage() {
     if (storedCustomers) {
       const parsed = JSON.parse(storedCustomers);
       setCustomers(parsed);
-      // Selecionar cliente GERAL por padrão
-      const generalCustomer = parsed.find((c: Customer) => c.isDefault);
-      if (generalCustomer) {
-        setSelectedCustomer(generalCustomer);
-      }
+      // O cliente precisa ser escolhido ativamente em cada novo pedido.
+      setSelectedCustomer(null);
     }
   }, []);
 
@@ -272,10 +271,23 @@ export default function POSPage() {
       return;
     }
 
+    const customer = getExplicitCustomer(selectedCustomer);
+    if (!customer) {
+      toast.error("Selecione um cliente antes de finalizar a venda");
+      return;
+    }
+
     setShowConfirm(true);
   };
 
   const handleConfirmOrder = () => {
+    const customer = getExplicitCustomer(selectedCustomer);
+    if (!customer) {
+      setShowConfirm(false);
+      toast.error("Selecione um cliente antes de finalizar a venda");
+      return;
+    }
+
     const total = calculateTotal();
     
     // Validar pagamento em dinheiro
@@ -299,8 +311,8 @@ export default function POSPage() {
       amountReceived: paymentMethod === "cash" ? amountReceived : null,
       change: paymentMethod === "cash" ? change : null,
       items: cart,
-      customerId: selectedCustomer?.id || 1,
-      customerName: selectedCustomer?.name || "GERAL",
+      customerId: customer.id,
+      customerName: customer.name,
       createdAt: new Date().toISOString(),
     };
 
@@ -326,11 +338,14 @@ export default function POSPage() {
     setLastOrderTotal(total);
     setLastPaymentMethod(paymentMethod);
     setLastAmountReceived(paymentMethod === "cash" ? amountReceived : 0);
+    setLastCustomerName(customer.name);
 
     toast.success("✅ Pedido finalizado!");
     setShowConfirm(false);
     setShowPrint(true);
     setCart([]);
+    setSelectedCustomer(null);
+    setPaymentMethod(DEFAULT_PAYMENT_METHOD);
     setAmountReceived(0);
   };
 
@@ -482,7 +497,7 @@ export default function POSPage() {
             <p>CUPOM DE VENDA</p>
             <p>━━━━━━━━━━━━━━━━━━━━━━━</p>
             <p><strong>Cardápio:</strong> ${selectedMenu ? getSaturdayLabel(selectedMenu.saturdayOrder) : "N/A"}</p>
-            <p><strong>Cliente:</strong> ${selectedCustomer?.name || "GERAL"}</p>
+            <p><strong>Cliente:</strong> ${lastCustomerName || "Não informado"}</p>
             <p><strong>Data:</strong> ${timestamp.toLocaleDateString("pt-BR")}</p>
             <p><strong>Hora:</strong> ${timestamp.toLocaleTimeString("pt-BR")}</p>
           </div>
