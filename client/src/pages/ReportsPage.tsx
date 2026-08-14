@@ -225,7 +225,8 @@ export default function ReportsPage() {
 
     const payload = sessions.map((session) => ({
       id: session.legacyId ?? session.id,
-      responsibleId: session.responsibleId ?? menus.find((menu) => menu.id === session.weeklyMenuId)?.responsibleId ?? null,
+      // Não enviamos o responsibleId numérico porque ele pode ser um ID local (Date.now()) inválido para o banco.
+      // O backend resolverá o responsável pelo nome ou pelo usuário autenticado.
       responsibleName: menus.find((menu) => menu.id === session.weeklyMenuId)?.responsibleName,
       openedAt: session.openedAt,
       closedAt: session.closedAt,

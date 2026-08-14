@@ -444,7 +444,14 @@
 
 
 ## Correção da Integração de Pedidos Locais (14/08/2026)
-- [ ] Converter o responsável local do localStorage para um responsável oficial do banco antes de criar sessões
-- [ ] Evitar inserir IDs locais baseados em Date.now() em cashier_sessions e preservar a idempotência da sincronização
-- [ ] Adicionar testes para resolver responsáveis locais e validar a integração de sessões/pedidos
-- [ ] Validar TypeScript, Vitest, build e fluxo corrigido no preview
+- [x] Converter o responsável local do localStorage para um responsável oficial do banco antes de criar sessões
+- [x] Evitar inserir IDs locais baseados em Date.now() em cashier_sessions e preservar a idempotência da sincronização
+- [x] Adicionar testes para resolver responsáveis locais e validar a integração de sessões/pedidos
+- [x] Validar TypeScript, Vitest, build e fluxo corrigido no preview
+
+
+## Correção Definitiva da Integração (14/08/2026)
+- [x] Rastrear por que o ID local 1783799792072 ainda chega ao INSERT no banco
+- [x] Garantir que `resolveLegacyResponsible` seja chamado para TODAS as sessões legadas, sem exceção
+- [x] Adicionar logs de depuração no backend para capturar o valor de `responsibleId` antes da inserção
+- [x] Validar o fluxo corrigido e explicar ao usuário a utilidade da integração

@@ -582,12 +582,8 @@ async function resolveLegacyResponsible(tx: any, legacySession: LegacySessionInp
     if (cpfRows[0]) return cpfRows[0].id;
   }
 
-  const safeResponsibleId = getSafeLegacyResponsibleId(legacySession.responsibleId);
-  if (safeResponsibleId) {
-    const officialRows = await tx.select().from(cashierResponsibles).where(eq(cashierResponsibles.id, safeResponsibleId)).limit(1);
-    if (officialRows[0]) return officialRows[0].id;
-  }
-
+  // Nunca confiar no número vindo do localStorage: ele pode ser Date.now() e não é uma chave oficial.
+  // A sessão legada é vinculada por identidade (nome/CPF) ou pelo usuário autenticado.
   const actorRows = await tx.select().from(cashierResponsibles).where(eq(cashierResponsibles.userId, actor.userId)).limit(1);
   if (actorRows[0]) return actorRows[0].id;
 
@@ -632,10 +628,23 @@ export async function syncLegacySessions(sessions: LegacySessionInput[], actor: 
 
       if (!officialSessionId) {
         const responsibleId = await resolveLegacyResponsible(tx, legacySession, actor) || fallbackResponsible?.id;
-        if (!responsibleId) continue;
+        const officialResponsibleId = getSafeLegacyResponsibleId(responsibleId);
+        if (!officialResponsibleId) {
+          console.warn("[LegacySync] Sessão ignorada: nenhum responsável oficial foi resolvido", {
+            legacySessionId: legacySession.id,
+            legacyResponsibleId: legacySession.responsibleId,
+            responsibleName: legacySession.responsibleName,
+          });
+          continue;
+        }
+        console.info("[LegacySync] Responsável resolvido", {
+          legacySessionId: legacySession.id,
+          legacyResponsibleId: legacySession.responsibleId,
+          officialResponsibleId,
+        });
         const openedAt = parseLegacyDate(legacySession.openedAt, new Date());
         const [sessionResult] = await tx.insert(cashierSessions).values({
-          responsibleId,
+          responsibleId: officialResponsibleId,
           openedAt,
           closedAt: legacySession.closedAt ? parseLegacyDate(legacySession.closedAt, openedAt) : null,
           initialBalance: "0",
