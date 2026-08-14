@@ -426,3 +426,10 @@
 - [x] Evitar duplicidade durante sincronização e preservar itens, cliente e pagamento
 - [x] Atualizar ações de pagamento e estorno para usar o ID oficial
 - [x] Criar testes de auditoria e migração e validar compilação e fluxo completo
+
+
+## Limpeza Operacional de Dados (13/07/2026)
+- [x] Executar limpeza transacional das tabelas de pedidos, itens de pedidos, histórico de estoque, auditorias de estorno, sessões de caixa, cardápios semanais, itens de cardápio, produtos e clientes (preservando apenas o cliente GERAL)
+- [x] Preservar intactos os usuários do sistema, responsáveis pelo caixa e o cliente padrão GERAL
+- [x] Garantir que o Relatório de Clientes e demais telas continuem operacionais após a limpeza
+- [x] Validar integridade e testes do sistema
