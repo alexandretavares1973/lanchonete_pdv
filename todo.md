@@ -455,3 +455,18 @@
 - [x] Garantir que `resolveLegacyResponsible` seja chamado para TODAS as sessões legadas, sem exceção
 - [x] Adicionar logs de depuração no backend para capturar o valor de `responsibleId` antes da inserção
 - [x] Validar o fluxo corrigido e explicar ao usuário a utilidade da integração
+
+
+## Análise da Sugestão de Migração de Pedidos Locais (14/08/2026)
+- [x] Avaliar os pontos levantados sobre `responsibleId` (evitar `Date.now()`)
+- [x] Avaliar a normalização de campos opcionais vazios (`""` para `null`/`undefined`)
+- [x] Avaliar o mapeamento de produtos e clientes por nome
+- [x] Concluir a avaliação técnica confirmando a exatidão e a utilidade da sugestão
+- [x] Avaliar a inclusão de um resumo detalhado na resposta da sincronização
+
+
+## Auditoria e Revisão do Estorno de Pedidos (14/08/2026)
+- [x] Inspecionar o código de cancelamento em `server/pdv.router.ts` e `server/db.ts`
+- [x] Verificar cada um dos 7 pontos levantados pelo usuário sobre devolução de estoque e menu
+- [x] Consultar o banco para verificar o estado dos pedidos cancelados e histórico de estoque
+- [x] Corrigir qualquer lacuna no estorno transacional e cobrir com testes
