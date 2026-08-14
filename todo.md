@@ -514,3 +514,12 @@
 - [x] Atualizar relatórios (`ReportsPage`, `CustomerReportPage`, `CustomerBehaviorAnalysisPage`) para calcular faturamento líquido considerando `refundedQuantity`
 - [x] Atualizar interface no diálogo de detalhes do pedido em `ReportsPage` para estorno item a item com quantidade customizável
 - [x] Cobrir com testes Vitest, compilar e salvar checkpoint
+
+
+## Auditoria e Correção de Produtos Legados (14/08/2026)
+- [x] Listar todos os produtos criados por importação legada (`description = "Produto importado de pedido legado"`) com total de unidades vendidas
+- [x] Verificar vinculo com `menu_items` para esses produtos
+- [x] Aguardar confirmação do usuário sobre quais produtos terão estoque controlado e suas quantidades físicas
+- [x] Ajustar `syncLegacySessions` para não criar produtos com `isUnlimited=true` automaticamente
+- [x] Remover função `cancelOrder` de `server/db.ts`
+- [x] Corrigir `refundedQuantity` nos 4 itens dos pedidos 150001 e 150002

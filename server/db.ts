@@ -397,111 +397,7 @@ export interface RefundAuditActor {
   loginMethod: string;
 }
 
-export async function cancelOrder(
-  orderId: number,
-  reason = "Estorno",
-  actor: RefundAuditActor = { username: "Sistema", loginMethod: "system", userId: null },
-) {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
 
-  return await db.transaction(async (tx) => {
-    const orderRows = await tx.select().from(orders).where(eq(orders.id, orderId)).limit(1);
-    const order = orderRows[0];
-    if (!order) {
-      return { ok: false as const, code: "NOT_FOUND" as const };
-    }
-    if (order.status !== "completed") {
-      return {
-        ok: false as const,
-        code: "INVALID_STATUS" as const,
-        status: order.status,
-      };
-    }
-
-    // Atualização condicional: em chamadas concorrentes apenas a primeira pode estornar.
-    const updateResult: any = await tx.update(orders)
-      .set({ status: "cancelled" })
-      .where(and(eq(orders.id, orderId), eq(orders.status, "completed")));
-    const affectedRows = updateResult?.affectedRows ?? updateResult?.rowsAffected ?? 1;
-    if (affectedRows === 0) {
-      return { ok: false as const, code: "ALREADY_PROCESSED" as const };
-    }
-
-    const items = await tx.select().from(orderItems).where(eq(orderItems.orderId, orderId));
-    const auditItems: Array<Record<string, unknown>> = [];
-    const sessionRows = await tx.select().from(cashierSessions)
-      .where(eq(cashierSessions.id, order.cashierSessionId))
-      .limit(1);
-    const session = sessionRows[0];
-    const menu = session
-      ? await getWeeklyMenuForCashierSession(session.responsibleId, session.openedAt)
-      : undefined;
-
-    for (const item of items) {
-      const productRows = await tx.select().from(products).where(eq(products.id, item.productId)).limit(1);
-      const product = productRows[0];
-      auditItems.push({
-        productId: item.productId,
-        productName: product?.name || `Produto #${item.productId}`,
-        quantity: item.quantity,
-        unitPrice: item.unitPrice,
-        subtotal: item.subtotal,
-      });
-
-      if (product && !product.isUnlimited && product.quantity !== null) {
-        const restoredQuantity = product.quantity + item.quantity;
-        await tx.update(products).set({
-          quantity: restoredQuantity,
-          isAvailable: restoredQuantity > 0,
-        }).where(eq(products.id, item.productId));
-      }
-
-      await tx.insert(stockHistory).values({
-        productId: item.productId,
-        orderId,
-        quantityChange: Math.abs(item.quantity),
-        reason: reason.trim() || "Estorno",
-      });
-
-      if (menu) {
-        const menuItemRows = await tx.select().from(menuItems).where(and(
-          eq(menuItems.menuId, menu.id),
-          eq(menuItems.productId, item.productId),
-        )).limit(1);
-        const menuItem = menuItemRows[0];
-        if (menuItem) {
-          const restoredMenuQuantity = menuItem.availableQuantity === null
-            ? null
-            : menuItem.availableQuantity + item.quantity;
-          await tx.update(menuItems).set({
-            availableQuantity: restoredMenuQuantity,
-            isAvailable: restoredMenuQuantity === null ? true : restoredMenuQuantity > 0,
-          }).where(eq(menuItems.id, menuItem.id));
-        }
-      }
-    }
-
-    const auditReason = reason.trim() || "Estorno";
-    const [auditResult] = await tx.insert(refundAudits).values({
-      orderId,
-      userId: actor.userId ?? null,
-      username: actor.username,
-      loginMethod: actor.loginMethod,
-      reason: auditReason,
-      orderTotal: order.totalAmount,
-      itemsSnapshot: JSON.stringify(auditItems),
-    });
-
-    const updatedOrderRows = await tx.select().from(orders).where(eq(orders.id, orderId)).limit(1);
-    return {
-      ok: true as const,
-      order: updatedOrderRows[0],
-      items,
-      auditId: Number((auditResult as any)?.insertId || 0),
-    };
-  });
-}
 
 export async function getRefundAuditsByOrderIds(orderIds: number[]) {
   const db = await getDb();
@@ -692,18 +588,10 @@ export async function syncLegacySessions(sessions: LegacySessionInput[], actor: 
           const subtotal = Number(legacyItem.subtotal ?? unitPrice * quantity);
           let productRows = await tx.select().from(products).where(eq(products.name, productName)).limit(1);
           let product = productRows[0];
+          // Se o produto não for encontrado, não criar com isUnlimited=true. Pular o item para evitar corromper o estoque.
           if (!product) {
-            const [productResult] = await tx.insert(products).values({
-              name: productName,
-              price: unitPrice.toFixed(2),
-              quantity: null,
-              isUnlimited: true,
-              isAvailable: true,
-              description: "Produto importado de pedido legado",
-            });
-            const productId = Number((productResult as any)?.insertId || 0);
-            productRows = await tx.select().from(products).where(eq(products.id, productId)).limit(1);
-            product = productRows[0];
+            console.warn(`[LegacySync] Produto não cadastrado encontrado na importação: "${productName}". Item ignorado.`);
+            continue;
           }
           if (product) resolvedItems.push({ productId: product.id, quantity, unitPrice, subtotal });
         }
