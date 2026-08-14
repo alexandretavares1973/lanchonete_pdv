@@ -156,6 +156,7 @@ export const orderItems = mysqlTable("order_items", {
   orderId: int("orderId").notNull(),
   productId: int("productId").notNull(),
   quantity: int("quantity").notNull(),
+  refundedQuantity: int("refundedQuantity").default(0).notNull(),
   unitPrice: decimal("unitPrice", { precision: 10, scale: 2 }).notNull(),
   subtotal: decimal("subtotal", { precision: 10, scale: 2 }).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),

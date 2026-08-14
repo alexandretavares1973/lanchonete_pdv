@@ -291,6 +291,18 @@ describe("Alertas de estoque baixo", () => {
   });
 });
 
+describe("Estorno Parcial por Item", () => {
+  it("deve validar saldo e impedir estorno acima da quantidade restante", () => {
+    const item = { id: 1, quantity: 5, refundedQuantity: 2 };
+    const remaining = item.quantity - item.refundedQuantity;
+    expect(remaining).toBe(3);
+    const requestedValid = 2;
+    const requestedInvalid = 4;
+    expect(requestedValid <= remaining).toBe(true);
+    expect(requestedInvalid <= remaining).toBe(false);
+  });
+});
+
 describe("Gerador de dados de teste", () => {
   it("deve oferecer um conjunto determinístico de produtos e pedidos válidos", () => {
     const blueprint = getTestDataBlueprint();

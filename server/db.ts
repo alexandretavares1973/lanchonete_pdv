@@ -1110,3 +1110,139 @@ export async function generateTestData(actor: TestDataActor): Promise<GeneratedT
     };
   });
 }
+
+export async function refundOrderItems(
+  orderId: number,
+  itemsToRefund: Array<{ orderItemId: number; quantity: number }>,
+  reason: string,
+  user: { id: number; username?: string | null; name?: string | null; email?: string | null }
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  return await db.transaction(async (tx) => {
+    const orderRows = await tx.select().from(orders).where(eq(orders.id, orderId)).limit(1);
+    const order = orderRows[0];
+    if (!order) {
+      return { ok: false as const, code: "NOT_FOUND" as const };
+    }
+    if (order.status !== "completed") {
+      return { ok: false as const, code: "INVALID_STATUS" as const, status: order.status };
+    }
+
+    const allOrderItems = await tx.select().from(orderItems).where(eq(orderItems.orderId, orderId));
+    const orderItemMap = new Map(allOrderItems.map((item) => [item.id, item]));
+
+    // Validar itens e quantidades
+    for (const reqItem of itemsToRefund) {
+      if (reqItem.quantity <= 0) continue;
+      const dbItem = orderItemMap.get(reqItem.orderItemId);
+      if (!dbItem || dbItem.orderId !== orderId) {
+        return { ok: false as const, code: "ITEM_NOT_FOUND" as const, orderItemId: reqItem.orderItemId };
+      }
+      const remainingRefundable = dbItem.quantity - dbItem.refundedQuantity;
+      if (reqItem.quantity > remainingRefundable) {
+        return {
+          ok: false as const,
+          code: "EXCEEDS_QUANTITY" as const,
+          orderItemId: reqItem.orderItemId,
+          maxAllowed: remainingRefundable,
+        };
+      }
+    }
+
+    const sessionRows = await tx.select().from(cashierSessions)
+      .where(eq(cashierSessions.id, order.cashierSessionId))
+      .limit(1);
+    const session = sessionRows[0];
+    const menu = session
+      ? await getWeeklyMenuForCashierSession(session.responsibleId, session.openedAt)
+      : undefined;
+
+    const auditedItems: Array<Record<string, unknown>> = [];
+
+    for (const reqItem of itemsToRefund) {
+      if (reqItem.quantity <= 0) continue;
+      const dbItem = orderItemMap.get(reqItem.orderItemId)!;
+      const productRows = await tx.select().from(products).where(eq(products.id, dbItem.productId)).limit(1);
+      const product = productRows[0];
+      const productName = product?.name || `Produto #${dbItem.productId}`;
+
+      // Atualizar refundedQuantity
+      const newRefunded = dbItem.refundedQuantity + reqItem.quantity;
+      await tx.update(orderItems)
+        .set({ refundedQuantity: newRefunded })
+        .where(eq(orderItems.id, dbItem.id));
+
+      auditedItems.push({
+        productId: dbItem.productId,
+        productName,
+        quantity: reqItem.quantity,
+        unitPrice: dbItem.unitPrice,
+        subtotal: Number(dbItem.unitPrice) * reqItem.quantity,
+      });
+
+      // Devolver estoque global se não for ilimitado
+      if (product && !product.isUnlimited && product.quantity !== null) {
+        const restoredQuantity = product.quantity + reqItem.quantity;
+        await tx.update(products).set({
+          quantity: restoredQuantity,
+          isAvailable: restoredQuantity > 0,
+        }).where(eq(products.id, dbItem.productId));
+      }
+
+      // Registrar histórico de estoque
+      await tx.insert(stockHistory).values({
+        productId: dbItem.productId,
+        orderId,
+        quantityChange: reqItem.quantity,
+        reason: reason.trim() || "Estorno parcial",
+      });
+
+      // Devolver ao cardápio semanal se aplicável
+      if (menu) {
+        const menuItemRows = await tx.select().from(menuItems).where(and(
+          eq(menuItems.menuId, menu.id),
+          eq(menuItems.productId, dbItem.productId),
+        )).limit(1);
+        const menuItem = menuItemRows[0];
+        if (menuItem) {
+          const restoredMenuQuantity = menuItem.availableQuantity === null
+            ? null
+            : menuItem.availableQuantity + reqItem.quantity;
+          await tx.update(menuItems).set({
+            availableQuantity: restoredMenuQuantity,
+            isAvailable: restoredMenuQuantity === null ? true : restoredMenuQuantity > 0,
+          }).where(eq(menuItems.id, menuItem.id));
+        }
+      }
+    }
+
+    // Verificar se todos os itens foram 100% estornados
+    const refreshedOrderItems = await tx.select().from(orderItems).where(eq(orderItems.orderId, orderId));
+    const allFullyRefunded = refreshedOrderItems.every((item) => item.refundedQuantity >= item.quantity);
+    const newStatus = allFullyRefunded ? "cancelled" : "completed";
+
+    await tx.update(orders)
+      .set({ status: newStatus })
+      .where(eq(orders.id, orderId));
+
+    // Registrar auditoria se houve itens estornados
+    if (auditedItems.length > 0) {
+      const totalRefundedAmount = auditedItems.reduce((sum, i) => sum + Number(i.subtotal), 0);
+      const auditReason = reason.trim() || (allFullyRefunded ? "Estorno total" : "Estorno parcial");
+      const userName = user.name || user.username || user.email || `Usuário #${user.id}`;
+      await tx.insert(refundAudits).values({
+        orderId,
+        userId: user.id,
+        username: userName,
+        loginMethod: "local_or_oauth",
+        reason: auditReason,
+        orderTotal: String(totalRefundedAmount),
+        itemsSnapshot: JSON.stringify(auditedItems),
+      });
+    }
+
+    return { ok: true as const, status: newStatus, refundedItemsCount: auditedItems.length };
+  });
+}

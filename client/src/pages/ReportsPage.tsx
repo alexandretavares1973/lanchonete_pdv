@@ -31,6 +31,7 @@ interface OrderItem {
   productId?: number;
   productName: string;
   quantity: number;
+  refundedQuantity?: number;
   price?: number;
   unitPrice?: number;
   subtotal: number;
@@ -80,6 +81,23 @@ export default function ReportsPage() {
   } | null>(null);
   const [orderToCancel, setOrderToCancel] = useState<Order | null>(null);
   const [cancelReason, setCancelReason] = useState("");
+  const [refundQuantities, setRefundQuantities] = useState<Record<string, number>>({});
+  const refundItemsMutation = trpc.pdv.orders.refundItems.useMutation({
+    onSuccess: async () => {
+      await Promise.all([
+        utils.pdv.orders.getBySession.invalidate(),
+        utils.pdv.products.list.invalidate(),
+        utils.pdv.menu.getItems.invalidate(),
+      ]);
+      toast.success("✅ Estorno parcial realizado com sucesso! Estoque devolvido.");
+      setOrderToCancel(null);
+      setCancelReason("");
+      setRefundQuantities({});
+    },
+    onError: (err) => {
+      toast.error(`❌ Erro ao estornar itens: ${err.message}`);
+    },
+  });
   const [selectedOrderIds, setSelectedOrderIds] = useState<number[]>([]);
   const legacySyncAttempted = useRef(false);
   const utils = trpc.useUtils();
@@ -306,6 +324,8 @@ export default function ReportsPage() {
       order.items.forEach(item => {
         const key = item.productName;
         const unitPrice = item.unitPrice || item.price || 0;
+        const netQuantity = item.quantity - (item.refundedQuantity || 0);
+        if (netQuantity <= 0) return;
         
         if (!productSales[key]) {
           productSales[key] = {
@@ -315,12 +335,12 @@ export default function ReportsPage() {
             subtotal: 0,
           };
         }
-        productSales[key].quantity += item.quantity;
-        productSales[key].subtotal += item.subtotal;
+        productSales[key].quantity += netQuantity;
+        productSales[key].subtotal += netQuantity * unitPrice;
       });
     });
 
-    // Totais por forma de pagamento
+    // Totais por forma de pagamento considerando o valor líquido estornável
     const paymentTotals = {
       pix: 0,
       card: 0,
@@ -328,17 +348,29 @@ export default function ReportsPage() {
     };
 
     orders.forEach(order => {
-      paymentTotals[order.paymentMethod] += order.total;
+      const orderNetTotal = order.items.reduce((sum, item) => {
+        const netQty = item.quantity - (item.refundedQuantity || 0);
+        const uPrice = item.unitPrice || item.price || 0;
+        return sum + (netQty * uPrice);
+      }, 0);
+      paymentTotals[order.paymentMethod] += orderNetTotal;
     });
 
-    const grandTotal = orders.reduce((sum, order) => sum + order.total, 0);
+    const grandTotal = orders.reduce((sum, order) => {
+      const orderNetTotal = order.items.reduce((itemSum, item) => {
+        const netQty = item.quantity - (item.refundedQuantity || 0);
+        const uPrice = item.unitPrice || item.price || 0;
+        return itemSum + (netQty * uPrice);
+      }, 0);
+      return sum + orderNetTotal;
+    }, 0);
 
     return {
       menu,
       productSales,
       paymentTotals,
       grandTotal,
-      totalItems: orders.reduce((sum, order) => sum + order.items.reduce((itemSum, item) => itemSum + item.quantity, 0), 0),
+      totalItems: orders.reduce((sum, order) => sum + order.items.reduce((itemSum, item) => itemSum + (item.quantity - (item.refundedQuantity || 0)), 0), 0),
       ordersCount: orders.length,
     };
   };
@@ -901,36 +933,109 @@ export default function ReportsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Confirmation for cancellation */}
-      <Dialog open={Boolean(orderToCancel)} onOpenChange={(open) => { if (!open) { setOrderToCancel(null); setCancelReason(""); } }}>
-        <DialogContent className="max-w-lg">
+      {/* Confirmation for item-level refund */}
+      <Dialog open={Boolean(orderToCancel)} onOpenChange={(open) => { if (!open) { setOrderToCancel(null); setCancelReason(""); setRefundQuantities({}); } }}>
+        <DialogContent className="max-w-xl">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-destructive"><AlertTriangle className="h-5 w-5" /> Confirmar estorno da venda</DialogTitle>
+            <DialogTitle className="flex items-center gap-2 text-destructive"><AlertTriangle className="h-5 w-5" /> Estornar itens do pedido #{orderToCancel?.id}</DialogTitle>
           </DialogHeader>
           {orderToCancel && (
             <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">O pedido <strong>#{orderToCancel.id}</strong> será cancelado. O total não entrará mais nos relatórios e o estoque será devolvido.</p>
-              <div className="rounded-lg border border-border bg-muted/40 p-3 text-sm">
-                <div className="mb-2 flex items-center justify-between font-semibold">
-                  <span>Itens do pedido</span>
-                  <span>R$ {Number(orderToCancel.total || 0).toFixed(2)}</span>
+              <p className="text-sm text-muted-foreground">Informe a quantidade a estornar para cada item. O estoque global e do cardápio serão devolvidos proporcionalmente.</p>
+              <div className="rounded-lg border border-border bg-muted/40 p-3 text-sm space-y-3 max-h-60 overflow-y-auto">
+                <div className="font-semibold pb-1 border-b border-border flex justify-between">
+                  <span>Produto</span>
+                  <span>Qtd / Restante</span>
+                  <span>Estornar</span>
                 </div>
-                {orderToCancel.items.map((item, index) => (
-                  <div key={`${orderToCancel.id}-cancel-${item.productId ?? item.id ?? index}`} className="flex justify-between py-1 text-muted-foreground">
-                    <span>{item.quantity}× {item.productName}</span>
-                    <span>R$ {Number(item.subtotal || 0).toFixed(2)}</span>
-                  </div>
-                ))}
+                {orderToCancel.items.map((item, index) => {
+                  const itemId = item.id ?? item.productId ?? index;
+                  const refunded = item.refundedQuantity || 0;
+                  const maxRefundable = item.quantity - refunded;
+                  const isFullyRefunded = maxRefundable <= 0;
+                  const currentRefundQty = refundQuantities[String(itemId)] ?? 0;
+
+                  return (
+                    <div key={`${orderToCancel.id}-refund-${itemId}`} className={`flex items-center justify-between py-2 border-b border-border/60 last:border-0 ${isFullyRefunded ? "opacity-60 line-through" : ""}`}>
+                      <div className="flex-1 pr-2">
+                        <div className="font-medium text-foreground">{item.productName}</div>
+                        <div className="text-xs text-muted-foreground">Vendido: {item.quantity} | Já estornado: {refunded}</div>
+                      </div>
+                      <div className="text-xs font-semibold px-2 text-muted-foreground">
+                        Restante: {maxRefundable}
+                      </div>
+                      <div className="w-24">
+                        {isFullyRefunded ? (
+                          <span className="text-xs font-bold text-destructive">Totalmente estornado</span>
+                        ) : (
+                          <Input
+                            type="number"
+                            min={0}
+                            max={maxRefundable}
+                            value={currentRefundQty}
+                            onChange={(e) => {
+                              const val = Math.max(0, Math.min(maxRefundable, parseInt(e.target.value || "0", 10)));
+                              setRefundQuantities({ ...refundQuantities, [String(itemId)]: val });
+                            }}
+                            className="h-8 text-center"
+                          />
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
+
+              <div className="flex gap-2 justify-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const all: Record<string, number> = {};
+                    orderToCancel.items.forEach((item, index) => {
+                      const itemId = item.id ?? item.productId ?? index;
+                      const maxR = item.quantity - (item.refundedQuantity || 0);
+                      if (maxR > 0) all[String(itemId)] = maxR;
+                    });
+                    setRefundQuantities(all);
+                  }}
+                >
+                  Estornar pedido inteiro
+                </Button>
+              </div>
+
               <div className="space-y-2">
                 <label htmlFor="cancel-reason" className="text-sm font-medium">Motivo (opcional)</label>
-                <Input id="cancel-reason" value={cancelReason} onChange={(event) => setCancelReason(event.target.value)} placeholder="Ex.: pagamento lançado incorretamente" maxLength={255} disabled={cancelOrderMutation.isPending} />
+                <Input id="cancel-reason" value={cancelReason} onChange={(event) => setCancelReason(event.target.value)} placeholder="Ex.: cliente devolveu o produto" maxLength={255} disabled={refundItemsMutation.isPending} />
               </div>
               <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => { setOrderToCancel(null); setCancelReason(""); }} disabled={cancelOrderMutation.isPending}>Voltar</Button>
-                <Button variant="destructive" onClick={handleConfirmCancellation} disabled={cancelOrderMutation.isPending} className="gap-2">
-                  {cancelOrderMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-                  Confirmar estorno
+                <Button variant="outline" onClick={() => { setOrderToCancel(null); setCancelReason(""); setRefundQuantities({}); }} disabled={refundItemsMutation.isPending}>Cancelar</Button>
+                <Button
+                  variant="destructive"
+                  onClick={() => {
+                    const itemsPayload = orderToCancel.items.map((item, index) => {
+                      const itemId = Number(item.id ?? index);
+                      const qty = refundQuantities[String(item.id ?? index)] ?? 0;
+                      return { orderItemId: itemId, quantity: qty };
+                    }).filter((i) => i.quantity > 0);
+
+                    if (itemsPayload.length === 0) {
+                      toast.error("Informe ao menos uma quantidade para estornar.");
+                      return;
+                    }
+
+                    refundItemsMutation.mutate({
+                      orderId: orderToCancel.id,
+                      items: itemsPayload,
+                      reason: cancelReason || "Estorno parcial",
+                    });
+                  }}
+                  disabled={refundItemsMutation.isPending}
+                  className="gap-2"
+                >
+                  {refundItemsMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+                  Confirmar Estorno de Itens
                 </Button>
               </div>
             </div>

@@ -200,17 +200,69 @@ export const pdvRouter = router({
         return await db.updateOrderPaymentMethod(input.orderId, input.paymentMethod);
       }),
 
+    refundItems: protectedProcedure
+      .input(z.object({
+        orderId: z.number().int().positive(),
+        items: z.array(z.object({
+          orderItemId: z.number().int().positive(),
+          quantity: z.number().int().nonnegative(),
+        })),
+        reason: z.string().trim().max(255).optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const result = await db.refundOrderItems(
+          input.orderId,
+          input.items,
+          input.reason || "Estorno parcial",
+          ctx.user
+        );
+        if (!result.ok) {
+          if (result.code === "NOT_FOUND") {
+            throw new TRPCError({ code: "NOT_FOUND", message: "Pedido não encontrado." });
+          }
+          if (result.code === "INVALID_STATUS") {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: `Só é possível estornar pedidos concluídos. Status atual: ${result.status}.`,
+            });
+          }
+          if (result.code === "ITEM_NOT_FOUND") {
+            throw new TRPCError({ code: "BAD_REQUEST", message: "Item de pedido inválido ou não pertence a este pedido." });
+          }
+          if (result.code === "EXCEEDS_QUANTITY") {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: `A quantidade a estornar excede o saldo disponível para o item.`,
+            });
+          }
+          throw new TRPCError({ code: "CONFLICT", message: "O pedido já foi processado por outra operação." });
+        }
+        return result;
+      }),
+
     cancel: protectedProcedure
       .input(z.object({
         orderId: z.number().int().positive(),
         reason: z.string().trim().max(255).optional(),
       }))
       .mutation(async ({ input, ctx }) => {
-        const result = await db.cancelOrder(input.orderId, input.reason || "Estorno", {
-          userId: ctx.user.id,
-          username: ctx.user.name || ctx.user.email || `Usuário #${ctx.user.id}`,
-          loginMethod: ctx.user.loginMethod || "oauth",
-        });
+        // Estorno do pedido inteiro via refundItems (estornando tudo que ainda falta)
+        const items = await db.getOrderItemsByOrderId(input.orderId);
+        const itemsToRefund = items.map((item) => ({
+          orderItemId: item.id,
+          quantity: item.quantity - (item.refundedQuantity || 0),
+        })).filter((i) => i.quantity > 0);
+
+        if (itemsToRefund.length === 0) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Este pedido já está totalmente estornado." });
+        }
+
+        const result = await db.refundOrderItems(
+          input.orderId,
+          itemsToRefund,
+          input.reason || "Estorno",
+          ctx.user
+        );
         if (!result.ok) {
           if (result.code === "NOT_FOUND") {
             throw new TRPCError({ code: "NOT_FOUND", message: "Pedido não encontrado." });
@@ -223,7 +275,7 @@ export const pdvRouter = router({
           }
           throw new TRPCError({ code: "CONFLICT", message: "O pedido já foi processado por outra operação." });
         }
-        return result;
+        return { ok: true, status: result.status };
       }),
 
     getRefundAudits: protectedProcedure

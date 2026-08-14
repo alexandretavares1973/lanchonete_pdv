@@ -1,0 +1,1 @@
+ALTER TABLE `order_items` ADD `refundedQuantity` int DEFAULT 0 NOT NULL;

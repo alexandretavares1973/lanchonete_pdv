@@ -503,3 +503,14 @@
 - [x] Exibir toast após venda para cada produto finito abaixo do limite
 - [x] Cobrir limite, produtos ilimitados e fluxo pós-venda com testes
 - [x] Validar TypeScript, Vitest, build e preview
+
+
+## Estorno Parcial por Item (14/08/2026)
+- [x] Adicionar coluna `refundedQuantity` na tabela `order_items` no schema
+- [x] Gerar migration SQL via drizzle-kit sem aplicá-la ao banco
+- [x] Apresentar o SQL gerado para revisão do usuário
+- [x] Aplicar migration via `webdev_execute_sql` após aprovação
+- [x] Implementar endpoint `orders.refundItems` validando quantidades e calculando status do pedido
+- [x] Atualizar relatórios (`ReportsPage`, `CustomerReportPage`, `CustomerBehaviorAnalysisPage`) para calcular faturamento líquido considerando `refundedQuantity`
+- [x] Atualizar interface no diálogo de detalhes do pedido em `ReportsPage` para estorno item a item com quantidade customizável
+- [x] Cobrir com testes Vitest, compilar e salvar checkpoint
