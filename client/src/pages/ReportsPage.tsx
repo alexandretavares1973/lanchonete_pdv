@@ -138,7 +138,7 @@ export default function ReportsPage() {
       ...menu,
       items: menu.items.map((item) => {
         const restored = productIds.get(String(item.id));
-        if (!restored || item.isUnlimited || item.quantity === null) return item;
+        if (!restored || item.quantity === null) return item;
         const quantity = item.quantity + restored;
         return { ...item, quantity, isAvailable: quantity > 0 };
       }),

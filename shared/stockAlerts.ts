@@ -7,7 +7,7 @@ export type StockAlertProduct = {
 };
 
 export function isLowGlobalStock(product: StockAlertProduct, quantity = product.quantity): boolean {
-  return !product.isUnlimited && quantity !== null && Number(quantity) < LOW_STOCK_THRESHOLD;
+  return quantity !== null && Number(quantity) < LOW_STOCK_THRESHOLD;
 }
 
 export function getLowStockMessage(productName: string): string {

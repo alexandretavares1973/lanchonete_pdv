@@ -21,8 +21,7 @@ export const pdvRouter = router({
         z.object({
           name: z.string(),
           price: z.number(),
-          quantity: z.number().nullable(),
-          isUnlimited: z.boolean().default(false),
+          quantity: z.number().min(0),
           description: z.string().optional(),
         })
       )
@@ -31,7 +30,7 @@ export const pdvRouter = router({
           name: input.name,
           price: input.price,
           quantity: input.quantity,
-          isUnlimited: input.isUnlimited,
+          isUnlimited: false,
           description: input.description,
           isAvailable: true,
         });
@@ -43,14 +42,21 @@ export const pdvRouter = router({
           id: z.number(),
           name: z.string().optional(),
           price: z.number().optional(),
-          quantity: z.number().nullable().optional(),
-          isUnlimited: z.boolean().optional(),
+          quantity: z.number().min(0).optional(),
+          isUnlimited: z.boolean().optional(), // mantido no input mas será ignorado se for true
           isAvailable: z.boolean().optional(),
         })
       )
       .mutation(async ({ input }) => {
-        const { id, ...data } = input;
-        return await db.updateProduct(id, data);
+        const { id, isUnlimited, ...data } = input;
+        
+        // Ignorar/rejeitar tentativas de setar isUnlimited=true
+        const updateData: any = { ...data };
+        if (isUnlimited !== undefined) {
+          updateData.isUnlimited = false; // Forçar false ou ignorar o true
+        }
+        
+        return await db.updateProduct(id, updateData);
       }),
   }),
 
@@ -158,14 +164,18 @@ export const pdvRouter = router({
             reason: "Venda",
           });
 
-          // Atualizar quantidade do produto
+          // Atualizar quantidade do produto com fallback seguro
           const product = await db.getProductById(item.productId);
-          if (product && !product.isUnlimited && product.quantity) {
-            const newQuantity = Math.max(0, product.quantity - item.quantity);
-            await db.updateProduct(item.productId, {
-              quantity: newQuantity,
-              isAvailable: newQuantity > 0,
-            });
+          if (product) {
+            if (product.isUnlimited || product.quantity === null) {
+              console.warn(`[StockWarning] Produto ID ${item.productId} ("${product.name}") possui estoque ilimitado ou nulo. Atualização de estoque ignorada.`);
+            } else {
+              const newQuantity = Math.max(0, product.quantity - item.quantity);
+              await db.updateProduct(item.productId, {
+                quantity: newQuantity,
+                isAvailable: newQuantity > 0,
+              });
+            }
           }
         }
 

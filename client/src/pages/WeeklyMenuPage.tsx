@@ -118,14 +118,14 @@ export default function WeeklyMenuPage() {
     }
 
     const price = parseFloat(productForm.price);
-    const quantity = productForm.isUnlimited ? null : (productForm.quantity ? parseInt(productForm.quantity) : 0);
+    const quantity = productForm.quantity ? parseInt(productForm.quantity) : 0;
 
     const newProduct: any = {
       id: `${Date.now()}-${Math.random()}`,
       productName: productForm.productName,
       price,
       quantity,
-      isUnlimited: productForm.isUnlimited,
+      isUnlimited: false,
     };
 
     const updated = menus.map((menu: any) => {
@@ -662,23 +662,9 @@ export default function WeeklyMenuPage() {
                         value={productForm.quantity}
                         onChange={(e) => setProductForm({ ...productForm, quantity: e.target.value })}
                         placeholder="0"
-                        disabled={productForm.isUnlimited}
                         className="w-full"
                       />
                     </div>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      id="unlimited"
-                      checked={productForm.isUnlimited}
-                      onChange={(e) => setProductForm({ ...productForm, isUnlimited: e.target.checked })}
-                      className="w-4 h-4"
-                    />
-                    <label htmlFor="unlimited" className="text-sm text-foreground">
-                      Quantidade ilimitada
-                    </label>
                   </div>
 
                   <Button

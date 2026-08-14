@@ -1070,13 +1070,17 @@ export async function refundOrderItems(
         subtotal: Number(dbItem.unitPrice) * reqItem.quantity,
       });
 
-      // Devolver estoque global se não for ilimitado
-      if (product && !product.isUnlimited && product.quantity !== null) {
-        const restoredQuantity = product.quantity + reqItem.quantity;
-        await tx.update(products).set({
-          quantity: restoredQuantity,
-          isAvailable: restoredQuantity > 0,
-        }).where(eq(products.id, dbItem.productId));
+      // Devolver estoque global com fallback seguro
+      if (product) {
+        if (product.isUnlimited || product.quantity === null) {
+          console.warn(`[StockWarning] Produto ID ${dbItem.productId} ("${productName}") possui estoque ilimitado ou nulo no estorno. Devolução de estoque ignorada.`);
+        } else {
+          const restoredQuantity = product.quantity + reqItem.quantity;
+          await tx.update(products).set({
+            quantity: restoredQuantity,
+            isAvailable: restoredQuantity > 0,
+          }).where(eq(products.id, dbItem.productId));
+        }
       }
 
       // Registrar histórico de estoque

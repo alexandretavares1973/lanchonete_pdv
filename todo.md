@@ -523,3 +523,14 @@
 - [x] Ajustar `syncLegacySessions` para não criar produtos com `isUnlimited=true` automaticamente
 - [x] Remover função `cancelOrder` de `server/db.ts`
 - [x] Corrigir `refundedQuantity` nos 4 itens dos pedidos 150001 e 150002
+
+
+## Eliminação de Produtos Ilimitados (14/08/2026)
+- [x] Listar todos os produtos com `isUnlimited = true` e total de vendas acumuladas
+- [x] Aguardar decisão do usuário sobre as quantidades físicas para cada um
+- [x] Atualizar `products.create` para exigir quantidade numérica obrigatória e remover `isUnlimited`
+- [x] Atualizar `products.update` para rejeitar tentativas de definir `isUnlimited = true`
+- [x] Ajustar `syncLegacySessions` para pular produtos desconhecidos e reportar resumo
+- [x] Remover restrição `!product.isUnlimited` em baixas/estornos, mantendo fallback seguro
+- [x] Atualizar `ProductsPage`, `WeeklyMenuPage` e `POSPage` removendo menções a "Ilimitado"
+- [x] Cobrir com testes Vitest, compilar e salvar checkpoint

@@ -165,7 +165,7 @@ export default function POSPage() {
     }
 
     // Validar quantidade disponível
-    if (!product.isUnlimited && product.quantity !== null && product.quantity <= 0) {
+    if (product.quantity !== null && product.quantity <= 0) {
       toast.error("❌ Produto sem estoque!");
       return;
     }
@@ -174,7 +174,7 @@ export default function POSPage() {
     
     if (existingItem) {
       // Validar quantidade máxima
-      if (!product.isUnlimited && product.quantity !== null) {
+      if (product.quantity !== null) {
         // Calcular quantidade original do produto (quantidade atual + quantidade no carrinho)
         const originalQuantity = product.quantity + existingItem.quantity;
         if (existingItem.quantity >= originalQuantity) {
@@ -207,7 +207,7 @@ export default function POSPage() {
     }
 
     // Atualizar estoque no cardápio
-    if (!product.isUnlimited && product.quantity !== null) {
+    if (product.quantity !== null) {
       const updatedMenus = menus.map(menu =>
         menu.id === selectedMenu.id
           ? {
@@ -221,25 +221,6 @@ export default function POSPage() {
           : menu
       );
       setMenus(updatedMenus);
-      localStorage.setItem("weeklyMenus", JSON.stringify(updatedMenus));
-    }
-
-    // Atualizar estoque no cardápio
-    if (!product.isUnlimited && product.quantity !== null) {
-      const updatedMenus = menus.map(menu =>
-        menu.id === selectedMenu.id
-          ? {
-              ...menu,
-              items: menu.items.map((item: MenuItem) =>
-                item.id === product.id
-                  ? { ...item, quantity: item.quantity !== null ? item.quantity - 1 : 0 }
-                  : item
-              ),
-            }
-          : menu
-      );
-      setMenus(updatedMenus);
-      // Atualizar selectedMenu com o novo cardápio
       const updatedSelectedMenu = updatedMenus.find(m => m.id === selectedMenu.id);
       if (updatedSelectedMenu) {
         setSelectedMenu(updatedSelectedMenu);
@@ -257,7 +238,7 @@ export default function POSPage() {
     // Devolver estoque ao remover do carrinho
     if (removedItem && selectedMenu) {
       const product = selectedMenu.items.find((p: MenuItem) => p.id === productId);
-      if (product && !product.isUnlimited) {
+      if (product) {
         const updatedMenus = menus.map(menu =>
           menu.id === selectedMenu.id
             ? {
@@ -293,13 +274,13 @@ export default function POSPage() {
     const product = selectedMenu?.items.find((p: MenuItem) => p.id === productId);
 
     if (currentItem && newQuantity > currentItem.quantity) {
-      if (product && !product.isUnlimited && product.quantity !== null && product.quantity <= 0) {
+      if (product && product.quantity !== null && product.quantity <= 0) {
         toast.error("❌ Quantidade máxima atingida!");
         return;
       }
     }
 
-    if (currentItem && product && !product.isUnlimited) {
+    if (currentItem && product) {
       const quantityDifference = currentItem.quantity - newQuantity;
       const updatedMenus = menus.map(menu =>
         menu.id === selectedMenu.id
@@ -376,7 +357,7 @@ export default function POSPage() {
       const globalProduct = globalProducts.find((product) =>
         product.name.trim().toLocaleLowerCase() === item.productName.trim().toLocaleLowerCase()
       );
-      if (!globalProduct || globalProduct.isUnlimited || globalProduct.quantity === null) return [];
+      if (!globalProduct || globalProduct.quantity === null) return [];
       const remainingQuantity = Number(globalProduct.quantity) - item.quantity;
       return isLowGlobalStock(globalProduct, remainingQuantity)
         ? [{ productName: globalProduct.name }]
@@ -757,7 +738,7 @@ export default function POSPage() {
                             <span className="text-primary font-bold">R$ {product.price.toFixed(2)}</span>
                           </div>
                           <p className="text-xs text-muted-foreground mb-3">
-                            {product.isUnlimited ? "Ilimitado" : `${product.quantity} disponível(is)`}
+                            {product.quantity} disponível(is)
                           </p>
                           {lowGlobalStock && globalProduct && (
                             <p className="mb-3 rounded-md border border-amber-300 bg-amber-50 p-2 text-xs font-semibold text-amber-900" role="alert">
@@ -767,7 +748,7 @@ export default function POSPage() {
                           <Button
                             onClick={() => handleAddToCart(product)}
                             className="w-full bg-gradient-to-r from-primary to-secondary text-white"
-                            disabled={!product.isUnlimited && product.quantity !== null && product.quantity <= 0}
+                            disabled={product.quantity !== null && product.quantity <= 0}
                           >
                             Adicionar
                           </Button>

@@ -278,9 +278,9 @@ describe("Reset do novo pedido no POS", () => {
 describe("Alertas de estoque baixo", () => {
   it("deve alertar somente quando o estoque global for menor que 5", () => {
     expect(LOW_STOCK_THRESHOLD).toBe(5);
-    expect(isLowGlobalStock({ name: "Hambúrguer", quantity: 4, isUnlimited: false })).toBe(true);
-    expect(isLowGlobalStock({ name: "Hambúrguer", quantity: 5, isUnlimited: false })).toBe(false);
-    expect(isLowGlobalStock({ name: "Hambúrguer", quantity: 0, isUnlimited: true })).toBe(false);
+    expect(isLowGlobalStock({ name: "Hambúrguer", quantity: 4 })).toBe(true);
+    expect(isLowGlobalStock({ name: "Hambúrguer", quantity: 5 })).toBe(false);
+    expect(isLowGlobalStock({ name: "Hambúrguer", quantity: 0 })).toBe(true);
   });
 
   it("deve considerar o desconto da venda ao avaliar o estoque restante", () => {

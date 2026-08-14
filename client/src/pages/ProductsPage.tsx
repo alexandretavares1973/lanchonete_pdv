@@ -43,15 +43,15 @@ export default function ProductsPage() {
                       <h2 className="font-semibold text-foreground truncate">{product.name}</h2>
                       <p className="text-sm text-muted-foreground mt-1">R$ {Number(product.price).toFixed(2)}</p>
                     </div>
-                    <Badge variant={product.isUnlimited ? "secondary" : product.isAvailable ? "default" : "outline"}>
-                      {product.isUnlimited ? "Ilimitado" : product.isAvailable ? "Disponível" : "Indisponível"}
+                    <Badge variant={product.isAvailable ? "default" : "outline"}>
+                      {product.isAvailable ? "Disponível" : "Indisponível"}
                     </Badge>
                   </div>
 
                   <div className="mt-4 flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">Estoque global</span>
                     <span className="font-bold text-foreground">
-                      {product.isUnlimited ? "Sem limite" : `${product.quantity ?? 0} unidade(s)`}
+                      {product.quantity ?? 0} unidade(s)
                     </span>
                   </div>
 
