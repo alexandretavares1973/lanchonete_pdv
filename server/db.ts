@@ -534,9 +534,25 @@ export interface LegacyOrderInput {
 export interface LegacySessionInput {
   id: string | number;
   responsibleId?: number | null;
+  responsibleName?: string;
+  responsibleCpf?: string;
+  responsiblePhone?: string;
   openedAt?: string;
   closedAt?: string | null;
   orders: LegacyOrderInput[];
+}
+
+export interface LegacySyncActor {
+  userId: number;
+  username: string;
+}
+
+const MYSQL_INT_MAX = 2147483647;
+
+export function getSafeLegacyResponsibleId(value: unknown): number | null {
+  const numericValue = typeof value === "number" ? value : Number(value);
+  if (!Number.isInteger(numericValue) || numericValue <= 0 || numericValue > MYSQL_INT_MAX) return null;
+  return numericValue;
 }
 
 export interface LegacySyncResult {
@@ -553,7 +569,41 @@ function parseLegacyDate(value: string | undefined, fallback: Date): Date {
   return Number.isNaN(parsed.getTime()) ? fallback : parsed;
 }
 
-export async function syncLegacySessions(sessions: LegacySessionInput[]): Promise<LegacySyncResult> {
+async function resolveLegacyResponsible(tx: any, legacySession: LegacySessionInput, actor: LegacySyncActor): Promise<number | null> {
+  const responsibleName = legacySession.responsibleName?.trim() || null;
+  if (responsibleName) {
+    const nameRows = await tx.select().from(cashierResponsibles).where(eq(cashierResponsibles.name, responsibleName)).limit(1);
+    if (nameRows[0]) return nameRows[0].id;
+  }
+
+  const cpf = legacySession.responsibleCpf?.trim() || null;
+  if (cpf) {
+    const cpfRows = await tx.select().from(cashierResponsibles).where(eq(cashierResponsibles.cpf, cpf)).limit(1);
+    if (cpfRows[0]) return cpfRows[0].id;
+  }
+
+  const safeResponsibleId = getSafeLegacyResponsibleId(legacySession.responsibleId);
+  if (safeResponsibleId) {
+    const officialRows = await tx.select().from(cashierResponsibles).where(eq(cashierResponsibles.id, safeResponsibleId)).limit(1);
+    if (officialRows[0]) return officialRows[0].id;
+  }
+
+  const actorRows = await tx.select().from(cashierResponsibles).where(eq(cashierResponsibles.userId, actor.userId)).limit(1);
+  if (actorRows[0]) return actorRows[0].id;
+
+  const finalResponsibleName = responsibleName || actor.username.trim() || "Operador importado";
+  const [responsibleResult] = await tx.insert(cashierResponsibles).values({
+    userId: actor.userId,
+    name: finalResponsibleName,
+    cpf,
+    phone: legacySession.responsiblePhone?.trim() || null,
+  });
+  const officialId = getSafeLegacyResponsibleId((responsibleResult as any)?.insertId);
+  if (!officialId) return null;
+  return officialId;
+}
+
+export async function syncLegacySessions(sessions: LegacySessionInput[], actor: LegacySyncActor): Promise<LegacySyncResult> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
@@ -581,7 +631,7 @@ export async function syncLegacySessions(sessions: LegacySessionInput[]): Promis
       }
 
       if (!officialSessionId) {
-        const responsibleId = legacySession.responsibleId || fallbackResponsible?.id;
+        const responsibleId = await resolveLegacyResponsible(tx, legacySession, actor) || fallbackResponsible?.id;
         if (!responsibleId) continue;
         const openedAt = parseLegacyDate(legacySession.openedAt, new Date());
         const [sessionResult] = await tx.insert(cashierSessions).values({

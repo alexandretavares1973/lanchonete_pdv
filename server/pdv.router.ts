@@ -237,6 +237,9 @@ export const pdvRouter = router({
         sessions: z.array(z.object({
           id: z.union([z.string(), z.number()]),
           responsibleId: z.number().nullable().optional(),
+          responsibleName: z.string().optional(),
+          responsibleCpf: z.string().optional(),
+          responsiblePhone: z.string().optional(),
           openedAt: z.string().optional(),
           closedAt: z.string().nullable().optional(),
           orders: z.array(z.object({
@@ -259,8 +262,12 @@ export const pdvRouter = router({
           })),
         })),
       }))
-      .mutation(async ({ input }) => {
-        return await db.syncLegacySessions(input.sessions);
+      .mutation(async ({ input, ctx }) => {
+        const username = ctx.user.name || ctx.user.email || `admin-${ctx.user.id}`;
+        return await db.syncLegacySessions(input.sessions, {
+          userId: ctx.user.id,
+          username,
+        });
       }),
   }),
 

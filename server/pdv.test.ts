@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { getTestDataBlueprint } from "./db";
+import { getSafeLegacyResponsibleId, getTestDataBlueprint } from "./db";
 
 describe("PDV System", () => {
   describe("Cart Calculations", () => {
@@ -279,6 +279,22 @@ describe("Gerador de dados de teste", () => {
 
     expect(total).toBeCloseTo(215.6, 2);
     expect(itemCount).toBe(14);
+  });
+});
+
+describe("Resolução de responsáveis na integração legada", () => {
+  it("deve rejeitar timestamps locais como IDs oficiais de responsável", () => {
+    expect(getSafeLegacyResponsibleId(1783799792072)).toBeNull();
+    expect(getSafeLegacyResponsibleId("1783799792072")).toBeNull();
+    expect(getSafeLegacyResponsibleId(12)).toBe(12);
+    expect(getSafeLegacyResponsibleId("12")).toBe(12);
+  });
+
+  it("deve rejeitar valores fracionários, negativos e vazios", () => {
+    expect(getSafeLegacyResponsibleId(1.5)).toBeNull();
+    expect(getSafeLegacyResponsibleId(-1)).toBeNull();
+    expect(getSafeLegacyResponsibleId("")) .toBeNull();
+    expect(getSafeLegacyResponsibleId(undefined)).toBeNull();
   });
 });
 

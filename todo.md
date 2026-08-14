@@ -441,3 +441,10 @@
 - [x] Adicionar botão Gerar dados de teste no painel de configurações com confirmação e indicador de carregamento
 - [x] Invalidar os caches de produtos, cardápios, pedidos, clientes e relatórios após a geração
 - [x] Cobrir o fluxo com testes Vitest e validar TypeScript, build e preview
+
+
+## Correção da Integração de Pedidos Locais (14/08/2026)
+- [ ] Converter o responsável local do localStorage para um responsável oficial do banco antes de criar sessões
+- [ ] Evitar inserir IDs locais baseados em Date.now() em cashier_sessions e preservar a idempotência da sincronização
+- [ ] Adicionar testes para resolver responsáveis locais e validar a integração de sessões/pedidos
+- [ ] Validar TypeScript, Vitest, build e fluxo corrigido no preview

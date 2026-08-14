@@ -226,6 +226,7 @@ export default function ReportsPage() {
     const payload = sessions.map((session) => ({
       id: session.legacyId ?? session.id,
       responsibleId: session.responsibleId ?? menus.find((menu) => menu.id === session.weeklyMenuId)?.responsibleId ?? null,
+      responsibleName: menus.find((menu) => menu.id === session.weeklyMenuId)?.responsibleName,
       openedAt: session.openedAt,
       closedAt: session.closedAt,
       orders: (session.orders || []).map((order) => {
