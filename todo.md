@@ -470,3 +470,11 @@
 - [x] Verificar cada um dos 7 pontos levantados pelo usuário sobre devolução de estoque e menu
 - [x] Consultar o banco para verificar o estado dos pedidos cancelados e histórico de estoque
 - [x] Corrigir qualquer lacuna no estorno transacional e cobrir com testes
+
+
+## Limpeza Segura de Vendas com Backup e Recontagem Física (14/08/2026)
+- [x] Gerar backup completo das tabelas `stock_history`, `order_items`, `orders` e `cashier_sessions`
+- [x] Apresentar produtos e itens de cardápio atuais para o usuário informar os valores físicos corretos
+- [x] Executar a exclusão estritamente na ordem solicitada (`stock_history` → `order_items` → `orders` → `cashier_sessions`)
+- [x] Atualizar o estoque global e do cardápio com os valores informados pelo usuário
+- [x] Validar e certificar contagens zeradas nas tabelas de vendas e contagens preservadas nos cadastros

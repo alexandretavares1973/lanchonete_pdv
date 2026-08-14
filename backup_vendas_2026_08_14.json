@@ -1,0 +1,946 @@
+{
+  "timestamp": "2026-08-14T19:22:55.269Z",
+  "stock_history": [
+    {
+      "id": 30001,
+      "productId": 30001,
+      "orderId": 30001,
+      "quantityChange": -1,
+      "reason": "Dados de teste test-1786733121944",
+      "createdAt": "2026-08-14 18:45:23"
+    },
+    {
+      "id": 30002,
+      "productId": 30002,
+      "orderId": 30001,
+      "quantityChange": -1,
+      "reason": "Dados de teste test-1786733121944",
+      "createdAt": "2026-08-14 18:45:23"
+    },
+    {
+      "id": 30003,
+      "productId": 30003,
+      "orderId": 30002,
+      "quantityChange": -2,
+      "reason": "Dados de teste test-1786733121944",
+      "createdAt": "2026-08-14 18:45:24"
+    },
+    {
+      "id": 30004,
+      "productId": 30004,
+      "orderId": 30002,
+      "quantityChange": -1,
+      "reason": "Dados de teste test-1786733121944",
+      "createdAt": "2026-08-14 18:45:24"
+    },
+    {
+      "id": 30005,
+      "productId": 30001,
+      "orderId": 30003,
+      "quantityChange": -1,
+      "reason": "Dados de teste test-1786733121944",
+      "createdAt": "2026-08-14 18:45:24"
+    },
+    {
+      "id": 30006,
+      "productId": 30005,
+      "orderId": 30003,
+      "quantityChange": -2,
+      "reason": "Dados de teste test-1786733121944",
+      "createdAt": "2026-08-14 18:45:24"
+    },
+    {
+      "id": 30007,
+      "productId": 30002,
+      "orderId": 30004,
+      "quantityChange": -1,
+      "reason": "Dados de teste test-1786733121944",
+      "createdAt": "2026-08-14 18:45:24"
+    },
+    {
+      "id": 30008,
+      "productId": 30006,
+      "orderId": 30004,
+      "quantityChange": -1,
+      "reason": "Dados de teste test-1786733121944",
+      "createdAt": "2026-08-14 18:45:24"
+    },
+    {
+      "id": 30009,
+      "productId": 30001,
+      "orderId": 30005,
+      "quantityChange": -2,
+      "reason": "Dados de teste test-1786733121944",
+      "createdAt": "2026-08-14 18:45:24"
+    },
+    {
+      "id": 30010,
+      "productId": 30003,
+      "orderId": 30005,
+      "quantityChange": -1,
+      "reason": "Dados de teste test-1786733121944",
+      "createdAt": "2026-08-14 18:45:24"
+    },
+    {
+      "id": 30011,
+      "productId": 30005,
+      "orderId": 30005,
+      "quantityChange": -1,
+      "reason": "Dados de teste test-1786733121944",
+      "createdAt": "2026-08-14 18:45:25"
+    },
+    {
+      "id": 30012,
+      "productId": 30007,
+      "orderId": 30006,
+      "quantityChange": -1,
+      "reason": "Dados de teste test-1786733148532",
+      "createdAt": "2026-08-14 18:45:50"
+    },
+    {
+      "id": 30013,
+      "productId": 30008,
+      "orderId": 30006,
+      "quantityChange": -1,
+      "reason": "Dados de teste test-1786733148532",
+      "createdAt": "2026-08-14 18:45:50"
+    },
+    {
+      "id": 30014,
+      "productId": 30009,
+      "orderId": 30007,
+      "quantityChange": -2,
+      "reason": "Dados de teste test-1786733148532",
+      "createdAt": "2026-08-14 18:45:50"
+    },
+    {
+      "id": 30015,
+      "productId": 30010,
+      "orderId": 30007,
+      "quantityChange": -1,
+      "reason": "Dados de teste test-1786733148532",
+      "createdAt": "2026-08-14 18:45:50"
+    },
+    {
+      "id": 30016,
+      "productId": 30007,
+      "orderId": 30008,
+      "quantityChange": -1,
+      "reason": "Dados de teste test-1786733148532",
+      "createdAt": "2026-08-14 18:45:50"
+    },
+    {
+      "id": 30017,
+      "productId": 30011,
+      "orderId": 30008,
+      "quantityChange": -2,
+      "reason": "Dados de teste test-1786733148532",
+      "createdAt": "2026-08-14 18:45:50"
+    },
+    {
+      "id": 30018,
+      "productId": 30008,
+      "orderId": 30009,
+      "quantityChange": -1,
+      "reason": "Dados de teste test-1786733148532",
+      "createdAt": "2026-08-14 18:45:50"
+    },
+    {
+      "id": 30019,
+      "productId": 30012,
+      "orderId": 30009,
+      "quantityChange": -1,
+      "reason": "Dados de teste test-1786733148532",
+      "createdAt": "2026-08-14 18:45:51"
+    },
+    {
+      "id": 30020,
+      "productId": 30007,
+      "orderId": 30010,
+      "quantityChange": -2,
+      "reason": "Dados de teste test-1786733148532",
+      "createdAt": "2026-08-14 18:45:51"
+    },
+    {
+      "id": 30021,
+      "productId": 30009,
+      "orderId": 30010,
+      "quantityChange": -1,
+      "reason": "Dados de teste test-1786733148532",
+      "createdAt": "2026-08-14 18:45:51"
+    },
+    {
+      "id": 30022,
+      "productId": 30011,
+      "orderId": 30010,
+      "quantityChange": -1,
+      "reason": "Dados de teste test-1786733148532",
+      "createdAt": "2026-08-14 18:45:51"
+    },
+    {
+      "id": 30023,
+      "productId": 30013,
+      "orderId": 30011,
+      "quantityChange": -3,
+      "reason": "Importação de pedido legado",
+      "createdAt": "2026-08-14 18:45:56"
+    },
+    {
+      "id": 30024,
+      "productId": 30013,
+      "orderId": 30012,
+      "quantityChange": -1,
+      "reason": "Importação de pedido legado",
+      "createdAt": "2026-08-14 18:45:56"
+    },
+    {
+      "id": 30025,
+      "productId": 30014,
+      "orderId": 30013,
+      "quantityChange": -1,
+      "reason": "Importação de pedido legado",
+      "createdAt": "2026-08-14 18:45:57"
+    },
+    {
+      "id": 30026,
+      "productId": 30013,
+      "orderId": 30014,
+      "quantityChange": -1,
+      "reason": "Importação de pedido legado",
+      "createdAt": "2026-08-14 18:45:57"
+    },
+    {
+      "id": 30027,
+      "productId": 30014,
+      "orderId": 30014,
+      "quantityChange": -1,
+      "reason": "Importação de pedido legado",
+      "createdAt": "2026-08-14 18:45:57"
+    },
+    {
+      "id": 30028,
+      "productId": 30013,
+      "orderId": 30015,
+      "quantityChange": -1,
+      "reason": "Importação de pedido legado",
+      "createdAt": "2026-08-14 18:45:57"
+    },
+    {
+      "id": 30029,
+      "productId": 30013,
+      "orderId": 30016,
+      "quantityChange": -1,
+      "reason": "Importação de pedido legado",
+      "createdAt": "2026-08-14 18:45:57"
+    },
+    {
+      "id": 30030,
+      "productId": 30013,
+      "orderId": 30017,
+      "quantityChange": -2,
+      "reason": "Importação de pedido legado",
+      "createdAt": "2026-08-14 18:45:57"
+    },
+    {
+      "id": 60001,
+      "productId": 60001,
+      "orderId": 60001,
+      "quantityChange": -2,
+      "reason": "Importação de pedido legado",
+      "createdAt": "2026-08-14 19:10:39"
+    },
+    {
+      "id": 60002,
+      "productId": 60003,
+      "orderId": 60003,
+      "quantityChange": -4,
+      "reason": "Importação de pedido legado",
+      "createdAt": "2026-08-14 19:10:39"
+    },
+    {
+      "id": 60003,
+      "productId": 60002,
+      "orderId": 60004,
+      "quantityChange": -1,
+      "reason": "Importação de pedido legado",
+      "createdAt": "2026-08-14 19:11:12"
+    },
+    {
+      "id": 60004,
+      "productId": 60003,
+      "orderId": 60003,
+      "quantityChange": 4,
+      "reason": "TESTE",
+      "createdAt": "2026-08-14 19:12:41"
+    },
+    {
+      "id": 90001,
+      "productId": 60003,
+      "orderId": 90001,
+      "quantityChange": -3,
+      "reason": "Importação de pedido legado",
+      "createdAt": "2026-08-14 19:14:57"
+    },
+    {
+      "id": 90002,
+      "productId": 60003,
+      "orderId": 90001,
+      "quantityChange": 3,
+      "reason": "ESTORNO TAPIOCA",
+      "createdAt": "2026-08-14 19:16:24"
+    }
+  ],
+  "order_items": [
+    {
+      "id": 30001,
+      "orderId": 30001,
+      "productId": 30001,
+      "quantity": 1,
+      "unitPrice": "22.90",
+      "subtotal": "22.90",
+      "createdAt": "2026-08-14 18:45:23"
+    },
+    {
+      "id": 30002,
+      "orderId": 30001,
+      "productId": 30002,
+      "quantity": 1,
+      "unitPrice": "26.50",
+      "subtotal": "26.50",
+      "createdAt": "2026-08-14 18:45:23"
+    },
+    {
+      "id": 30003,
+      "orderId": 30002,
+      "productId": 30003,
+      "quantity": 2,
+      "unitPrice": "12.00",
+      "subtotal": "24.00",
+      "createdAt": "2026-08-14 18:45:24"
+    },
+    {
+      "id": 30004,
+      "orderId": 30002,
+      "productId": 30004,
+      "quantity": 1,
+      "unitPrice": "7.50",
+      "subtotal": "7.50",
+      "createdAt": "2026-08-14 18:45:24"
+    },
+    {
+      "id": 30005,
+      "orderId": 30003,
+      "productId": 30001,
+      "quantity": 1,
+      "unitPrice": "22.90",
+      "subtotal": "22.90",
+      "createdAt": "2026-08-14 18:45:24"
+    },
+    {
+      "id": 30006,
+      "orderId": 30003,
+      "productId": 30005,
+      "quantity": 2,
+      "unitPrice": "6.00",
+      "subtotal": "12.00",
+      "createdAt": "2026-08-14 18:45:24"
+    },
+    {
+      "id": 30007,
+      "orderId": 30004,
+      "productId": 30002,
+      "quantity": 1,
+      "unitPrice": "26.50",
+      "subtotal": "26.50",
+      "createdAt": "2026-08-14 18:45:24"
+    },
+    {
+      "id": 30008,
+      "orderId": 30004,
+      "productId": 30006,
+      "quantity": 1,
+      "unitPrice": "9.50",
+      "subtotal": "9.50",
+      "createdAt": "2026-08-14 18:45:24"
+    },
+    {
+      "id": 30009,
+      "orderId": 30005,
+      "productId": 30001,
+      "quantity": 2,
+      "unitPrice": "22.90",
+      "subtotal": "45.80",
+      "createdAt": "2026-08-14 18:45:24"
+    },
+    {
+      "id": 30010,
+      "orderId": 30005,
+      "productId": 30003,
+      "quantity": 1,
+      "unitPrice": "12.00",
+      "subtotal": "12.00",
+      "createdAt": "2026-08-14 18:45:24"
+    },
+    {
+      "id": 30011,
+      "orderId": 30005,
+      "productId": 30005,
+      "quantity": 1,
+      "unitPrice": "6.00",
+      "subtotal": "6.00",
+      "createdAt": "2026-08-14 18:45:25"
+    },
+    {
+      "id": 30012,
+      "orderId": 30006,
+      "productId": 30007,
+      "quantity": 1,
+      "unitPrice": "22.90",
+      "subtotal": "22.90",
+      "createdAt": "2026-08-14 18:45:50"
+    },
+    {
+      "id": 30013,
+      "orderId": 30006,
+      "productId": 30008,
+      "quantity": 1,
+      "unitPrice": "26.50",
+      "subtotal": "26.50",
+      "createdAt": "2026-08-14 18:45:50"
+    },
+    {
+      "id": 30014,
+      "orderId": 30007,
+      "productId": 30009,
+      "quantity": 2,
+      "unitPrice": "12.00",
+      "subtotal": "24.00",
+      "createdAt": "2026-08-14 18:45:50"
+    },
+    {
+      "id": 30015,
+      "orderId": 30007,
+      "productId": 30010,
+      "quantity": 1,
+      "unitPrice": "7.50",
+      "subtotal": "7.50",
+      "createdAt": "2026-08-14 18:45:50"
+    },
+    {
+      "id": 30016,
+      "orderId": 30008,
+      "productId": 30007,
+      "quantity": 1,
+      "unitPrice": "22.90",
+      "subtotal": "22.90",
+      "createdAt": "2026-08-14 18:45:50"
+    },
+    {
+      "id": 30017,
+      "orderId": 30008,
+      "productId": 30011,
+      "quantity": 2,
+      "unitPrice": "6.00",
+      "subtotal": "12.00",
+      "createdAt": "2026-08-14 18:45:50"
+    },
+    {
+      "id": 30018,
+      "orderId": 30009,
+      "productId": 30008,
+      "quantity": 1,
+      "unitPrice": "26.50",
+      "subtotal": "26.50",
+      "createdAt": "2026-08-14 18:45:50"
+    },
+    {
+      "id": 30019,
+      "orderId": 30009,
+      "productId": 30012,
+      "quantity": 1,
+      "unitPrice": "9.50",
+      "subtotal": "9.50",
+      "createdAt": "2026-08-14 18:45:51"
+    },
+    {
+      "id": 30020,
+      "orderId": 30010,
+      "productId": 30007,
+      "quantity": 2,
+      "unitPrice": "22.90",
+      "subtotal": "45.80",
+      "createdAt": "2026-08-14 18:45:51"
+    },
+    {
+      "id": 30021,
+      "orderId": 30010,
+      "productId": 30009,
+      "quantity": 1,
+      "unitPrice": "12.00",
+      "subtotal": "12.00",
+      "createdAt": "2026-08-14 18:45:51"
+    },
+    {
+      "id": 30022,
+      "orderId": 30010,
+      "productId": 30011,
+      "quantity": 1,
+      "unitPrice": "6.00",
+      "subtotal": "6.00",
+      "createdAt": "2026-08-14 18:45:51"
+    },
+    {
+      "id": 30023,
+      "orderId": 30011,
+      "productId": 30013,
+      "quantity": 3,
+      "unitPrice": "7.00",
+      "subtotal": "21.00",
+      "createdAt": "2026-08-14 18:45:56"
+    },
+    {
+      "id": 30024,
+      "orderId": 30012,
+      "productId": 30013,
+      "quantity": 1,
+      "unitPrice": "7.00",
+      "subtotal": "7.00",
+      "createdAt": "2026-08-14 18:45:56"
+    },
+    {
+      "id": 30025,
+      "orderId": 30013,
+      "productId": 30014,
+      "quantity": 1,
+      "unitPrice": "10.00",
+      "subtotal": "10.00",
+      "createdAt": "2026-08-14 18:45:57"
+    },
+    {
+      "id": 30026,
+      "orderId": 30014,
+      "productId": 30013,
+      "quantity": 1,
+      "unitPrice": "7.00",
+      "subtotal": "7.00",
+      "createdAt": "2026-08-14 18:45:57"
+    },
+    {
+      "id": 30027,
+      "orderId": 30014,
+      "productId": 30014,
+      "quantity": 1,
+      "unitPrice": "10.00",
+      "subtotal": "10.00",
+      "createdAt": "2026-08-14 18:45:57"
+    },
+    {
+      "id": 30028,
+      "orderId": 30015,
+      "productId": 30013,
+      "quantity": 1,
+      "unitPrice": "7.00",
+      "subtotal": "7.00",
+      "createdAt": "2026-08-14 18:45:57"
+    },
+    {
+      "id": 30029,
+      "orderId": 30016,
+      "productId": 30013,
+      "quantity": 1,
+      "unitPrice": "7.00",
+      "subtotal": "7.00",
+      "createdAt": "2026-08-14 18:45:57"
+    },
+    {
+      "id": 30030,
+      "orderId": 30017,
+      "productId": 30013,
+      "quantity": 2,
+      "unitPrice": "7.00",
+      "subtotal": "14.00",
+      "createdAt": "2026-08-14 18:45:57"
+    },
+    {
+      "id": 60001,
+      "orderId": 60001,
+      "productId": 60001,
+      "quantity": 2,
+      "unitPrice": "10.00",
+      "subtotal": "20.00",
+      "createdAt": "2026-08-14 19:10:39"
+    },
+    {
+      "id": 60002,
+      "orderId": 60002,
+      "productId": 60002,
+      "quantity": 4,
+      "unitPrice": "6.00",
+      "subtotal": "24.00",
+      "createdAt": "2026-08-14 19:10:39"
+    },
+    {
+      "id": 60003,
+      "orderId": 60003,
+      "productId": 60003,
+      "quantity": 4,
+      "unitPrice": "7.50",
+      "subtotal": "30.00",
+      "createdAt": "2026-08-14 19:10:39"
+    },
+    {
+      "id": 60004,
+      "orderId": 60004,
+      "productId": 60002,
+      "quantity": 1,
+      "unitPrice": "6.00",
+      "subtotal": "6.00",
+      "createdAt": "2026-08-14 19:11:12"
+    },
+    {
+      "id": 90001,
+      "orderId": 90001,
+      "productId": 60003,
+      "quantity": 3,
+      "unitPrice": "7.50",
+      "subtotal": "22.50",
+      "createdAt": "2026-08-14 19:14:57"
+    }
+  ],
+  "orders": [
+    {
+      "id": 30001,
+      "cashierSessionId": 1,
+      "totalAmount": "49.40",
+      "paymentMethod": "pix",
+      "status": "completed",
+      "printedAt": null,
+      "createdAt": "2026-08-10 16:45:22",
+      "updatedAt": "2026-08-14 18:45:23",
+      "customerId": 1,
+      "legacyKey": "local:test-session-test-1786733121944:test-order-test-1786733121944-1"
+    },
+    {
+      "id": 30002,
+      "cashierSessionId": 1,
+      "totalAmount": "31.50",
+      "paymentMethod": "card",
+      "status": "completed",
+      "printedAt": null,
+      "createdAt": "2026-08-11 16:45:22",
+      "updatedAt": "2026-08-14 18:45:23",
+      "customerId": 2,
+      "legacyKey": "local:test-session-test-1786733121944:test-order-test-1786733121944-2"
+    },
+    {
+      "id": 30003,
+      "cashierSessionId": 1,
+      "totalAmount": "34.90",
+      "paymentMethod": "cash",
+      "status": "completed",
+      "printedAt": null,
+      "createdAt": "2026-08-12 16:45:22",
+      "updatedAt": "2026-08-14 18:45:24",
+      "customerId": 3,
+      "legacyKey": "local:test-session-test-1786733121944:test-order-test-1786733121944-3"
+    },
+    {
+      "id": 30004,
+      "cashierSessionId": 1,
+      "totalAmount": "36.00",
+      "paymentMethod": "pix",
+      "status": "completed",
+      "printedAt": null,
+      "createdAt": "2026-08-13 16:45:22",
+      "updatedAt": "2026-08-14 18:45:24",
+      "customerId": 4,
+      "legacyKey": "local:test-session-test-1786733121944:test-order-test-1786733121944-4"
+    },
+    {
+      "id": 30005,
+      "cashierSessionId": 1,
+      "totalAmount": "63.80",
+      "paymentMethod": "cash",
+      "status": "completed",
+      "printedAt": null,
+      "createdAt": "2026-08-14 16:45:22",
+      "updatedAt": "2026-08-14 18:45:24",
+      "customerId": 2,
+      "legacyKey": "local:test-session-test-1786733121944:test-order-test-1786733121944-5"
+    },
+    {
+      "id": 30006,
+      "cashierSessionId": 2,
+      "totalAmount": "49.40",
+      "paymentMethod": "pix",
+      "status": "completed",
+      "printedAt": null,
+      "createdAt": "2026-08-10 16:45:49",
+      "updatedAt": "2026-08-14 18:45:50",
+      "customerId": 1,
+      "legacyKey": "local:test-session-test-1786733148532:test-order-test-1786733148532-1"
+    },
+    {
+      "id": 30007,
+      "cashierSessionId": 2,
+      "totalAmount": "31.50",
+      "paymentMethod": "card",
+      "status": "completed",
+      "printedAt": null,
+      "createdAt": "2026-08-11 16:45:49",
+      "updatedAt": "2026-08-14 18:45:50",
+      "customerId": 5,
+      "legacyKey": "local:test-session-test-1786733148532:test-order-test-1786733148532-2"
+    },
+    {
+      "id": 30008,
+      "cashierSessionId": 2,
+      "totalAmount": "34.90",
+      "paymentMethod": "cash",
+      "status": "completed",
+      "printedAt": null,
+      "createdAt": "2026-08-12 16:45:49",
+      "updatedAt": "2026-08-14 18:45:50",
+      "customerId": 6,
+      "legacyKey": "local:test-session-test-1786733148532:test-order-test-1786733148532-3"
+    },
+    {
+      "id": 30009,
+      "cashierSessionId": 2,
+      "totalAmount": "36.00",
+      "paymentMethod": "pix",
+      "status": "completed",
+      "printedAt": null,
+      "createdAt": "2026-08-13 16:45:49",
+      "updatedAt": "2026-08-14 18:45:50",
+      "customerId": 7,
+      "legacyKey": "local:test-session-test-1786733148532:test-order-test-1786733148532-4"
+    },
+    {
+      "id": 30010,
+      "cashierSessionId": 2,
+      "totalAmount": "63.80",
+      "paymentMethod": "cash",
+      "status": "completed",
+      "printedAt": null,
+      "createdAt": "2026-08-14 16:45:49",
+      "updatedAt": "2026-08-14 18:45:51",
+      "customerId": 5,
+      "legacyKey": "local:test-session-test-1786733148532:test-order-test-1786733148532-5"
+    },
+    {
+      "id": 30011,
+      "cashierSessionId": 3,
+      "totalAmount": "21.00",
+      "paymentMethod": "card",
+      "status": "completed",
+      "printedAt": null,
+      "createdAt": "2026-07-11 21:40:05",
+      "updatedAt": "2026-08-14 18:45:56",
+      "customerId": 8,
+      "legacyKey": "local:1783806004648:1783806004648"
+    },
+    {
+      "id": 30012,
+      "cashierSessionId": 3,
+      "totalAmount": "7.00",
+      "paymentMethod": "pix",
+      "status": "completed",
+      "printedAt": null,
+      "createdAt": "2026-07-11 21:40:28",
+      "updatedAt": "2026-08-14 18:45:56",
+      "customerId": 9,
+      "legacyKey": "local:1783806004648:1783806027799"
+    },
+    {
+      "id": 30013,
+      "cashierSessionId": 3,
+      "totalAmount": "10.00",
+      "paymentMethod": "pix",
+      "status": "completed",
+      "printedAt": null,
+      "createdAt": "2026-07-11 21:40:37",
+      "updatedAt": "2026-08-14 18:45:56",
+      "customerId": 10,
+      "legacyKey": "local:1783806004648:1783806036959"
+    },
+    {
+      "id": 30014,
+      "cashierSessionId": 3,
+      "totalAmount": "17.00",
+      "paymentMethod": "pix",
+      "status": "completed",
+      "printedAt": null,
+      "createdAt": "2026-07-11 21:42:22",
+      "updatedAt": "2026-08-14 18:45:57",
+      "customerId": 11,
+      "legacyKey": "local:1783806004648:1783806141575"
+    },
+    {
+      "id": 30015,
+      "cashierSessionId": 3,
+      "totalAmount": "7.00",
+      "paymentMethod": "cash",
+      "status": "completed",
+      "printedAt": null,
+      "createdAt": "2026-07-11 21:48:52",
+      "updatedAt": "2026-08-14 18:45:57",
+      "customerId": 1,
+      "legacyKey": "local:1783806004648:1783806531982"
+    },
+    {
+      "id": 30016,
+      "cashierSessionId": 3,
+      "totalAmount": "7.00",
+      "paymentMethod": "pix",
+      "status": "completed",
+      "printedAt": null,
+      "createdAt": "2026-07-11 21:49:14",
+      "updatedAt": "2026-08-14 18:45:57",
+      "customerId": 11,
+      "legacyKey": "local:1783806004648:1783806554430"
+    },
+    {
+      "id": 30017,
+      "cashierSessionId": 3,
+      "totalAmount": "14.00",
+      "paymentMethod": "pix",
+      "status": "completed",
+      "printedAt": null,
+      "createdAt": "2026-08-12 01:29:21",
+      "updatedAt": "2026-08-14 18:45:57",
+      "customerId": 1,
+      "legacyKey": "local:1783806004648:1786498161486"
+    },
+    {
+      "id": 60001,
+      "cashierSessionId": 30001,
+      "totalAmount": "20.00",
+      "paymentMethod": "cash",
+      "status": "completed",
+      "printedAt": null,
+      "createdAt": "2026-08-14 18:48:39",
+      "updatedAt": "2026-08-14 19:10:39",
+      "customerId": 1,
+      "legacyKey": "local:1786733318640:1786733318640"
+    },
+    {
+      "id": 60002,
+      "cashierSessionId": 30001,
+      "totalAmount": "24.00",
+      "paymentMethod": "pix",
+      "status": "cancelled",
+      "printedAt": null,
+      "createdAt": "2026-08-14 18:49:17",
+      "updatedAt": "2026-08-14 19:10:39",
+      "customerId": 9,
+      "legacyKey": "local:1786733318640:1786733356800"
+    },
+    {
+      "id": 60003,
+      "cashierSessionId": 30001,
+      "totalAmount": "30.00",
+      "paymentMethod": "card",
+      "status": "cancelled",
+      "printedAt": null,
+      "createdAt": "2026-08-14 19:10:23",
+      "updatedAt": "2026-08-14 19:12:39",
+      "customerId": 1,
+      "legacyKey": "local:1786733318640:1786734622860"
+    },
+    {
+      "id": 60004,
+      "cashierSessionId": 30001,
+      "totalAmount": "6.00",
+      "paymentMethod": "pix",
+      "status": "completed",
+      "printedAt": null,
+      "createdAt": "2026-08-14 19:11:06",
+      "updatedAt": "2026-08-14 19:11:12",
+      "customerId": 30001,
+      "legacyKey": "local:1786733318640:1786734665683"
+    },
+    {
+      "id": 90001,
+      "cashierSessionId": 30001,
+      "totalAmount": "22.50",
+      "paymentMethod": "cash",
+      "status": "cancelled",
+      "printedAt": null,
+      "createdAt": "2026-08-14 19:14:52",
+      "updatedAt": "2026-08-14 19:16:24",
+      "customerId": 1,
+      "legacyKey": "local:1786733318640:1786734892067"
+    }
+  ],
+  "cashier_sessions": [
+    {
+      "id": 1,
+      "responsibleId": 1,
+      "openedAt": "2026-08-08 18:45:22",
+      "closedAt": "2026-08-14 18:15:22",
+      "initialBalance": "100.00",
+      "finalBalance": "315.60",
+      "status": "closed",
+      "createdAt": "2026-08-14 18:45:23",
+      "updatedAt": "2026-08-14 18:45:25"
+    },
+    {
+      "id": 2,
+      "responsibleId": 1,
+      "openedAt": "2026-08-08 18:45:49",
+      "closedAt": "2026-08-14 18:15:49",
+      "initialBalance": "100.00",
+      "finalBalance": "315.60",
+      "status": "closed",
+      "createdAt": "2026-08-14 18:45:50",
+      "updatedAt": "2026-08-14 18:45:52"
+    },
+    {
+      "id": 3,
+      "responsibleId": 1,
+      "openedAt": "2026-07-11 21:40:05",
+      "closedAt": null,
+      "initialBalance": "0.00",
+      "finalBalance": null,
+      "status": "open",
+      "createdAt": "2026-08-14 18:45:56",
+      "updatedAt": "2026-08-14 18:45:56"
+    },
+    {
+      "id": 30001,
+      "responsibleId": 30001,
+      "openedAt": "2026-08-14 18:48:39",
+      "closedAt": null,
+      "initialBalance": "0.00",
+      "finalBalance": null,
+      "status": "open",
+      "createdAt": "2026-08-14 19:10:39",
+      "updatedAt": "2026-08-14 19:10:39"
+    }
+  ],
+  "refund_audits": [
+    {
+      "id": 1,
+      "orderId": 60003,
+      "userId": 30001,
+      "username": "Alexandre",
+      "loginMethod": "local",
+      "reason": "TESTE",
+      "orderTotal": "30.00",
+      "itemsSnapshot": "[{\"productId\":60003,\"productName\":\"TAPIOCA\",\"quantity\":4,\"unitPrice\":\"7.50\",\"subtotal\":\"30.00\"}]",
+      "createdAt": "2026-08-14 19:12:41"
+    },
+    {
+      "id": 30001,
+      "orderId": 90001,
+      "userId": 30001,
+      "username": "Alexandre",
+      "loginMethod": "local",
+      "reason": "ESTORNO TAPIOCA",
+      "orderTotal": "22.50",
+      "itemsSnapshot": "[{\"productId\":60003,\"productName\":\"TAPIOCA\",\"quantity\":3,\"unitPrice\":\"7.50\",\"subtotal\":\"22.50\"}]",
+      "createdAt": "2026-08-14 19:16:24"
+    }
+  ]
+}
