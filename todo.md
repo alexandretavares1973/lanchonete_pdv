@@ -534,3 +534,12 @@
 - [x] Remover restrição `!product.isUnlimited` em baixas/estornos, mantendo fallback seguro
 - [x] Atualizar `ProductsPage`, `WeeklyMenuPage` e `POSPage` removendo menções a "Ilimitado"
 - [x] Cobrir com testes Vitest, compilar e salvar checkpoint
+
+
+## Edição Rápida e Alerta de Estoque Crítico (14/08/2026)
+- [x] Adicionar edição rápida da quantidade na lista de produtos
+- [x] Persistir a reposição com `products.update`, validação numérica e invalidação do cache
+- [x] Alterar o limite visual de estoque baixo para menos de 3 unidades no ProductsPage
+- [x] Alterar o limite visual de estoque baixo para menos de 3 unidades no POSPage
+- [x] Adicionar testes Vitest para atualização rápida e limite de estoque crítico
+- [x] Validar TypeScript/build e salvar checkpoint

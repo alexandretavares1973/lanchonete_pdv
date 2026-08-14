@@ -1,10 +1,84 @@
+import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
-import { ArrowLeft, Package, TriangleAlert } from "lucide-react";
+import { ArrowLeft, Package, Save, TriangleAlert } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { trpc } from "@/lib/trpc";
+import { toast } from "sonner";
 import { getLowStockMessage, isLowGlobalStock } from "@shared/stockAlerts";
+import { parseStockQuantity } from "@shared/stockQuantity";
+
+function QuickStockEditor({
+  productId,
+  productName,
+  quantity,
+}: {
+  productId: number;
+  productName: string;
+  quantity: number | null;
+}) {
+  const [draftQuantity, setDraftQuantity] = useState(String(quantity ?? 0));
+  const utils = trpc.useUtils();
+  const updateProduct = trpc.pdv.products.update.useMutation({
+    onSuccess: async () => {
+      await utils.pdv.products.list.invalidate();
+      toast.success(`Estoque de ${productName} atualizado.`);
+    },
+    onError: (error) => {
+      toast.error(error.message || "Não foi possível atualizar o estoque.");
+    },
+  });
+
+  useEffect(() => {
+    setDraftQuantity(String(quantity ?? 0));
+  }, [quantity]);
+
+  const saveQuantity = () => {
+    const nextQuantity = parseStockQuantity(draftQuantity);
+    if (nextQuantity === null) {
+      toast.error("Informe uma quantidade inteira igual ou maior que zero.");
+      return;
+    }
+    if (nextQuantity === Number(quantity ?? 0)) return;
+    updateProduct.mutate({ id: productId, quantity: nextQuantity });
+  };
+
+  return (
+    <div className="mt-4 flex items-end gap-2">
+      <div className="min-w-0 flex-1">
+        <label htmlFor={`stock-${productId}`} className="text-xs font-medium text-muted-foreground">
+          Editar estoque rapidamente
+        </label>
+        <Input
+          id={`stock-${productId}`}
+          type="number"
+          min="0"
+          step="1"
+          value={draftQuantity}
+          onChange={(event) => setDraftQuantity(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") saveQuantity();
+          }}
+          aria-label={`Quantidade em estoque de ${productName}`}
+          className="mt-1 h-9"
+          disabled={updateProduct.isPending}
+        />
+      </div>
+      <Button
+        type="button"
+        size="sm"
+        onClick={saveQuantity}
+        disabled={updateProduct.isPending || draftQuantity === String(quantity ?? 0)}
+        className="h-9 gap-1"
+      >
+        <Save className="h-3.5 w-3.5" />
+        {updateProduct.isPending ? "Salvando" : "Salvar"}
+      </Button>
+    </div>
+  );
+}
 
 export default function ProductsPage() {
   const [, setLocation] = useLocation();
@@ -54,6 +128,12 @@ export default function ProductsPage() {
                       {product.quantity ?? 0} unidade(s)
                     </span>
                   </div>
+
+                  <QuickStockEditor
+                    productId={product.id}
+                    productName={product.name}
+                    quantity={product.quantity}
+                  />
 
                   {lowStock && (
                     <div className="mt-4 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm font-semibold text-amber-900" role="alert">

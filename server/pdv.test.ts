@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { getSafeLegacyResponsibleId, getTestDataBlueprint } from "./db";
 import { getExplicitCustomer, getFreshOrderDefaults, DEFAULT_PAYMENT_METHOD } from "../shared/posOrderFlow";
 import { LOW_STOCK_THRESHOLD, getLowStockMessage, isLowGlobalStock } from "../shared/stockAlerts";
+import { parseStockQuantity } from "../shared/stockQuantity";
 
 describe("PDV System", () => {
   describe("Cart Calculations", () => {
@@ -275,19 +276,29 @@ describe("Reset do novo pedido no POS", () => {
   });
 });
 
+describe("Edição rápida de estoque", () => {
+  it("aceita apenas quantidades inteiras não negativas", () => {
+    expect(parseStockQuantity("10")).toBe(10);
+    expect(parseStockQuantity("0")).toBe(0);
+    expect(parseStockQuantity("2.5")).toBeNull();
+    expect(parseStockQuantity("-1")).toBeNull();
+    expect(parseStockQuantity("")).toBeNull();
+  });
+});
+
 describe("Alertas de estoque baixo", () => {
-  it("deve alertar somente quando o estoque global for menor que 5", () => {
-    expect(LOW_STOCK_THRESHOLD).toBe(5);
-    expect(isLowGlobalStock({ name: "Hambúrguer", quantity: 4 })).toBe(true);
-    expect(isLowGlobalStock({ name: "Hambúrguer", quantity: 5 })).toBe(false);
+  it("deve alertar somente quando o estoque global for menor que 3", () => {
+    expect(LOW_STOCK_THRESHOLD).toBe(3);
+    expect(isLowGlobalStock({ name: "Hambúrguer", quantity: 2 })).toBe(true);
+    expect(isLowGlobalStock({ name: "Hambúrguer", quantity: 3 })).toBe(false);
     expect(isLowGlobalStock({ name: "Hambúrguer", quantity: 0 })).toBe(true);
   });
 
   it("deve considerar o desconto da venda ao avaliar o estoque restante", () => {
-    const product = { name: "Coxinha", quantity: 6, isUnlimited: false };
-    const quantityAfterSale = product.quantity - 2;
+    const product = { name: "Coxinha", quantity: 5, isUnlimited: false };
+    const quantityAfterSale = product.quantity - 3;
     expect(isLowGlobalStock(product, quantityAfterSale)).toBe(true);
-    expect(getLowStockMessage(product.name)).toBe("ALERTA: Coxinha tem quantidade no estoque menor que 5");
+    expect(getLowStockMessage(product.name)).toBe("ALERTA: Coxinha tem quantidade no estoque menor que 3");
   });
 });
 
