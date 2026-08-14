@@ -7,10 +7,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { toast } from "sonner";
 import { ShoppingCart, Trash2, Lock, UserPlus } from "lucide-react";
 import { DEFAULT_PAYMENT_METHOD, getExplicitCustomer } from "@shared/posOrderFlow";
+import { getLowStockMessage, isLowGlobalStock } from "@shared/stockAlerts";
+import { trpc } from "@/lib/trpc";
 
 interface MenuItem {
   id: string;
   productName: string;
+  productId?: number;
   price: number;
   quantity: number | null;
   isUnlimited: boolean;
@@ -60,6 +63,7 @@ export default function POSPage() {
   const [lastAmountReceived, setLastAmountReceived] = useState<number>(0);
   const [lastCustomerName, setLastCustomerName] = useState<string>("");
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const { data: globalProducts = [] } = trpc.pdv.products.list.useQuery();
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [showQuickCustomerDialog, setShowQuickCustomerDialog] = useState(false);
   const [quickCustomerForm, setQuickCustomerForm] = useState({ name: "", phone: "", email: "" });
@@ -143,6 +147,14 @@ export default function POSPage() {
     setQuickCustomerForm({ name: "", phone: "", email: "" });
     setShowQuickCustomerDialog(false);
     toast.success(`✅ Cliente "${name}" cadastrado e selecionado.`);
+  };
+
+  const findGlobalProduct = (menuItem: MenuItem) => {
+    const productId = Number(menuItem.productId ?? menuItem.id);
+    return globalProducts.find((product) =>
+      (Number.isInteger(productId) && product.id === productId) ||
+      product.name.trim().toLocaleLowerCase() === menuItem.productName.trim().toLocaleLowerCase()
+    );
   };
 
   const handleAddToCart = (product: MenuItem) => {
@@ -360,6 +372,17 @@ export default function POSPage() {
     const change = paymentMethod === "cash" ? amountReceived - total : 0;
     setLastOrderChange(change);
 
+    const lowStockAfterSale = cart.flatMap((item) => {
+      const globalProduct = globalProducts.find((product) =>
+        product.name.trim().toLocaleLowerCase() === item.productName.trim().toLocaleLowerCase()
+      );
+      if (!globalProduct || globalProduct.isUnlimited || globalProduct.quantity === null) return [];
+      const remainingQuantity = Number(globalProduct.quantity) - item.quantity;
+      return isLowGlobalStock(globalProduct, remainingQuantity)
+        ? [{ productName: globalProduct.name }]
+        : [];
+    });
+
     // Salvar pedido
     const sessions = JSON.parse(localStorage.getItem("cashierSessions") || "[]");
     
@@ -401,6 +424,9 @@ export default function POSPage() {
     setLastCustomerName(customer.name);
 
     toast.success("✅ Pedido finalizado!");
+    lowStockAfterSale.forEach(({ productName }) => {
+      toast.warning(getLowStockMessage(productName));
+    });
     setShowConfirm(false);
     setShowPrint(true);
     setCart([]);
@@ -712,7 +738,16 @@ export default function POSPage() {
                   <Card className="p-6">
                     <h2 className="text-xl font-bold text-foreground mb-4">Produtos Disponíveis</h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {selectedMenu.items.map((product: MenuItem) => (
+                      {selectedMenu.items.map((product: MenuItem) => {
+                        const globalProduct = findGlobalProduct(product);
+                        const cartQuantity = cart.find((item) => item.id === product.id)?.quantity || 0;
+                        const globalRemainingQuantity = globalProduct && globalProduct.quantity !== null
+                          ? Number(globalProduct.quantity) - cartQuantity
+                          : null;
+                        const lowGlobalStock = globalProduct
+                          ? isLowGlobalStock(globalProduct, globalRemainingQuantity)
+                          : false;
+                        return (
                         <div
                           key={product.id}
                           className="p-4 border border-border rounded-lg hover:border-primary transition-colors"
@@ -724,6 +759,11 @@ export default function POSPage() {
                           <p className="text-xs text-muted-foreground mb-3">
                             {product.isUnlimited ? "Ilimitado" : `${product.quantity} disponível(is)`}
                           </p>
+                          {lowGlobalStock && globalProduct && (
+                            <p className="mb-3 rounded-md border border-amber-300 bg-amber-50 p-2 text-xs font-semibold text-amber-900" role="alert">
+                              {getLowStockMessage(globalProduct.name)}
+                            </p>
+                          )}
                           <Button
                             onClick={() => handleAddToCart(product)}
                             className="w-full bg-gradient-to-r from-primary to-secondary text-white"
@@ -732,7 +772,8 @@ export default function POSPage() {
                             Adicionar
                           </Button>
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </Card>
                 </div>

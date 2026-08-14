@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { getSafeLegacyResponsibleId, getTestDataBlueprint } from "./db";
 import { getExplicitCustomer, getFreshOrderDefaults, DEFAULT_PAYMENT_METHOD } from "../shared/posOrderFlow";
+import { LOW_STOCK_THRESHOLD, getLowStockMessage, isLowGlobalStock } from "../shared/stockAlerts";
 
 describe("PDV System", () => {
   describe("Cart Calculations", () => {
@@ -271,6 +272,22 @@ describe("Reset do novo pedido no POS", () => {
     expect(defaults.amountReceived).toBe(0);
     expect(defaults.showConfirm).toBe(false);
     expect(defaults.cart).toHaveLength(0);
+  });
+});
+
+describe("Alertas de estoque baixo", () => {
+  it("deve alertar somente quando o estoque global for menor que 5", () => {
+    expect(LOW_STOCK_THRESHOLD).toBe(5);
+    expect(isLowGlobalStock({ name: "Hambúrguer", quantity: 4, isUnlimited: false })).toBe(true);
+    expect(isLowGlobalStock({ name: "Hambúrguer", quantity: 5, isUnlimited: false })).toBe(false);
+    expect(isLowGlobalStock({ name: "Hambúrguer", quantity: 0, isUnlimited: true })).toBe(false);
+  });
+
+  it("deve considerar o desconto da venda ao avaliar o estoque restante", () => {
+    const product = { name: "Coxinha", quantity: 6, isUnlimited: false };
+    const quantityAfterSale = product.quantity - 2;
+    expect(isLowGlobalStock(product, quantityAfterSale)).toBe(true);
+    expect(getLowStockMessage(product.name)).toBe("ALERTA: Coxinha tem quantidade no estoque menor que 5");
   });
 });
 

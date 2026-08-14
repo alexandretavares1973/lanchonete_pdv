@@ -18,6 +18,7 @@ import LocalLogin from "./pages/LocalLogin";
 import WeeklyMenuPage from "./pages/WeeklyMenuPage";
 import CashierResponsiblePage from "./pages/CashierResponsiblePage";
 import SettingsPage from "./pages/SettingsPage";
+import ProductsPage from "./pages/ProductsPage";
 
 import CustomerReportPage from "./pages/CustomerReportPage";
 import CustomerBehaviorAnalysisPage from "./pages/CustomerBehaviorAnalysisPage";
@@ -58,6 +59,7 @@ function Router() {
       <Route path={"/weekly-menu"} component={WeeklyMenuPage} />
       <Route path={"/cashier-responsible"} component={CashierResponsiblePage} />
       <Route path={"/settings"} component={SettingsPage} />
+      <Route path={"/products"} component={ProductsPage} />
       <Route path={""} component={isUserAuthenticated ? Dashboard : Login} />
       <Route path={"/404"} component={NotFound} />
       <Route component={NotFound} />

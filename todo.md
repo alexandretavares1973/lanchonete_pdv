@@ -494,3 +494,12 @@
 - [x] Selecionar automaticamente o cliente recém-cadastrado no pedido atual
 - [x] Focar automaticamente o seletor ao iniciar um novo pedido após o reset
 - [x] Testar cadastro rápido, seleção e foco no preview
+
+
+## Alertas de Estoque Baixo (14/08/2026)
+- [x] Criar constante compartilhada `LOW_STOCK_THRESHOLD = 5`
+- [x] Exibir alerta por produto finito em ProductsPage usando `products.quantity`
+- [x] Exibir alerta no POS usando estoque global restante após considerar o carrinho
+- [x] Exibir toast após venda para cada produto finito abaixo do limite
+- [x] Cobrir limite, produtos ilimitados e fluxo pós-venda com testes
+- [x] Validar TypeScript, Vitest, build e preview
