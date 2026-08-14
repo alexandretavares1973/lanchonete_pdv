@@ -700,3 +700,354 @@ export async function syncLegacySessions(sessions: LegacySessionInput[]): Promis
     return result;
   });
 }
+
+
+export interface TestDataActor {
+  userId: number;
+  username: string;
+}
+
+export interface GeneratedTestDataSnapshot {
+  products: Array<{ id: number; name: string; price: number; quantity: number; isUnlimited: boolean; isAvailable: boolean }>;
+  customers: Array<{ id: number; name: string; phone: string | null; email: string | null; isDefault: boolean; isActive: boolean; createdAt: Date }>;
+  responsible: { id: number; name: string; cpf: string; phone: string };
+  weeklyMenus: Array<{
+    id: number;
+    saturdayDate: string;
+    saturdayOrder: number;
+    responsibleId: number;
+    responsibleName: string;
+    status: "open" | "closed";
+    items: Array<{ id: string; productName: string; price: number; quantity: number | null; isUnlimited: boolean; isAvailable: boolean }>;
+  }>;
+  cashierSessions: Array<{
+    id: number;
+    legacyId: string;
+    weeklyMenuId: number;
+    responsibleId: number;
+    openedAt: string;
+    closedAt: string | null;
+    orders: Array<{
+      id: number;
+      legacyId: string;
+      paymentMethod: "pix" | "card" | "cash";
+      total: number;
+      status: "completed";
+      customerId: number;
+      customerName: string;
+      createdAt: string;
+      items: Array<{ productId: number; productName: string; quantity: number; price: number; unitPrice: number; subtotal: number }>;
+    }>;
+  }>;
+}
+
+export interface GeneratedTestDataResult {
+  batchId: string;
+  summary: { products: number; customers: number; orders: number; items: number; totalSales: number };
+  snapshot: GeneratedTestDataSnapshot;
+}
+
+function formatDateOnly(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
+
+function getSaturdayDate(baseDate: Date): Date {
+  const date = new Date(baseDate);
+  const daysSinceSaturday = (date.getUTCDay() + 1) % 7;
+  date.setUTCDate(date.getUTCDate() - daysSinceSaturday);
+  date.setUTCHours(12, 0, 0, 0);
+  return date;
+}
+
+export function getTestDataBlueprint() {
+  return {
+    products: [
+      { name: "Teste - Hambúrguer Clássico", price: 22.9, description: "Produto fictício para validação do PDV" },
+      { name: "Teste - X-Salada", price: 26.5, description: "Produto fictício para validação do PDV" },
+      { name: "Teste - Batata Frita", price: 12, description: "Produto fictício para validação do PDV" },
+      { name: "Teste - Coxinha", price: 7.5, description: "Produto fictício para validação do PDV" },
+      { name: "Teste - Refrigerante Lata", price: 6, description: "Produto fictício para validação do PDV" },
+      { name: "Teste - Suco Natural", price: 9.5, description: "Produto fictício para validação do PDV" },
+    ],
+    customers: [
+      { name: "Cliente Teste Ana", phone: "(11) 99999-1001", email: "ana@teste.local" },
+      { name: "Cliente Teste Bruno", phone: "(11) 99999-1002", email: "bruno@teste.local" },
+      { name: "Cliente Teste Carla", phone: "(11) 99999-1003", email: "carla@teste.local" },
+    ],
+    orders: [
+      { paymentMethod: "pix" as const, customerIndex: 0, dayOffset: 4, items: [{ productIndex: 0, quantity: 1 }, { productIndex: 1, quantity: 1 }] },
+      { paymentMethod: "card" as const, customerIndex: 1, dayOffset: 3, items: [{ productIndex: 2, quantity: 2 }, { productIndex: 3, quantity: 1 }] },
+      { paymentMethod: "cash" as const, customerIndex: 2, dayOffset: 2, items: [{ productIndex: 0, quantity: 1 }, { productIndex: 4, quantity: 2 }] },
+      { paymentMethod: "pix" as const, customerIndex: 3, dayOffset: 1, items: [{ productIndex: 1, quantity: 1 }, { productIndex: 5, quantity: 1 }] },
+      { paymentMethod: "cash" as const, customerIndex: 1, dayOffset: 0, items: [{ productIndex: 0, quantity: 2 }, { productIndex: 2, quantity: 1 }, { productIndex: 4, quantity: 1 }] },
+    ],
+  };
+}
+
+export async function generateTestData(actor: TestDataActor): Promise<GeneratedTestDataResult> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  return await db.transaction(async (tx) => {
+    const now = new Date();
+    const batchId = `test-${now.getTime()}`;
+    const suffix = batchId.slice(-6);
+    const initialStock = 50;
+    const initialBalance = 100;
+
+    let responsibleRows = await tx.select().from(cashierResponsibles).where(eq(cashierResponsibles.userId, actor.userId)).limit(1);
+    let responsible = responsibleRows[0];
+    if (!responsible) {
+      const [responsibleResult] = await tx.insert(cashierResponsibles).values({
+        userId: actor.userId,
+        name: actor.username || "Operador de teste",
+        cpf: null,
+        phone: null,
+      });
+      const responsibleId = Number((responsibleResult as any)?.insertId || 0);
+      responsibleRows = await tx.select().from(cashierResponsibles).where(eq(cashierResponsibles.id, responsibleId)).limit(1);
+      responsible = responsibleRows[0];
+    }
+    if (!responsible) throw new Error("Não foi possível preparar o responsável pelo caixa para os dados de teste.");
+
+    let defaultCustomerRows = await tx.select().from(customers).where(eq(customers.name, "GERAL")).limit(1);
+    let defaultCustomer = defaultCustomerRows[0];
+    if (!defaultCustomer) {
+      const [customerResult] = await tx.insert(customers).values({
+        name: "GERAL",
+        phone: null,
+        email: null,
+        isActive: true,
+      });
+      const customerId = Number((customerResult as any)?.insertId || 0);
+      defaultCustomerRows = await tx.select().from(customers).where(eq(customers.id, customerId)).limit(1);
+      defaultCustomer = defaultCustomerRows[0];
+    }
+    if (!defaultCustomer) throw new Error("Não foi possível preparar o cliente GERAL para os dados de teste.");
+
+    const blueprint = getTestDataBlueprint();
+    const testCustomerSpecs = blueprint.customers.map((customer) => ({
+      ...customer,
+      name: `${customer.name} ${suffix}`,
+      email: customer.email.replace("@", `.${suffix}@`),
+    }));
+    const generatedCustomers = [defaultCustomer];
+    for (const customerSpec of testCustomerSpecs) {
+      const [customerResult] = await tx.insert(customers).values({
+        ...customerSpec,
+        isActive: true,
+      });
+      const customerId = Number((customerResult as any)?.insertId || 0);
+      const customerRows = await tx.select().from(customers).where(eq(customers.id, customerId)).limit(1);
+      if (customerRows[0]) generatedCustomers.push(customerRows[0]);
+    }
+
+    const productSpecs = blueprint.products.map((product) => ({
+      ...product,
+      name: `${product.name} ${suffix}`,
+    }));
+    const generatedProducts: Array<{ id: number; name: string; price: number; quantity: number; isUnlimited: boolean; isAvailable: boolean; description: string | null }> = [];
+    for (const productSpec of productSpecs) {
+      const [productResult] = await tx.insert(products).values({
+        ...productSpec,
+        price: productSpec.price.toFixed(2),
+        quantity: initialStock,
+        isUnlimited: false,
+        isAvailable: true,
+      });
+      const productId = Number((productResult as any)?.insertId || 0);
+      const productRows = await tx.select().from(products).where(eq(products.id, productId)).limit(1);
+      if (productRows[0]) generatedProducts.push({
+        id: productRows[0].id,
+        name: productRows[0].name,
+        price: Number(productRows[0].price),
+        quantity: productRows[0].quantity ?? initialStock,
+        isUnlimited: productRows[0].isUnlimited,
+        isAvailable: productRows[0].isAvailable,
+        description: productRows[0].description,
+      });
+    }
+    if (generatedProducts.length !== productSpecs.length) throw new Error("Não foi possível criar todos os produtos de teste.");
+
+    let saturdayDate = getSaturdayDate(now);
+    for (let attempts = 0; attempts < 52; attempts += 1) {
+      const existingMenu = await tx.select().from(weeklyMenus).where(eq(weeklyMenus.saturdayDate, formatDateOnly(saturdayDate) as any)).limit(1);
+      if (existingMenu.length === 0) break;
+      saturdayDate = new Date(saturdayDate.getTime() + 7 * 24 * 60 * 60 * 1000);
+    }
+    const [menuResult] = await tx.insert(weeklyMenus).values({
+      saturdayDate: formatDateOnly(saturdayDate) as any,
+      saturdayOrder: Math.floor((saturdayDate.getUTCDate() - 1) / 7) + 1,
+      responsibleId: responsible.id,
+      status: "open",
+    });
+    const menuId = Number((menuResult as any)?.insertId || 0);
+    if (!menuId) throw new Error("Não foi possível criar o cardápio de teste.");
+
+    const menuItemIds: number[] = [];
+    for (const product of generatedProducts) {
+      const [menuItemResult] = await tx.insert(menuItems).values({
+        menuId,
+        productId: product.id,
+        availableQuantity: initialStock,
+        isAvailable: true,
+      });
+      menuItemIds.push(Number((menuItemResult as any)?.insertId || 0));
+    }
+
+    const legacySessionId = `test-session-${batchId}`;
+    const openedAt = new Date(now.getTime() - 6 * 24 * 60 * 60 * 1000);
+    const closedAt = new Date(now.getTime() - 30 * 60 * 1000);
+    const [sessionResult] = await tx.insert(cashierSessions).values({
+      responsibleId: responsible.id,
+      openedAt,
+      closedAt,
+      initialBalance: initialBalance.toFixed(2),
+      finalBalance: initialBalance.toFixed(2),
+      status: "closed",
+    });
+    const sessionId = Number((sessionResult as any)?.insertId || 0);
+    if (!sessionId) throw new Error("Não foi possível criar a sessão de caixa de teste.");
+
+    const orderSpecs = blueprint.orders.map((order) => ({
+      ...order,
+      customer: order.customerIndex === 0 ? defaultCustomer : generatedCustomers[order.customerIndex],
+    }));
+    const remainingStock = new Map(generatedProducts.map((product) => [product.id, initialStock]));
+    const remainingMenuStock = new Map(generatedProducts.map((product, index) => [index, initialStock]));
+    const generatedOrders: GeneratedTestDataSnapshot["cashierSessions"][number]["orders"] = [];
+    let totalSales = 0;
+    let totalItems = 0;
+
+    for (let index = 0; index < orderSpecs.length; index += 1) {
+      const orderSpec = orderSpecs[index];
+      const createdAt = new Date(now.getTime() - orderSpec.dayOffset * 24 * 60 * 60 * 1000 - 2 * 60 * 60 * 1000);
+      const resolvedItems = orderSpec.items.map((item) => {
+        const product = generatedProducts[item.productIndex];
+        const subtotal = product.price * item.quantity;
+        return {
+          productId: product.id,
+          productName: product.name,
+          quantity: item.quantity,
+          price: product.price,
+          unitPrice: product.price,
+          subtotal,
+        };
+      });
+      const total = resolvedItems.reduce((sum, item) => sum + item.subtotal, 0);
+      const legacyOrderId = `test-order-${batchId}-${index + 1}`;
+      const [orderResult] = await tx.insert(orders).values({
+        cashierSessionId: sessionId,
+        customerId: orderSpec.customer.id,
+        totalAmount: total.toFixed(2),
+        paymentMethod: orderSpec.paymentMethod,
+        status: "completed",
+        legacyKey: `local:${legacySessionId}:${legacyOrderId}`,
+        createdAt,
+      });
+      const orderId = Number((orderResult as any)?.insertId || 0);
+      if (!orderId) throw new Error("Não foi possível criar um pedido de teste.");
+
+      for (const item of resolvedItems) {
+        await tx.insert(orderItems).values({
+          orderId,
+          productId: item.productId,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice.toFixed(2),
+          subtotal: item.subtotal.toFixed(2),
+        });
+        await tx.insert(stockHistory).values({
+          productId: item.productId,
+          orderId,
+          quantityChange: -item.quantity,
+          reason: `Dados de teste ${batchId}`,
+        });
+        remainingStock.set(item.productId, (remainingStock.get(item.productId) || initialStock) - item.quantity);
+        const productIndex = generatedProducts.findIndex((product) => product.id === item.productId);
+        remainingMenuStock.set(productIndex, (remainingMenuStock.get(productIndex) || initialStock) - item.quantity);
+        totalItems += item.quantity;
+      }
+
+      generatedOrders.push({
+        id: orderId,
+        legacyId: legacyOrderId,
+        paymentMethod: orderSpec.paymentMethod,
+        total,
+        status: "completed",
+        customerId: orderSpec.customer.id,
+        customerName: orderSpec.customer.name,
+        createdAt: createdAt.toISOString(),
+        items: resolvedItems,
+      });
+      totalSales += total;
+    }
+
+    for (const product of generatedProducts) {
+      const quantity = remainingStock.get(product.id) || 0;
+      await tx.update(products).set({ quantity, isAvailable: quantity > 0 }).where(eq(products.id, product.id));
+      product.quantity = quantity;
+      product.isAvailable = quantity > 0;
+    }
+    for (let index = 0; index < menuItemIds.length; index += 1) {
+      const availableQuantity = remainingMenuStock.get(index) || 0;
+      await tx.update(menuItems).set({ availableQuantity, isAvailable: availableQuantity > 0 }).where(eq(menuItems.id, menuItemIds[index]));
+    }
+    await tx.update(cashierSessions).set({ finalBalance: (initialBalance + totalSales).toFixed(2) }).where(eq(cashierSessions.id, sessionId));
+
+    const snapshot: GeneratedTestDataSnapshot = {
+      products: generatedProducts.map(({ id, name, price, quantity, isUnlimited, isAvailable }) => ({ id, name, price, quantity, isUnlimited, isAvailable })),
+      customers: generatedCustomers.map((customer) => ({
+        id: customer.id,
+        name: customer.name,
+        phone: customer.phone,
+        email: customer.email,
+        isDefault: customer.name === "GERAL",
+        isActive: customer.isActive,
+        createdAt: customer.createdAt,
+      })),
+      responsible: {
+        id: responsible.id,
+        name: responsible.name,
+        cpf: responsible.cpf || "",
+        phone: responsible.phone || "",
+      },
+      weeklyMenus: [{
+        id: menuId,
+        saturdayDate: formatDateOnly(saturdayDate),
+        saturdayOrder: Math.floor((saturdayDate.getUTCDate() - 1) / 7) + 1,
+        responsibleId: responsible.id,
+        responsibleName: responsible.name,
+        status: "open",
+        items: generatedProducts.map((product, index) => ({
+          id: String(product.id),
+          productName: product.name,
+          price: product.price,
+          quantity: remainingMenuStock.get(index) || 0,
+          isUnlimited: false,
+          isAvailable: (remainingMenuStock.get(index) || 0) > 0,
+        })),
+      }],
+      cashierSessions: [{
+        id: sessionId,
+        legacyId: legacySessionId,
+        weeklyMenuId: menuId,
+        responsibleId: responsible.id,
+        openedAt: openedAt.toISOString(),
+        closedAt: closedAt.toISOString(),
+        orders: generatedOrders,
+      }],
+    };
+
+    return {
+      batchId,
+      summary: {
+        products: generatedProducts.length,
+        customers: generatedCustomers.length,
+        orders: generatedOrders.length,
+        items: totalItems,
+        totalSales: Number(totalSales.toFixed(2)),
+      },
+      snapshot,
+    };
+  });
+}

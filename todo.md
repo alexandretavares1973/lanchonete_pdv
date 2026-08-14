@@ -433,3 +433,11 @@
 - [x] Preservar intactos os usuários do sistema, responsáveis pelo caixa e o cliente padrão GERAL
 - [x] Garantir que o Relatório de Clientes e demais telas continuem operacionais após a limpeza
 - [x] Validar integridade e testes do sistema
+
+
+## Gerador de Dados de Teste (14/08/2026)
+- [x] Criar procedimento protegido para gerar dados fictícios sem apagar ou sobrescrever dados existentes
+- [x] Popular produtos, clientes de teste, cardápio aberto, sessão de caixa e pedidos com itens e pagamentos variados
+- [x] Adicionar botão Gerar dados de teste no painel de configurações com confirmação e indicador de carregamento
+- [x] Invalidar os caches de produtos, cardápios, pedidos, clientes e relatórios após a geração
+- [x] Cobrir o fluxo com testes Vitest e validar TypeScript, build e preview

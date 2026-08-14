@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
+import { getTestDataBlueprint } from "./db";
 
 describe("PDV System", () => {
   describe("Cart Calculations", () => {
@@ -258,6 +259,28 @@ describe("Fluxo de pedido com cliente", () => {
   });
 });
 
+
+describe("Gerador de dados de teste", () => {
+  it("deve oferecer um conjunto determinístico de produtos e pedidos válidos", () => {
+    const blueprint = getTestDataBlueprint();
+    expect(blueprint.products).toHaveLength(6);
+    expect(blueprint.customers).toHaveLength(3);
+    expect(blueprint.orders).toHaveLength(5);
+    expect(blueprint.products.every((product) => product.name.startsWith("Teste -"))).toBe(true);
+    expect(blueprint.orders.every((order) => ["pix", "card", "cash"].includes(order.paymentMethod))).toBe(true);
+  });
+
+  it("deve calcular o total e a quantidade de itens do lote de teste", () => {
+    const blueprint = getTestDataBlueprint();
+    const total = blueprint.orders.reduce((sum, order) => sum + order.items.reduce((orderSum, item) => {
+      return orderSum + blueprint.products[item.productIndex].price * item.quantity;
+    }, 0), 0);
+    const itemCount = blueprint.orders.reduce((sum, order) => sum + order.items.reduce((orderSum, item) => orderSum + item.quantity, 0), 0);
+
+    expect(total).toBeCloseTo(215.6, 2);
+    expect(itemCount).toBe(14);
+  });
+});
 
 describe("Migração de pedidos legados e auditoria", () => {
   const buildLegacyKey = (sessionId: string | number, orderId: string | number) =>

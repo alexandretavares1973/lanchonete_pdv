@@ -1,7 +1,7 @@
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { publicProcedure, router } from "./_core/trpc";
+import { adminProcedure, publicProcedure, router } from "./_core/trpc";
 import { pdvRouter } from "./pdv.router";
 import { getLocalUserById, getLocalUserByUsername, createLocalUser, updateLocalUserPassword } from "./db";
 import { getUserIdFromReq, setLocalSessionCookie, clearLocalSessionCookie } from "./_core/localAuth";
@@ -13,6 +13,15 @@ export const appRouter = router({
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
   system: systemRouter,
   pdv: pdvRouter,
+  settings: router({
+    generateTestData: adminProcedure.mutation(async ({ ctx }) => {
+      const username = ctx.user.name || ctx.user.email || `admin-${ctx.user.id}`;
+      return await import("./db").then(({ generateTestData }) => generateTestData({
+        userId: ctx.user.id,
+        username,
+      }));
+    }),
+  }),
   auth: router({
     me: publicProcedure.query(async ({ ctx }) => {
       // Tentar autenticação via sessão local primeiro

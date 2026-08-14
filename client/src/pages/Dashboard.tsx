@@ -6,7 +6,7 @@ import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Trash2, Plus, Edit2, Eye, EyeOff, Download, Upload, History, RotateCcw, Save } from "lucide-react";
+import { Trash2, Plus, Edit2, Eye, EyeOff, Download, Upload, History, RotateCcw, Save, Settings } from "lucide-react";
 import { CustomerBackup, readCustomerBackups, restoreCustomerBackup, saveCustomerBackup } from "@/lib/customerBackups";
 
 interface Customer {
@@ -262,6 +262,15 @@ export default function Dashboard() {
                 <p className="text-sm font-medium text-foreground">{user?.name}</p>
                 <p className="text-xs text-muted-foreground">{user?.email}</p>
               </div>
+              <Button
+                onClick={() => setLocation("/settings")}
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+              >
+                <Settings className="h-4 w-4" />
+                Configurações
+              </Button>
               <Button
                 onClick={() => setLocation("/profile")}
                 variant="outline"
