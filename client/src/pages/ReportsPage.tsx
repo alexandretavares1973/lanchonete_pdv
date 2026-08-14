@@ -83,6 +83,10 @@ export default function ReportsPage() {
   const [orderToCancel, setOrderToCancel] = useState<Order | null>(null);
   const [cancelReason, setCancelReason] = useState("");
   const [refundQuantities, setRefundQuantities] = useState<Record<string, number>>({});
+  const orderItemsQuery = trpc.pdv.orders.getItems.useQuery(
+    { orderId: orderToCancel?.id ?? 0 },
+    { enabled: Boolean(orderToCancel?.id && orderToCancel.id > 0) }
+  );
   const refundItemsMutation = trpc.pdv.orders.refundItems.useMutation({
     onSuccess: async () => {
       await Promise.all([
@@ -839,9 +843,10 @@ export default function ReportsPage() {
                                   variant="destructive"
                                   size="sm"
                                   className="gap-1"
-                                  onClick={() => {
+                                  onClick={async () => {
                                     setOrderToCancel(order);
                                     setCancelReason("");
+                                    setRefundQuantities({});
                                   }}
                                   disabled={cancelOrderMutation.isPending}
                                 >
@@ -950,13 +955,15 @@ export default function ReportsPage() {
                   <span>Qtd / Restante</span>
                   <span>Estornar</span>
                 </div>
-                {orderToCancel.items.map((item, index) => {
-                  const rawId = item.id ?? item.productId ?? index;
-                  const keyId = String(rawId);
-                  const refunded = item.refundedQuantity || 0;
-                  const maxRefundable = item.quantity - refunded;
-                  const isFullyRefunded = maxRefundable <= 0;
-                  const currentRefundQty = refundQuantities[keyId] ?? 0;
+                {(() => {
+                  const itemsList = orderItemsQuery.data && orderItemsQuery.data.length > 0 ? orderItemsQuery.data : orderToCancel.items;
+                  return itemsList.map((item: any, index: number) => {
+                    const rawId = item.id ?? item.orderItemId ?? item.productId ?? (index + 1);
+                    const keyId = String(rawId);
+                    const refunded = item.refundedQuantity || 0;
+                    const maxRefundable = item.quantity - refunded;
+                    const isFullyRefunded = maxRefundable <= 0;
+                    const currentRefundQty = refundQuantities[keyId] ?? 0;
 
                   return (
                     <div key={`${orderToCancel.id}-refund-${index}`} className={`flex items-center justify-between py-2 border-b border-border/60 last:border-0 ${isFullyRefunded ? "opacity-60 line-through" : ""}`}>
@@ -986,7 +993,8 @@ export default function ReportsPage() {
                       </div>
                     </div>
                   );
-                })}
+                  });
+                })()}
               </div>
 
               <div className="flex gap-2 justify-end">
@@ -995,9 +1003,10 @@ export default function ReportsPage() {
                   variant="outline"
                   size="sm"
                   onClick={() => {
+                    const itemsList = orderItemsQuery.data && orderItemsQuery.data.length > 0 ? orderItemsQuery.data : orderToCancel.items;
                     const all: Record<string, number> = {};
-                    orderToCancel.items.forEach((item, index) => {
-                      const rawId = item.id ?? item.productId ?? index;
+                    itemsList.forEach((item: any, index: number) => {
+                      const rawId = item.id ?? item.orderItemId ?? item.productId ?? (index + 1);
                       const keyId = String(rawId);
                       const maxR = item.quantity - (item.refundedQuantity || 0);
                       if (maxR > 0) all[keyId] = maxR;
@@ -1018,13 +1027,15 @@ export default function ReportsPage() {
                 <Button
                   variant="destructive"
                   onClick={() => {
-                    const itemsPayload = orderToCancel.items.map((item, index) => {
-                      const rawId = item.id ?? item.productId ?? index;
+                    const itemsList = orderItemsQuery.data && orderItemsQuery.data.length > 0 ? orderItemsQuery.data : orderToCancel.items;
+                    const itemsPayload = itemsList.map((item: any, index: number) => {
+                      const rawId = item.id ?? item.orderItemId ?? item.productId ?? (index + 1);
                       const itemId = Number(rawId);
                       const keyId = String(rawId);
-                      const qty = refundQuantities[keyId] ?? refundQuantities[String(index)] ?? 0;
-                      return { orderItemId: Number.isInteger(itemId) && itemId > 0 ? itemId : (index + 1), quantity: qty };
-                    }).filter((i) => i.quantity > 0);
+                      const qty = refundQuantities[keyId] ?? refundQuantities[String(rawId)] ?? refundQuantities[String(index)] ?? 0;
+                      const validId = Number.isInteger(itemId) && itemId > 0 ? itemId : (index + 1);
+                      return { orderItemId: validId, quantity: qty };
+                    }).filter((i) => i.quantity > 0 && Number.isInteger(i.orderItemId) && i.orderItemId > 0);
 
                     if (itemsPayload.length === 0) {
                       toast.error("Informe ao menos uma quantidade para estornar.");

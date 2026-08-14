@@ -558,3 +558,10 @@
 - [x] Corrigir conversão e fallback para garantir que o ID numérico seja enviado corretamente
 - [x] Adicionar teste unitário para validar payload do estorno parcial
 - [x] Validar testes, compilação TypeScript e build de produção
+
+
+## Correção Definitiva do Erro NaN em orderItemId (14/08/2026)
+- [x] Buscar os itens oficiais via query tRPC `orders.getItems` ao abrir o modal de estorno em `ReportsPage.tsx`
+- [x] Garantir que o payload de estorno utilize exclusivamente os IDs numéricos oficiais retornados pelo banco
+- [x] Adicionar fallback numérico robusto e validação prévia na mutation tRPC para rejeitar qualquer NaN no frontend
+- [x] Adicionar testes de unidade e verificação de build
