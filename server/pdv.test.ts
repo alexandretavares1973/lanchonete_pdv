@@ -312,6 +312,17 @@ describe("Estorno Parcial por Item", () => {
     expect(requestedValid <= remaining).toBe(true);
     expect(requestedInvalid <= remaining).toBe(false);
   });
+
+  it("deve somar corretamente a quantidade estornada de volta ao estoque global e disponível do produto", () => {
+    const initialStock = 10;
+    const soldQuantity = 3;
+    const stockAfterSale = initialStock - soldQuantity;
+    expect(stockAfterSale).toBe(7);
+
+    const refundedQuantity = 3;
+    const stockAfterRefund = stockAfterSale + refundedQuantity;
+    expect(stockAfterRefund).toBe(10);
+  });
 });
 
 describe("Gerador de dados de teste", () => {

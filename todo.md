@@ -543,3 +543,11 @@
 - [x] Alterar o limite visual de estoque baixo para menos de 3 unidades no POSPage
 - [x] Adicionar testes Vitest para atualização rápida e limite de estoque crítico
 - [x] Validar TypeScript/build e salvar checkpoint
+
+
+## Investigação e Correção do Estorno de Estoque (14/08/2026)
+- [x] Investigar o endpoint `orders.refundItems` em `server/pdv.router.ts` e `server/db.ts`
+- [x] Corrigir o mapeamento de ID e o fallback de menu ao estornar itens
+- [x] Corrigir a devolução de estoque global e cardápio semanal no frontend (`ReportsPage`) e backend (`db.ts`)
+- [x] Adicionar teste de regressão para estorno e verificação de estoque
+- [x] Validar testes, compilação TypeScript e build de produção

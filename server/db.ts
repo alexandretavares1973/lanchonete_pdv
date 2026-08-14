@@ -1043,9 +1043,14 @@ export async function refundOrderItems(
       .where(eq(cashierSessions.id, order.cashierSessionId))
       .limit(1);
     const session = sessionRows[0];
-    const menu = session
+    let menu = session
       ? await getWeeklyMenuForCashierSession(session.responsibleId, session.openedAt)
       : undefined;
+
+    if (!menu && session) {
+      const fallbackMenuRows = await tx.select().from(weeklyMenus).where(eq(weeklyMenus.responsibleId, session.responsibleId)).orderBy(desc(weeklyMenus.id)).limit(1);
+      menu = fallbackMenuRows[0];
+    }
 
     const auditedItems: Array<Record<string, unknown>> = [];
 

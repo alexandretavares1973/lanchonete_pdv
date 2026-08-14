@@ -10,6 +10,7 @@ import { AlertTriangle, ArrowLeft, CheckCircle2, Loader2, Printer, RotateCcw } f
 
 interface MenuItem {
   id: string;
+  productId?: number;
   productName: string;
   price: number;
   quantity: number | null;
@@ -137,7 +138,8 @@ export default function ReportsPage() {
     const nextMenus = menus.map((menu) => menu.id !== session.weeklyMenuId ? menu : ({
       ...menu,
       items: menu.items.map((item) => {
-        const restored = productIds.get(String(item.id));
+        const key = String(item.productId ?? item.id);
+        const restored = productIds.get(key) || productIds.get(String(item.id));
         if (!restored || item.quantity === null) return item;
         const quantity = item.quantity + restored;
         return { ...item, quantity, isAvailable: quantity > 0 };
