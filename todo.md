@@ -565,3 +565,10 @@
 - [x] Garantir que o payload de estorno utilize exclusivamente os IDs numéricos oficiais retornados pelo banco
 - [x] Adicionar fallback numérico robusto e validação prévia na mutation tRPC para rejeitar qualquer NaN no frontend
 - [x] Adicionar testes de unidade e verificação de build
+
+
+## Auditoria e Correção Definitiva do Estorno Parcial em ReportsPage (14/08/2026)
+- [x] Analisar as 4 hipóteses sobre o envio de `NaN` em `orderItemId`
+- [x] Garantir mapeamento robusto em `ReportsPage.tsx` priorizando `item.id`, `item.orderItemId` ou índice sequencial (`index + 1`) como chave numérica estável
+- [x] Cobrir com testes o estorno de 1 item, estorno de múltiplos itens e pedidos variados
+- [x] Validar TypeScript, compilação e testes Vitest

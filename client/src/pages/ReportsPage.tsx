@@ -958,15 +958,15 @@ export default function ReportsPage() {
                 {(() => {
                   const itemsList = orderItemsQuery.data && orderItemsQuery.data.length > 0 ? orderItemsQuery.data : orderToCancel.items;
                   return itemsList.map((item: any, index: number) => {
-                    const rawId = item.id ?? item.orderItemId ?? item.productId ?? (index + 1);
-                    const keyId = String(rawId);
+                    const officialId = Number(item.id ?? item.orderItemId);
+                    const itemKey = Number.isInteger(officialId) && officialId > 0 ? String(officialId) : String(index + 1);
                     const refunded = item.refundedQuantity || 0;
                     const maxRefundable = item.quantity - refunded;
                     const isFullyRefunded = maxRefundable <= 0;
-                    const currentRefundQty = refundQuantities[keyId] ?? 0;
+                    const currentRefundQty = refundQuantities[itemKey] ?? 0;
 
                   return (
-                    <div key={`${orderToCancel.id}-refund-${index}`} className={`flex items-center justify-between py-2 border-b border-border/60 last:border-0 ${isFullyRefunded ? "opacity-60 line-through" : ""}`}>
+                    <div key={`${orderToCancel.id}-refund-item-${index}`} className={`flex items-center justify-between py-2 border-b border-border/60 last:border-0 ${isFullyRefunded ? "opacity-60 line-through" : ""}`}>
                       <div className="flex-1 pr-2">
                         <div className="font-medium text-foreground">{item.productName}</div>
                         <div className="text-xs text-muted-foreground">Vendido: {item.quantity} | Já estornado: {refunded}</div>
@@ -985,7 +985,7 @@ export default function ReportsPage() {
                             value={currentRefundQty}
                             onChange={(e) => {
                               const val = Math.max(0, Math.min(maxRefundable, parseInt(e.target.value || "0", 10)));
-                              setRefundQuantities({ ...refundQuantities, [keyId]: val });
+                              setRefundQuantities({ ...refundQuantities, [itemKey]: val });
                             }}
                             className="h-8 text-center"
                           />
@@ -1006,10 +1006,10 @@ export default function ReportsPage() {
                     const itemsList = orderItemsQuery.data && orderItemsQuery.data.length > 0 ? orderItemsQuery.data : orderToCancel.items;
                     const all: Record<string, number> = {};
                     itemsList.forEach((item: any, index: number) => {
-                      const rawId = item.id ?? item.orderItemId ?? item.productId ?? (index + 1);
-                      const keyId = String(rawId);
+                      const officialId = Number(item.id ?? item.orderItemId);
+                      const itemKey = Number.isInteger(officialId) && officialId > 0 ? String(officialId) : String(index + 1);
                       const maxR = item.quantity - (item.refundedQuantity || 0);
-                      if (maxR > 0) all[keyId] = maxR;
+                      if (maxR > 0) all[itemKey] = maxR;
                     });
                     setRefundQuantities(all);
                   }}
@@ -1029,12 +1029,11 @@ export default function ReportsPage() {
                   onClick={() => {
                     const itemsList = orderItemsQuery.data && orderItemsQuery.data.length > 0 ? orderItemsQuery.data : orderToCancel.items;
                     const itemsPayload = itemsList.map((item: any, index: number) => {
-                      const rawId = item.id ?? item.orderItemId ?? item.productId ?? (index + 1);
-                      const itemId = Number(rawId);
-                      const keyId = String(rawId);
-                      const qty = refundQuantities[keyId] ?? refundQuantities[String(rawId)] ?? refundQuantities[String(index)] ?? 0;
-                      const validId = Number.isInteger(itemId) && itemId > 0 ? itemId : (index + 1);
-                      return { orderItemId: validId, quantity: qty };
+                      const officialId = Number(item.id ?? item.orderItemId);
+                      const validId = Number.isInteger(officialId) && officialId > 0 ? officialId : (index + 1);
+                      const itemKey = String(validId);
+                      const qty = refundQuantities[itemKey] ?? refundQuantities[String(index + 1)] ?? 0;
+                      return { orderItemId: validId, quantity: Number(qty) };
                     }).filter((i) => i.quantity > 0 && Number.isInteger(i.orderItemId) && i.orderItemId > 0);
 
                     if (itemsPayload.length === 0) {
