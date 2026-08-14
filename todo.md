@@ -486,3 +486,11 @@
 - [x] Manter GERAL como opção selecionável, sem pré-seleção
 - [x] Resetar cliente, pagamento, valor recebido, diálogo e carrinho após venda concluída
 - [x] Testar venda completa e tentativa de finalização sem cliente
+
+
+## Atalho de Cliente e Foco no POS (14/08/2026)
+- [x] Adicionar botão de cadastro rápido ao lado do seletor de clientes
+- [x] Criar diálogo de novo cliente com validação e persistência no localStorage
+- [x] Selecionar automaticamente o cliente recém-cadastrado no pedido atual
+- [x] Focar automaticamente o seletor ao iniciar um novo pedido após o reset
+- [x] Testar cadastro rápido, seleção e foco no preview

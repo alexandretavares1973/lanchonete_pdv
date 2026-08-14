@@ -1,11 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useLocation } from "wouter";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { ShoppingCart, Trash2, Lock } from "lucide-react";
+import { ShoppingCart, Trash2, Lock, UserPlus } from "lucide-react";
 import { DEFAULT_PAYMENT_METHOD, getExplicitCustomer } from "@shared/posOrderFlow";
 
 interface MenuItem {
@@ -61,6 +61,11 @@ export default function POSPage() {
   const [lastCustomerName, setLastCustomerName] = useState<string>("");
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [showQuickCustomerDialog, setShowQuickCustomerDialog] = useState(false);
+  const [quickCustomerForm, setQuickCustomerForm] = useState({ name: "", phone: "", email: "" });
+  const [shouldFocusCustomer, setShouldFocusCustomer] = useState(false);
+  const customerSelectRef = useRef<HTMLSelectElement>(null);
+  const quickCustomerNameRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const storedMenus = localStorage.getItem("weeklyMenus");
@@ -84,6 +89,61 @@ export default function POSPage() {
       setSelectedCustomer(null);
     }
   }, []);
+
+  useEffect(() => {
+    if (!showQuickCustomerDialog) return;
+    const timeoutId = window.setTimeout(() => quickCustomerNameRef.current?.focus(), 0);
+    return () => window.clearTimeout(timeoutId);
+  }, [showQuickCustomerDialog]);
+
+  useEffect(() => {
+    if (!shouldFocusCustomer || showPrint || showQuickCustomerDialog) return;
+    const timeoutId = window.setTimeout(() => {
+      customerSelectRef.current?.focus();
+      setShouldFocusCustomer(false);
+    }, 0);
+    return () => window.clearTimeout(timeoutId);
+  }, [shouldFocusCustomer, showPrint, showQuickCustomerDialog]);
+
+  const handleOpenQuickCustomerDialog = () => {
+    setQuickCustomerForm({ name: "", phone: "", email: "" });
+    setShowQuickCustomerDialog(true);
+  };
+
+  const handleQuickCustomerSubmit = () => {
+    const name = quickCustomerForm.name.trim();
+    if (!name) {
+      toast.error("❌ Nome do cliente é obrigatório!");
+      quickCustomerNameRef.current?.focus();
+      return;
+    }
+
+    const normalizedName = name.toLocaleLowerCase();
+    const existingCustomer = customers.find((customer) => customer.name.trim().toLocaleLowerCase() === normalizedName);
+    if (existingCustomer) {
+      setSelectedCustomer(existingCustomer);
+      setShowQuickCustomerDialog(false);
+      toast.success(`Cliente "${existingCustomer.name}" já existia e foi selecionado.`);
+      return;
+    }
+
+    const newCustomer: Customer = {
+      id: Date.now(),
+      name,
+      phone: quickCustomerForm.phone.trim() || undefined,
+      email: quickCustomerForm.email.trim() || undefined,
+      isDefault: false,
+      isActive: true,
+      createdAt: new Date(),
+    };
+    const updatedCustomers = [...customers, newCustomer];
+    setCustomers(updatedCustomers);
+    localStorage.setItem("customers", JSON.stringify(updatedCustomers));
+    setSelectedCustomer(newCustomer);
+    setQuickCustomerForm({ name: "", phone: "", email: "" });
+    setShowQuickCustomerDialog(false);
+    toast.success(`✅ Cliente "${name}" cadastrado e selecionado.`);
+  };
 
   const handleAddToCart = (product: MenuItem) => {
     // Validar se o cardápio está aberto
@@ -347,6 +407,7 @@ export default function POSPage() {
     setSelectedCustomer(null);
     setPaymentMethod(DEFAULT_PAYMENT_METHOD);
     setAmountReceived(0);
+    setShouldFocusCustomer(true);
   };
 
   const handlePrint = () => {
@@ -609,24 +670,39 @@ export default function POSPage() {
             </Card>
 
             <Card className="p-4 mb-6">
-              <label className="text-sm font-medium text-foreground block mb-2">
+              <label htmlFor="pos-customer-select" className="text-sm font-medium text-foreground block mb-2">
                 Selecione o Cliente
               </label>
-              <select
-                value={selectedCustomer?.id || ""}
-                onChange={(e) => {
-                  const customer = customers.find((c: Customer) => c.id === parseInt(e.target.value));
-                  setSelectedCustomer(customer || null);
-                }}
-                className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground"
-              >
-                <option value="">Selecione um cliente</option>
-                {customers.filter((c: Customer) => c.isActive !== false).map((customer: Customer) => (
-                  <option key={customer.id} value={customer.id}>
-                    {customer.name} {customer.isDefault ? "(Padrão)" : ""}
-                  </option>
-                ))}
-              </select>
+              <div className="flex items-center gap-2">
+                <select
+                  id="pos-customer-select"
+                  ref={customerSelectRef}
+                  value={selectedCustomer?.id || ""}
+                  onChange={(e) => {
+                    const customer = customers.find((c: Customer) => c.id === parseInt(e.target.value));
+                    setSelectedCustomer(customer || null);
+                  }}
+                  className="flex-1 px-3 py-2 border border-border rounded-lg bg-background text-foreground"
+                >
+                  <option value="">Selecione um cliente</option>
+                  {customers.filter((c: Customer) => c.isActive !== false).map((customer: Customer) => (
+                    <option key={customer.id} value={customer.id}>
+                      {customer.name} {customer.isDefault ? "(Padrão)" : ""}
+                    </option>
+                  ))}
+                </select>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleOpenQuickCustomerDialog}
+                  className="shrink-0 gap-1"
+                  aria-label="Cadastrar novo cliente"
+                  title="Cadastrar novo cliente"
+                >
+                  <UserPlus className="h-4 w-4" />
+                  <span className="hidden sm:inline">Novo cliente</span>
+                </Button>
+              </div>
             </Card>
 
             {selectedMenu && (
@@ -804,6 +880,81 @@ export default function POSPage() {
                   className="flex-1 bg-gradient-to-r from-primary to-secondary text-white"
                 >
                   Confirmar
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Quick Customer Dialog */}
+        <Dialog
+          open={showQuickCustomerDialog}
+          onOpenChange={(open) => {
+            setShowQuickCustomerDialog(open);
+            if (!open) setQuickCustomerForm({ name: "", phone: "", email: "" });
+          }}
+        >
+          <DialogContent className="sm:max-w-md bg-background border border-border">
+            <DialogHeader>
+              <DialogTitle className="text-foreground">Cadastrar novo cliente</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="quick-customer-name" className="text-sm font-medium text-foreground block mb-2">
+                  Nome do cliente *
+                </label>
+                <Input
+                  id="quick-customer-name"
+                  ref={quickCustomerNameRef}
+                  placeholder="Ex: João Silva"
+                  value={quickCustomerForm.name}
+                  onChange={(e) => setQuickCustomerForm({ ...quickCustomerForm, name: e.target.value })}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleQuickCustomerSubmit();
+                  }}
+                  className="w-full"
+                />
+              </div>
+              <div>
+                <label htmlFor="quick-customer-phone" className="text-sm font-medium text-foreground block mb-2">
+                  Telefone
+                </label>
+                <Input
+                  id="quick-customer-phone"
+                  placeholder="Ex: (11) 98765-4321"
+                  value={quickCustomerForm.phone}
+                  onChange={(e) => setQuickCustomerForm({ ...quickCustomerForm, phone: e.target.value })}
+                  className="w-full"
+                />
+              </div>
+              <div>
+                <label htmlFor="quick-customer-email" className="text-sm font-medium text-foreground block mb-2">
+                  Email
+                </label>
+                <Input
+                  id="quick-customer-email"
+                  type="email"
+                  placeholder="Ex: joao@email.com"
+                  value={quickCustomerForm.email}
+                  onChange={(e) => setQuickCustomerForm({ ...quickCustomerForm, email: e.target.value })}
+                  className="w-full"
+                />
+              </div>
+              <div className="flex gap-3 pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowQuickCustomerDialog(false)}
+                  className="flex-1"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleQuickCustomerSubmit}
+                  className="flex-1 bg-gradient-to-r from-primary to-secondary text-white"
+                >
+                  Cadastrar e selecionar
                 </Button>
               </div>
             </div>
