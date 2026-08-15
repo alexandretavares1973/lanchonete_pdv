@@ -77,10 +77,11 @@ export default function POSPage() {
       const parsed = JSON.parse(storedMenus);
       setMenus(parsed);
       
-      // Selecionar primeiro cardápio aberto
-      const openMenu = parsed.find((m: any) => m.status === "open");
-      if (openMenu) {
-        setSelectedMenu(openMenu);
+      const openMenusList = parsed.filter((m: any) => m.status === "open");
+      if (openMenusList.length === 1) {
+        setSelectedMenu(openMenusList[0]);
+      } else {
+        setSelectedMenu(null);
       }
     }
 
@@ -158,9 +159,15 @@ export default function POSPage() {
   };
 
   const handleAddToCart = (product: MenuItem) => {
+    const openMenusList = menus.filter((m: any) => m.status === "open");
+    if (openMenusList.length > 1 && !selectedMenu) {
+      toast.error("⚠️ Existem múltiplos cardápios abertos. Selecione o cardápio antes de adicionar itens.");
+      return;
+    }
+
     // Validar se o cardápio está aberto
     if (!selectedMenu || selectedMenu.status !== "open") {
-      toast.error("❌ Cardápio fechado! Não é possível fazer vendas.");
+      toast.error("❌ Cardápio fechado ou não selecionado! Não é possível fazer vendas.");
       return;
     }
 
@@ -319,8 +326,14 @@ export default function POSPage() {
       return;
     }
 
+    const openMenusList = menus.filter((m: any) => m.status === "open");
+    if (openMenusList.length > 1 && !selectedMenu) {
+      toast.error("⚠️ Selecione de qual cardápio a venda será feita.");
+      return;
+    }
+
     if (!selectedMenu || selectedMenu.status !== "open") {
-      toast.error("❌ Cardápio fechado! Não é possível fazer vendas.");
+      toast.error("❌ Cardápio fechado ou não selecionado! Não é possível fazer vendas.");
       return;
     }
 
@@ -414,6 +427,11 @@ export default function POSPage() {
     setSelectedCustomer(null);
     setPaymentMethod(DEFAULT_PAYMENT_METHOD);
     setAmountReceived(0);
+    // Se houver mais de um cardápio aberto, resetamos a seleção do cardápio para forçar escolha no próximo pedido
+    const openMenusList = menus.filter((m: any) => m.status === "open");
+    if (openMenusList.length > 1) {
+      setSelectedMenu(null);
+    }
     setShouldFocusCustomer(true);
   };
 

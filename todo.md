@@ -599,3 +599,10 @@
 - [x] Adicionar função `handleShareWhatsApp` em `ReportsPage.tsx` integrando Web Share API (`navigator.share`) com arquivo PDF ou fallback via WhatsApp Web / API `wa.me`
 - [x] Incluir botão "Compartilhar WhatsApp" ao lado de "Exportar PDF" em cada sessão ativa do relatório
 - [x] Validar testes, compilação TypeScript e build de produção
+
+
+## Seleção Obrigatória de Cardápio com Múltiplos Cardápios Abertos no PDV (15/08/2026)
+- [x] Atualizar `POSPage.tsx` para verificar quantos cardápios estão disponíveis/abertos
+- [x] Se houver mais de um cardápio, iniciar sem cardápio pré-selecionado e exigir escolha explícita antes de adicionar itens ou finalizar
+- [x] Se houver apenas um cardápio, mantê-lo selecionado automaticamente como antes
+- [x] Validar testes, compilação TypeScript e build de produção
