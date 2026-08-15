@@ -331,6 +331,7 @@ export default function ReportsPage() {
 
   const calculateReportData = (session: CashierSession) => {
     const menu = menus.find(m => m.id === session.weeklyMenuId);
+    if (!menu) return null;
     const orders = (session.orders || []).filter((order) => order.status !== "cancelled");
 
     // Agrupar vendas por produto
@@ -399,6 +400,7 @@ export default function ReportsPage() {
 
   const handlePrint = (session: CashierSession) => {
     const report = calculateReportData(session);
+    if (!report) return;
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
 
@@ -592,9 +594,12 @@ export default function ReportsPage() {
     printWindow.print();
   };
 
-  const activeSessions = selectedMenuId
+  const activeSessions = (selectedMenuId
     ? getSessionsForMenu(selectedMenuId)
-    : sessions;
+    : sessions).filter(session => {
+      const menu = menus.find(m => m.id === session.weeklyMenuId);
+      return Boolean(menu);
+    });
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
@@ -663,6 +668,7 @@ export default function ReportsPage() {
           ) : (
             activeSessions.map(session => {
               const report = calculateReportData(session);
+              if (!report) return null;
               return (
                 <Card key={session.id} className="p-6">
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
@@ -756,6 +762,7 @@ export default function ReportsPage() {
           </DialogHeader>
           {selectedSession && (() => {
             const report = calculateReportData(selectedSession);
+            if (!report) return <p className="text-muted-foreground">Cardápio associado foi excluído.</p>;
             return (
               <div className="space-y-6">
                 {/* Header Info */}

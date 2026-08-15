@@ -579,3 +579,10 @@
 - [x] Sincronizar automaticamente ou resolver o ID oficial no banco antes de disparar `orders.refundItems` ou `orders.cancel`
 - [x] Fallback para tratamento local se o pedido for estritamente local e não existir no banco
 - [x] Validar testes, TypeScript e build de produção
+
+
+## Filtragem de Cardápios Excluídos no Relatório de Vendas (15/08/2026)
+- [x] Filtrar sessões em `ReportsPage.tsx` para considerar apenas aquelas cujo `weeklyMenuId` existe na lista atual de `menus`
+- [x] Ajustar o cálculo de totais, listagem de sessões e detalhes para omitir cardápios removidos
+- [x] Adicionar teste unitário de regressão para cardápio excluído
+- [x] Validar testes, compilação TypeScript e build de produção
