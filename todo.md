@@ -586,3 +586,10 @@
 - [x] Ajustar o cálculo de totais, listagem de sessões e detalhes para omitir cardápios removidos
 - [x] Adicionar teste unitário de regressão para cardápio excluído
 - [x] Validar testes, compilação TypeScript e build de produção
+
+
+## Exportação PDF do Relatório de Vendas de Cardápios Ativos (15/08/2026)
+- [x] Adicionar função `handleExportPDF` em `ReportsPage.tsx` integrando o gerador de PDF para as sessões dos cardápios ativos
+- [x] Incluir botão "Exportar PDF" ao lado do botão Imprimir em cada sessão do relatório
+- [x] Adicionar teste unitário de regressão para exportação PDF e validação de cardápios ativos
+- [x] Validar testes, compilação TypeScript e build de produção

@@ -6,7 +6,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
-import { AlertTriangle, ArrowLeft, CheckCircle2, Loader2, Printer, RotateCcw } from "lucide-react";
+import { AlertTriangle, ArrowLeft, CheckCircle2, FileDown, Loader2, Printer, RotateCcw } from "lucide-react";
+import { downloadTextPdf } from "@/lib/simplePdf";
 
 interface MenuItem {
   id: string;
@@ -398,6 +399,37 @@ export default function ReportsPage() {
     setShowDetails(true);
   };
 
+  const handleExportPDF = (session: CashierSession) => {
+    const report = calculateReportData(session);
+    if (!report) return;
+    const menuLabel = report.menu ? getSaturdayLabel(report.menu.saturdayOrder) : "N/A";
+    const menuDate = report.menu ? new Date(report.menu.saturdayDate).toLocaleDateString("pt-BR") : "N/A";
+    const lines = [
+      `Cardápio: ${menuLabel} (${menuDate})`,
+      `Responsável: ${report.menu?.responsibleName || "N/A"}`,
+      `Abertura: ${new Date(session.openedAt).toLocaleString("pt-BR")}`,
+      `Status: ${session.closedAt ? "Fechado" : "Aberto"}`,
+      "",
+      "PRODUTOS VENDIDOS:",
+      ...Object.entries(report.productSales).map(([_, prod]) =>
+        `- ${prod.name} | Qtd: ${prod.quantity} | Preço Unit.: R$ ${prod.unitPrice.toFixed(2)} | Subtotal: R$ ${prod.subtotal.toFixed(2)}`
+      ),
+      "",
+      `Total de Itens: ${report.totalItems}`,
+      `Total de Pedidos: ${report.ordersCount}`,
+      "",
+      "RESUMO DE PAGAMENTOS:",
+      `PIX: R$ ${report.paymentTotals.pix.toFixed(2)}`,
+      `Cartão: R$ ${report.paymentTotals.card.toFixed(2)}`,
+      `Dinheiro: R$ ${report.paymentTotals.cash.toFixed(2)}`,
+      "",
+      `TOTAL GERAL: R$ ${report.grandTotal.toFixed(2)}`,
+      `Gerado em: ${new Date().toLocaleString("pt-BR")}`,
+    ];
+    downloadTextPdf(`relatorio-vendas-sabado-${session.weeklyMenuId}.pdf`, `Relatório de Vendas - ${menuLabel}`, lines);
+    toast.success("✅ PDF do relatório de vendas exportado com sucesso!");
+  };
+
   const handlePrint = (session: CashierSession) => {
     const report = calculateReportData(session);
     if (!report) return;
@@ -737,6 +769,14 @@ export default function ReportsPage() {
                       className="flex-1 bg-gradient-to-r from-primary to-secondary"
                     >
                       Ver Detalhes
+                    </Button>
+                    <Button
+                      onClick={() => handleExportPDF(session)}
+                      variant="outline"
+                      className="gap-2"
+                    >
+                      <FileDown className="w-4 h-4" />
+                      Exportar PDF
                     </Button>
                     <Button
                       onClick={() => handlePrint(session)}
