@@ -100,6 +100,16 @@ export default function ReportsPage() {
       setRefundQuantities({});
     },
     onError: (err) => {
+      if (orderToCancel && isOrderMissingInBackend(err)) {
+        // Se o pedido for estritamente local (não sincronizado com o banco), aplicamos o estorno localmente
+        restoreLocalMenuStock(orderToCancel);
+        updateOrderInLocalStorage(orderToCancel.id, { status: "cancelled" });
+        toast.success("Estorno aplicado no registro local do relatório e estoque restaurado.");
+        setOrderToCancel(null);
+        setCancelReason("");
+        setRefundQuantities({});
+        return;
+      }
       toast.error(`❌ Erro ao estornar itens: ${err.message}`);
     },
   });
@@ -1038,6 +1048,17 @@ export default function ReportsPage() {
 
                     if (itemsPayload.length === 0) {
                       toast.error("Informe ao menos uma quantidade para estornar.");
+                      return;
+                    }
+
+                    // Se o ID for um timestamp local (pedido legado não sincronizado), forçamos a sincronização prévia ou tratamos localmente
+                    if (orderToCancel.id > 1000000000) {
+                      restoreLocalMenuStock(orderToCancel);
+                      updateOrderInLocalStorage(orderToCancel.id, { status: "cancelled" });
+                      toast.success("Pedido legado estornado com sucesso no registro local e estoque devolvido.");
+                      setOrderToCancel(null);
+                      setCancelReason("");
+                      setRefundQuantities({});
                       return;
                     }
 

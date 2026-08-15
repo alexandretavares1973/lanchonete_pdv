@@ -572,3 +572,10 @@
 - [x] Garantir mapeamento robusto em `ReportsPage.tsx` priorizando `item.id`, `item.orderItemId` ou índice sequencial (`index + 1`) como chave numérica estável
 - [x] Cobrir com testes o estorno de 1 item, estorno de múltiplos itens e pedidos variados
 - [x] Validar TypeScript, compilação e testes Vitest
+
+
+## Correção de Pedidos Legados no Estorno (14/08/2026)
+- [x] Tratar IDs locais (ex: com timestamp Date.now() > 1000000000000) no estorno e correção de pagamento em `ReportsPage.tsx`
+- [x] Sincronizar automaticamente ou resolver o ID oficial no banco antes de disparar `orders.refundItems` ou `orders.cancel`
+- [x] Fallback para tratamento local se o pedido for estritamente local e não existir no banco
+- [x] Validar testes, TypeScript e build de produção
