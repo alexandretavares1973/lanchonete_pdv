@@ -606,3 +606,10 @@
 - [x] Se houver mais de um cardápio, iniciar sem cardápio pré-selecionado e exigir escolha explícita antes de adicionar itens ou finalizar
 - [x] Se houver apenas um cardápio, mantê-lo selecionado automaticamente como antes
 - [x] Validar testes, compilação TypeScript e build de produção
+
+
+## Cardápio Padrão nas Configurações (15/08/2026)
+- [x] Adicionar seletor de cardápio padrão em `SettingsPage.tsx` persistido no `localStorage` (`defaultWeeklyMenuId`)
+- [x] Ajustar `POSPage.tsx` para verificar se existe um cardápio padrão salvo e se ele está com status `open`
+- [x] Caso o cardápio padrão esteja aberto, selecioná-lo automaticamente mesmo com múltiplos cardápios abertos
+- [x] Validar testes, compilação TypeScript e build de produção

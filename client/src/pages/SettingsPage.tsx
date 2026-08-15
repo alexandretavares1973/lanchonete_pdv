@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
-import { ArrowLeft, DatabaseZap, Loader2, ShieldCheck, TestTube2 } from "lucide-react";
+import { ArrowLeft, DatabaseZap, Loader2, ShieldCheck, Star, TestTube2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -161,18 +161,81 @@ export default function SettingsPage() {
             </div>
           </Card>
 
-          <Card className="p-6 shadow-sm">
-            <div className="mb-4 flex items-center gap-3">
-              <div className="rounded-xl bg-primary/10 p-2 text-primary">
-                <ShieldCheck className="h-5 w-5" />
+          <Card className="p-6 shadow-sm flex flex-col justify-between">
+            <div>
+              <div className="mb-4 flex items-center gap-3">
+                <div className="rounded-xl bg-primary/10 p-2 text-primary">
+                  <ShieldCheck className="h-5 w-5" />
+                </div>
+                <h2 className="font-semibold text-foreground">Acesso protegido</h2>
               </div>
-              <h2 className="font-semibold text-foreground">Acesso protegido</h2>
+              <p className="text-sm leading-6 text-muted-foreground">
+                A geração de dados exige uma sessão autenticada com permissão administrativa. Os registros criados entram no mesmo fluxo de estoque, caixa, vendas e relatórios.
+              </p>
             </div>
-            <p className="text-sm leading-6 text-muted-foreground">
-              A geração de dados exige uma sessão autenticada com permissão administrativa. Os registros criados entram no mesmo fluxo de estoque, caixa, vendas e relatórios.
-            </p>
           </Card>
         </div>
+
+        {/* Default Menu Configuration Card */}
+        <Card className="mt-6 p-6 shadow-sm">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="rounded-xl bg-primary/10 p-2 text-primary">
+              <Star className="h-5 w-5" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-foreground">Cardápio Padrão do PDV</h2>
+              <p className="text-xs text-muted-foreground">Defina qual cardápio deve ser selecionado automaticamente ao abrir o PDV quando houver vários abertos.</p>
+            </div>
+          </div>
+          {(() => {
+            const [menusList, setMenusList] = useState<any[]>([]);
+            const [defaultMenuId, setDefaultMenuId] = useState<string>("");
+
+            useEffect(() => {
+              const stored = localStorage.getItem("weeklyMenus");
+              if (stored) {
+                try {
+                  setMenusList(JSON.parse(stored));
+                } catch {}
+              }
+              const currentDefault = localStorage.getItem("defaultWeeklyMenuId") || "";
+              setDefaultMenuId(currentDefault);
+            }, []);
+
+            const handleSaveDefaultMenu = (id: string) => {
+              setDefaultMenuId(id);
+              if (id) {
+                localStorage.setItem("defaultWeeklyMenuId", id);
+                toast.success("✅ Cardápio padrão salvo com sucesso!");
+              } else {
+                localStorage.removeItem("defaultWeeklyMenuId");
+                toast.success("Cardápio padrão removido.");
+              }
+            };
+
+            const getSaturdayLabel = (order: number) => {
+              const labels = ["1º", "2º", "3º", "4º", "5º"];
+              return `${labels[order - 1] || order}º Sábado`;
+            };
+
+            return (
+              <div className="flex flex-col sm:flex-row items-center gap-4">
+                <select
+                  value={defaultMenuId}
+                  onChange={(e) => handleSaveDefaultMenu(e.target.value)}
+                  className="w-full sm:w-auto flex-1 px-3 py-2 border border-border rounded-lg bg-background text-foreground text-sm"
+                >
+                  <option value="">Nenhum (exigir escolha manual se houver vários)</option>
+                  {menusList.map((m: any) => (
+                    <option key={m.id} value={m.id}>
+                      {getSaturdayLabel(m.saturdayOrder)} - {new Date(m.saturdayDate).toLocaleDateString("pt-BR")} ({m.status === "open" ? "Aberto" : "Fechado"})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            );
+          })()}
+        </Card>
       </div>
 
       <Dialog open={showTestDataDialog} onOpenChange={(open) => !generateTestDataMutation.isPending && setShowTestDataDialog(open)}>
@@ -184,22 +247,19 @@ export default function SettingsPage() {
             <p className="text-sm leading-6 text-muted-foreground">
               Serão criados produtos, clientes, cardápio, caixa e cinco pedidos de teste. Nada será apagado ou sobrescrito.
             </p>
-            <div className="rounded-lg border border-border bg-muted/40 p-4 text-sm text-foreground">
-              <p className="font-semibold">O lote inclui:</p>
-              <ul className="mt-2 list-disc space-y-1 pl-5 text-muted-foreground">
-                <li>6 produtos fictícios com estoque</li>
-                <li>3 clientes fictícios e o cliente GERAL</li>
-                <li>1 cardápio aberto e 1 sessão de caixa fechada</li>
-                <li>5 pedidos concluídos com pagamentos variados</li>
-              </ul>
-            </div>
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setShowTestDataDialog(false)} disabled={generateTestDataMutation.isPending}>Cancelar</Button>
-              <Button onClick={() => generateTestDataMutation.mutate()} disabled={generateTestDataMutation.isPending} className="gap-2">
-                {generateTestDataMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-                {generateTestDataMutation.isPending ? "Gerando..." : "Confirmar geração"}
-              </Button>
-            </div>
+          </div>
+          <div className="flex justify-end gap-3 mt-4">
+            <Button variant="outline" onClick={() => setShowTestDataDialog(false)} disabled={generateTestDataMutation.isPending}>
+              Cancelar
+            </Button>
+            <Button
+              className="bg-amber-600 text-white hover:bg-amber-700 gap-2"
+              onClick={() => generateTestDataMutation.mutate()}
+              disabled={generateTestDataMutation.isPending}
+            >
+              {generateTestDataMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+              Confirmar e Gerar
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
