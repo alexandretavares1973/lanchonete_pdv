@@ -593,3 +593,9 @@
 - [x] Incluir botão "Exportar PDF" ao lado do botão Imprimir em cada sessão do relatório
 - [x] Adicionar teste unitário de regressão para exportação PDF e validação de cardápios ativos
 - [x] Validar testes, compilação TypeScript e build de produção
+
+
+## Compartilhamento do Relatório PDF pelo WhatsApp (15/08/2026)
+- [x] Adicionar função `handleShareWhatsApp` em `ReportsPage.tsx` integrando Web Share API (`navigator.share`) com arquivo PDF ou fallback via WhatsApp Web / API `wa.me`
+- [x] Incluir botão "Compartilhar WhatsApp" ao lado de "Exportar PDF" em cada sessão ativa do relatório
+- [x] Validar testes, compilação TypeScript e build de produção

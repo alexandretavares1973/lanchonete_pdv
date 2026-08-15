@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { AlertTriangle, ArrowLeft, CheckCircle2, FileDown, Loader2, Printer, RotateCcw } from "lucide-react";
-import { downloadTextPdf } from "@/lib/simplePdf";
+import { createTextPdf, downloadTextPdf } from "@/lib/simplePdf";
 
 interface MenuItem {
   id: string;
@@ -430,6 +430,58 @@ export default function ReportsPage() {
     toast.success("✅ PDF do relatório de vendas exportado com sucesso!");
   };
 
+  const handleShareWhatsApp = async (session: CashierSession) => {
+    const report = calculateReportData(session);
+    if (!report) return;
+    const menuLabel = report.menu ? getSaturdayLabel(report.menu.saturdayOrder) : "N/A";
+    const menuDate = report.menu ? new Date(report.menu.saturdayDate).toLocaleDateString("pt-BR") : "N/A";
+
+    const textSummary = [
+      `📊 *Relatório de Vendas - ${menuLabel} (${menuDate})*`,
+      `👤 Responsável: ${report.menu?.responsibleName || "N/A"}`,
+      `📦 Total de Itens: ${report.totalItems} | Pedidos: ${report.ordersCount}`,
+      `💰 *Total Geral: R$ ${report.grandTotal.toFixed(2)}*`,
+      `📱 PIX: R$ ${report.paymentTotals.pix.toFixed(2)} | Cartão: R$ ${report.paymentTotals.card.toFixed(2)} | Dinheiro: R$ ${report.paymentTotals.cash.toFixed(2)}`,
+      "",
+      "🛍️ *Produtos:*",
+      ...Object.entries(report.productSales).map(([_, prod]) =>
+        `• ${prod.name}: ${prod.quantity}x (R$ ${prod.subtotal.toFixed(2)})`
+      ),
+    ].join("\n");
+
+    const filename = `relatorio-vendas-sabado-${session.weeklyMenuId}.pdf`;
+    const pdfContent = createTextPdf(`Relatório de Vendas - ${menuLabel}`, [
+      `Cardápio: ${menuLabel} (${menuDate})`,
+      `Responsável: ${report.menu?.responsibleName || "N/A"}`,
+      `Total Geral: R$ ${report.grandTotal.toFixed(2)}`,
+      "",
+      ...Object.entries(report.productSales).map(([_, prod]) => `${prod.name} | ${prod.quantity}x | R$ ${prod.subtotal.toFixed(2)}`),
+    ]);
+    const file = new File([pdfContent], filename, { type: "application/pdf" });
+
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({
+          title: `Relatório de Vendas - ${menuLabel}`,
+          text: textSummary,
+          files: [file],
+        });
+        toast.success("✅ Relatório compartilhado com sucesso!");
+        return;
+      } catch (err: any) {
+        if (err.name !== "AbortError") {
+          console.error("Share API error:", err);
+        }
+      }
+    }
+
+    // Fallback: baixar o PDF e abrir o WhatsApp Web com o resumo em texto
+    downloadTextPdf(filename, `Relatório de Vendas - ${menuLabel}`, textSummary.split("\n"));
+    const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(textSummary)}`;
+    window.open(whatsappUrl, "_blank");
+    toast.success("✅ PDF baixado e WhatsApp aberto com o resumo do relatório!");
+  };
+
   const handlePrint = (session: CashierSession) => {
     const report = calculateReportData(session);
     if (!report) return;
@@ -777,6 +829,13 @@ export default function ReportsPage() {
                     >
                       <FileDown className="w-4 h-4" />
                       Exportar PDF
+                    </Button>
+                    <Button
+                      onClick={() => handleShareWhatsApp(session)}
+                      variant="outline"
+                      className="gap-2 text-emerald-600 border-emerald-200 hover:bg-emerald-50"
+                    >
+                      Compartilhar WhatsApp
                     </Button>
                     <Button
                       onClick={() => handlePrint(session)}
