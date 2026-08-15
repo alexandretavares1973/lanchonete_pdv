@@ -73,10 +73,12 @@ export default function ReportsPage() {
   const { data: sharedSessions, isLoading: sessionsLoading } = trpc.pdv.cashier.getAllSessionsWithOrders.useQuery(undefined, { refetchInterval: 5000 });
   const [menus, setMenus] = useState<WeeklyMenu[]>([]);
   const [selectedMenuId, setSelectedMenuId] = useState<number | null>(null);
+  const allSessions = useMemo(() => (sharedSessions ?? []) as CashierSession[], [sharedSessions]);
   const sessions = useMemo(
-    () => (sharedSessions ?? []).filter((session) => session.weeklyMenuId !== null && session.weeklyMenuId !== undefined) as CashierSession[],
-    [sharedSessions],
+    () => allSessions.filter((session) => session.weeklyMenuId !== null && session.weeklyMenuId !== undefined),
+    [allSessions],
   );
+  const unlinkedSessionCount = allSessions.filter((session) => session.weeklyMenuId === null || session.weeklyMenuId === undefined).length;
   const [selectedSession, setSelectedSession] = useState<CashierSession | null>(null);
   const [showDetails, setShowDetails] = useState(false);
   const [pendingPaymentChange, setPendingPaymentChange] = useState<{
@@ -563,6 +565,18 @@ export default function ReportsPage() {
             ))}
           </div>
         </Card>
+
+        {unlinkedSessionCount > 0 && (
+          <Card className="mb-6 border-amber-300 bg-amber-50 p-4 text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/20 dark:text-amber-100">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" />
+              <div>
+                <p className="font-semibold">{unlinkedSessionCount} sessão(ões) histórica(s) sem cardápio identificado</p>
+                <p className="mt-1 text-sm">Essas vendas não entram no relatório para evitar associá-las ao cardápio errado. Novas sessões já são gravadas com o cardápio selecionado.</p>
+              </div>
+            </div>
+          </Card>
+        )}
 
         {/* Sessions List */}
         <div className="space-y-4">

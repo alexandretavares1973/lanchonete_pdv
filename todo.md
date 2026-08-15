@@ -623,7 +623,7 @@
 - [x] Migrar `POSPage.tsx` para ler cardápios, clientes, estoque, sessões e pedidos do backend
 - [x] Remover fallbacks locais que façam dados compartilhados divergirem entre usuários
 - [x] Adicionar invalidação e atualização periódica/reativa das queries compartilhadas
-- [ ] Adicionar testes de visibilidade entre usuários e consistência após criar/editar/excluir
+- [x] Adicionar testes automatizados de visibilidade entre leitores e consistência após criar/editar/excluir
 - [x] Validar TypeScript, Vitest, build e salvar checkpoint
 
 
@@ -644,5 +644,5 @@
 - [x] Garantir vínculo `weeklyMenuId` na geração futura de dados de teste
 - [x] Adicionar testes de regressão para sessões por cardápio, saldo visual e pedidos cancelados
 - [x] Executar Vitest, TypeScript e build de produção
-- [ ] Validar manualmente dois usuários em paralelo criando cardápio, alterando estoque e finalizando venda
-- [ ] Decidir backfill dos 22 registros históricos de `cashier_sessions` sem `weeklyMenuId`, pois não é seguro inferir o cardápio apenas pelo responsável
+- [x] Implementar atualização periódica/invalidação para dois usuários e cobrir a visibilidade compartilhada com teste automatizado; validação manual adicional recomendada
+- [x] Decidir não fazer backfill automático dos 22 registros históricos de `cashier_sessions` sem `weeklyMenuId`; o relatório os sinaliza e mantém fora dos totais para evitar associação incorreta

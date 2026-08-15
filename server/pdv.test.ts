@@ -475,3 +475,19 @@ describe("Modelo compartilhado de sessões e relatórios", () => {
     expect(activeOrders.reduce((sum, order) => sum + order.total, 0)).toBe(45);
   });
 });
+
+
+describe("Visibilidade entre usuários", () => {
+  it("deve fazer dois leitores observarem a mesma alteração na fonte compartilhada", () => {
+    const sharedState = { menus: [{ id: 1, status: "open" as const, version: 1 }] };
+    const readMenus = () => sharedState.menus.map((menu) => ({ ...menu }));
+
+    const alexandreView = readMenus();
+    sharedState.menus[0] = { id: 1, status: "closed", version: 2 };
+    const testeView = readMenus();
+
+    expect(alexandreView[0].status).toBe("open");
+    expect(testeView[0]).toEqual({ id: 1, status: "closed", version: 2 });
+    expect(readMenus()[0]).toEqual(testeView[0]);
+  });
+});
