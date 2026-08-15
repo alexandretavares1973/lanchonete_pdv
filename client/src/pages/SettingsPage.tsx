@@ -7,100 +7,15 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 
-interface GeneratedSnapshot {
-  products: Array<{ id: number; name: string; price: number; quantity: number; isUnlimited: boolean; isAvailable: boolean }>;
-  customers: Array<{ id: number; name: string; phone: string | null; email: string | null; isDefault: boolean; isActive: boolean; createdAt: Date | string }>;
-  responsible: { id: number; name: string; cpf: string; phone: string };
-  weeklyMenus: Array<{
-    id: number;
-    saturdayDate: string;
-    saturdayOrder: number;
-    responsibleId: number;
-    responsibleName: string;
-    status: "open" | "closed";
-    items: Array<{ id: string; productName: string; price: number; quantity: number | null; isUnlimited: boolean; isAvailable: boolean }>;
-  }>;
-  cashierSessions: Array<{
-    id: number;
-    legacyId: string;
-    weeklyMenuId: number;
-    responsibleId: number;
-    openedAt: string;
-    closedAt: string | null;
-    orders: Array<{
-      id: number;
-      legacyId: string;
-      paymentMethod: "pix" | "card" | "cash";
-      total: number;
-      status: "completed";
-      customerId: number;
-      customerName: string;
-      createdAt: string;
-      items: Array<{ productId: number; productName: string; quantity: number; price: number; unitPrice: number; subtotal: number }>;
-    }>;
-  }>;
-}
-
-function readJson<T>(key: string, fallback: T): T {
-  try {
-    const stored = localStorage.getItem(key);
-    return stored ? JSON.parse(stored) as T : fallback;
-  } catch {
-    return fallback;
-  }
-}
-
-function mergeByKey<T>(current: T[], incoming: T[], key: (item: T) => string): T[] {
-  const merged = [...current];
-  const keys = new Set(current.map(key));
-  for (const item of incoming) {
-    const itemKey = key(item);
-    if (!keys.has(itemKey)) {
-      merged.push(item);
-      keys.add(itemKey);
-    }
-  }
-  return merged;
-}
-
-function hydrateLegacyStorage(snapshot: GeneratedSnapshot) {
-  const customers = mergeByKey(
-    readJson<any[]>("customers", []),
-    snapshot.customers.map((customer) => ({ ...customer, createdAt: new Date(customer.createdAt) })),
-    (customer) => customer.isDefault || String(customer.name).trim().toUpperCase() === "GERAL" ? "GERAL" : String(customer.id),
-  );
-  localStorage.setItem("customers", JSON.stringify(customers));
-
-  const responsibles = mergeByKey(
-    readJson<any[]>("cashierResponsibles", []),
-    [snapshot.responsible],
-    (responsible) => String(responsible.id),
-  );
-  localStorage.setItem("cashierResponsibles", JSON.stringify(responsibles));
-
-  const menus = mergeByKey(
-    readJson<any[]>("weeklyMenus", []),
-    snapshot.weeklyMenus,
-    (menu) => String(menu.id),
-  );
-  localStorage.setItem("weeklyMenus", JSON.stringify(menus));
-
-  const sessions = mergeByKey(
-    readJson<any[]>("cashierSessions", []),
-    snapshot.cashierSessions,
-    (session) => session.legacyId ? String(session.legacyId) : String(session.id),
-  );
-  localStorage.setItem("cashierSessions", JSON.stringify(sessions));
-}
-
 export default function SettingsPage() {
   const [, setLocation] = useLocation();
   const [showTestDataDialog, setShowTestDataDialog] = useState(false);
+  const [defaultMenuId, setDefaultMenuId] = useState<string>(() => localStorage.getItem("defaultWeeklyMenuId") || "");
+  const { data: sharedMenus = [] } = trpc.pdv.menu.list.useQuery(undefined, { refetchInterval: 5000 });
   const utils = trpc.useUtils();
   const generateTestDataMutation = trpc.settings.generateTestData.useMutation({
     onSuccess: async (result) => {
-      hydrateLegacyStorage(result.snapshot);
-      await Promise.all([
+          await Promise.all([
         utils.pdv.products.list.invalidate(),
         utils.pdv.customers.list.invalidate(),
         utils.pdv.customers.getDefault.invalidate(),
@@ -108,6 +23,7 @@ export default function SettingsPage() {
         utils.pdv.menu.getItems.invalidate(),
         utils.pdv.orders.getBySession.invalidate(),
         utils.pdv.cashier.getOpenSession.invalidate(),
+        utils.pdv.cashier.getAllSessionsWithOrders.invalidate(),
       ]);
       toast.success(`${result.summary.orders} pedidos de teste gerados com sucesso.`);
       setShowTestDataDialog(false);
@@ -187,54 +103,30 @@ export default function SettingsPage() {
               <p className="text-xs text-muted-foreground">Defina qual cardápio deve ser selecionado automaticamente ao abrir o PDV quando houver vários abertos.</p>
             </div>
           </div>
-          {(() => {
-            const [menusList, setMenusList] = useState<any[]>([]);
-            const [defaultMenuId, setDefaultMenuId] = useState<string>("");
-
-            useEffect(() => {
-              const stored = localStorage.getItem("weeklyMenus");
-              if (stored) {
-                try {
-                  setMenusList(JSON.parse(stored));
-                } catch {}
-              }
-              const currentDefault = localStorage.getItem("defaultWeeklyMenuId") || "";
-              setDefaultMenuId(currentDefault);
-            }, []);
-
-            const handleSaveDefaultMenu = (id: string) => {
-              setDefaultMenuId(id);
-              if (id) {
-                localStorage.setItem("defaultWeeklyMenuId", id);
-                toast.success("✅ Cardápio padrão salvo com sucesso!");
-              } else {
-                localStorage.removeItem("defaultWeeklyMenuId");
-                toast.success("Cardápio padrão removido.");
-              }
-            };
-
-            const getSaturdayLabel = (order: number) => {
-              const labels = ["1º", "2º", "3º", "4º", "5º"];
-              return `${labels[order - 1] || order}º Sábado`;
-            };
-
-            return (
-              <div className="flex flex-col sm:flex-row items-center gap-4">
-                <select
-                  value={defaultMenuId}
-                  onChange={(e) => handleSaveDefaultMenu(e.target.value)}
-                  className="w-full sm:w-auto flex-1 px-3 py-2 border border-border rounded-lg bg-background text-foreground text-sm"
-                >
-                  <option value="">Nenhum (exigir escolha manual se houver vários)</option>
-                  {menusList.map((m: any) => (
-                    <option key={m.id} value={m.id}>
-                      {getSaturdayLabel(m.saturdayOrder)} - {new Date(m.saturdayDate).toLocaleDateString("pt-BR")} ({m.status === "open" ? "Aberto" : "Fechado"})
-                    </option>
-                  ))}
-                </select>
-              </div>
-            );
-          })()}
+          <div className="flex flex-col sm:flex-row items-center gap-4">
+            <select
+              value={defaultMenuId}
+              onChange={(e) => {
+                const id = e.target.value;
+                setDefaultMenuId(id);
+                if (id) {
+                  localStorage.setItem("defaultWeeklyMenuId", id);
+                  toast.success("✅ Cardápio padrão salvo com sucesso!");
+                } else {
+                  localStorage.removeItem("defaultWeeklyMenuId");
+                  toast.success("Cardápio padrão removido.");
+                }
+              }}
+              className="w-full sm:w-auto flex-1 px-3 py-2 border border-border rounded-lg bg-background text-foreground text-sm"
+            >
+              <option value="">Nenhum (exigir escolha manual se houver vários)</option>
+              {sharedMenus.map((m: any) => (
+                <option key={m.id} value={m.id}>
+                  {`${["1º", "2º", "3º", "4º", "5º"][m.saturdayOrder - 1] || m.saturdayOrder}º Sábado`} - {new Date(m.saturdayDate).toLocaleDateString("pt-BR")} ({m.status === "open" ? "Aberto" : "Fechado"})
+                </option>
+              ))}
+            </select>
+          </div>
         </Card>
       </div>
 

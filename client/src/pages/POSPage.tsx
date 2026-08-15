@@ -9,19 +9,19 @@ import { ShoppingCart, Trash2, Lock, UserPlus } from "lucide-react";
 import { DEFAULT_PAYMENT_METHOD, getExplicitCustomer } from "@shared/posOrderFlow";
 import { getLowStockMessage, isLowGlobalStock } from "@shared/stockAlerts";
 import { trpc } from "@/lib/trpc";
+import { selectPreferredOpenMenu } from "@shared/menuSelection";
 
 interface MenuItem {
-  id: string;
+  id: number | string;
   productName: string;
   productId?: number;
   price: number;
-  quantity: number | null;
-  isUnlimited: boolean;
+  quantity: number;
 }
 
 interface WeeklyMenu {
   id: number;
-  saturdayDate: string;
+  saturdayDate: Date | string;
   saturdayOrder: number;
   responsibleId: number | null;
   responsibleName?: string;
@@ -31,6 +31,7 @@ interface WeeklyMenu {
 
 interface CartItem {
   id: string;
+  productId: number;
   productName: string;
   price: number;
   quantity: number;
@@ -49,6 +50,8 @@ interface Customer {
 
 export default function POSPage() {
   const [, setLocation] = useLocation();
+  const { data: sharedMenus } = trpc.pdv.menu.list.useQuery(undefined, { refetchInterval: 5000 });
+  const { data: sharedCustomers } = trpc.pdv.customers.list.useQuery(undefined, { refetchInterval: 5000 });
   const [menus, setMenus] = useState<any[]>([]);
   const [selectedMenu, setSelectedMenu] = useState<any>(null);
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -63,7 +66,24 @@ export default function POSPage() {
   const [lastAmountReceived, setLastAmountReceived] = useState<number>(0);
   const [lastCustomerName, setLastCustomerName] = useState<string>("");
   const [customers, setCustomers] = useState<Customer[]>([]);
-  const { data: globalProducts = [] } = trpc.pdv.products.list.useQuery();
+  const { data: globalProducts = [] } = trpc.pdv.products.list.useQuery(undefined, { refetchInterval: 5000 });
+  const utils = trpc.useUtils();
+  const openSessionQuery = trpc.pdv.cashier.getOpenSession.useQuery(
+    { responsibleId: Number(selectedMenu?.responsibleId || 0), weeklyMenuId: Number(selectedMenu?.id || 0) },
+    { enabled: Number.isInteger(Number(selectedMenu?.responsibleId)) && Number(selectedMenu?.responsibleId) > 0, refetchInterval: 5000 },
+  );
+  const openSessionMutation = trpc.pdv.cashier.openSession.useMutation();
+  const createOrderMutation = trpc.pdv.orders.create.useMutation();
+  const createCustomerMutation = trpc.pdv.customers.create.useMutation({
+    onSuccess: async (customer) => {
+      await utils.pdv.customers.list.invalidate();
+      if (customer) setSelectedCustomer(customer as Customer);
+      setShowQuickCustomerDialog(false);
+      setQuickCustomerForm({ name: "", phone: "", email: "" });
+      toast.success(`✅ Cliente "${customer?.name || "novo"}" cadastrado e selecionado.`);
+    },
+    onError: (error) => toast.error(error.message || "Não foi possível cadastrar o cliente."),
+  });
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [showQuickCustomerDialog, setShowQuickCustomerDialog] = useState(false);
   const [quickCustomerForm, setQuickCustomerForm] = useState({ name: "", phone: "", email: "" });
@@ -72,28 +92,21 @@ export default function POSPage() {
   const quickCustomerNameRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const storedMenus = localStorage.getItem("weeklyMenus");
-    if (storedMenus) {
-      const parsed = JSON.parse(storedMenus);
-      setMenus(parsed);
-      
-      const openMenusList = parsed.filter((m: any) => m.status === "open");
-      if (openMenusList.length === 1) {
-        setSelectedMenu(openMenusList[0]);
-      } else {
-        setSelectedMenu(null);
+    const menusFromServer = sharedMenus ?? [];
+    setMenus(menusFromServer);
+    const openMenusList = menusFromServer.filter((m: any) => m.status === "open");
+    const defaultMenuId = localStorage.getItem("defaultWeeklyMenuId");
+    setSelectedMenu((current: any) => {
+      if (current && openMenusList.some((menu: any) => menu.id === current.id)) {
+        return openMenusList.find((menu: any) => menu.id === current.id) || current;
       }
-    }
+      return selectPreferredOpenMenu(openMenusList, defaultMenuId); 
+    });
+  }, [sharedMenus]);
 
-    // Carregar clientes
-    const storedCustomers = localStorage.getItem("customers");
-    if (storedCustomers) {
-      const parsed = JSON.parse(storedCustomers);
-      setCustomers(parsed);
-      // O cliente precisa ser escolhido ativamente em cada novo pedido.
-      setSelectedCustomer(null);
-    }
-  }, []);
+  useEffect(() => {
+    setCustomers((sharedCustomers ?? []) as Customer[]);
+  }, [sharedCustomers]);
 
   useEffect(() => {
     if (!showQuickCustomerDialog) return;
@@ -132,22 +145,11 @@ export default function POSPage() {
       return;
     }
 
-    const newCustomer: Customer = {
-      id: Date.now(),
+    createCustomerMutation.mutate({
       name,
       phone: quickCustomerForm.phone.trim() || undefined,
       email: quickCustomerForm.email.trim() || undefined,
-      isDefault: false,
-      isActive: true,
-      createdAt: new Date(),
-    };
-    const updatedCustomers = [...customers, newCustomer];
-    setCustomers(updatedCustomers);
-    localStorage.setItem("customers", JSON.stringify(updatedCustomers));
-    setSelectedCustomer(newCustomer);
-    setQuickCustomerForm({ name: "", phone: "", email: "" });
-    setShowQuickCustomerDialog(false);
-    toast.success(`✅ Cliente "${name}" cadastrado e selecionado.`);
+    });
   };
 
   const findGlobalProduct = (menuItem: MenuItem) => {
@@ -158,6 +160,12 @@ export default function POSPage() {
     );
   };
 
+  const getCartQuantity = (product: MenuItem) =>
+    cart.find((item) => item.id === String(product.id))?.quantity || 0;
+
+  const getRemainingMenuQuantity = (product: MenuItem) =>
+    Math.max(0, Number(product.quantity || 0) - getCartQuantity(product));
+
   const handleAddToCart = (product: MenuItem) => {
     const openMenusList = menus.filter((m: any) => m.status === "open");
     if (openMenusList.length > 1 && !selectedMenu) {
@@ -165,109 +173,38 @@ export default function POSPage() {
       return;
     }
 
-    // Validar se o cardápio está aberto
     if (!selectedMenu || selectedMenu.status !== "open") {
       toast.error("❌ Cardápio fechado ou não selecionado! Não é possível fazer vendas.");
       return;
     }
 
-    // Validar quantidade disponível
-    if (product.quantity !== null && product.quantity <= 0) {
-      toast.error("❌ Produto sem estoque!");
+    const remainingQuantity = getRemainingMenuQuantity(product);
+    if (remainingQuantity <= 0) {
+      toast.error("❌ Quantidade máxima atingida!");
       return;
     }
 
-    const existingItem = cart.find(item => item.id === product.id);
-    
+    const existingItem = cart.find((item) => item.id === String(product.id));
     if (existingItem) {
-      // Validar quantidade máxima
-      if (product.quantity !== null) {
-        // Calcular quantidade original do produto (quantidade atual + quantidade no carrinho)
-        const originalQuantity = product.quantity + existingItem.quantity;
-        if (existingItem.quantity >= originalQuantity) {
-          toast.error("❌ Quantidade máxima atingida!");
-          return;
-        }
-      }
-
-      const updated = cart.map(item =>
-        item.id === product.id
-          ? {
-              ...item,
-              quantity: item.quantity + 1,
-              subtotal: (item.quantity + 1) * item.price,
-            }
-          : item
-      );
-      setCart(updated);
+      setCart(cart.map((item) => item.id === String(product.id)
+        ? { ...item, quantity: item.quantity + 1, subtotal: (item.quantity + 1) * item.price }
+        : item));
     } else {
-      setCart([
-        ...cart,
-        {
-          id: product.id,
-          productName: product.productName,
-          price: product.price,
-          quantity: 1,
-          subtotal: product.price,
-        },
-      ]);
-    }
-
-    // Atualizar estoque no cardápio
-    if (product.quantity !== null) {
-      const updatedMenus = menus.map(menu =>
-        menu.id === selectedMenu.id
-          ? {
-              ...menu,
-              items: menu.items.map((item: MenuItem) =>
-                item.id === product.id
-                  ? { ...item, quantity: item.quantity !== null ? item.quantity - 1 : 0 }
-                  : item
-              ),
-            }
-          : menu
-      );
-      setMenus(updatedMenus);
-      const updatedSelectedMenu = updatedMenus.find(m => m.id === selectedMenu.id);
-      if (updatedSelectedMenu) {
-        setSelectedMenu(updatedSelectedMenu);
-      }
-      localStorage.setItem("weeklyMenus", JSON.stringify(updatedMenus));
+      setCart([...cart, {
+        id: String(product.id),
+        productId: Number(product.productId ?? findGlobalProduct(product)?.id ?? 0),
+        productName: product.productName,
+        price: product.price,
+        quantity: 1,
+        subtotal: product.price,
+      }]);
     }
 
     toast.success(`✅ ${product.productName} adicionado ao carrinho!`);
   };
 
   const handleRemoveFromCart = (productId: string) => {
-    const removedItem = cart.find(item => item.id === productId);
-    setCart(cart.filter(item => item.id !== productId));
-    
-    // Devolver estoque ao remover do carrinho
-    if (removedItem && selectedMenu) {
-      const product = selectedMenu.items.find((p: MenuItem) => p.id === productId);
-      if (product) {
-        const updatedMenus = menus.map(menu =>
-          menu.id === selectedMenu.id
-            ? {
-                ...menu,
-                items: menu.items.map((item: MenuItem) =>
-                  item.id === productId
-                    ? { ...item, quantity: item.quantity !== null ? item.quantity + removedItem.quantity : removedItem.quantity }
-                    : item
-                ),
-              }
-            : menu
-        );
-        setMenus(updatedMenus);
-        // Atualizar selectedMenu com o novo cardápio
-        const updatedSelectedMenu = updatedMenus.find(m => m.id === selectedMenu.id);
-        if (updatedSelectedMenu) {
-          setSelectedMenu(updatedSelectedMenu);
-        }
-        localStorage.setItem("weeklyMenus", JSON.stringify(updatedMenus));
-      }
-    }
-    
+    setCart(cart.filter((item) => item.id !== productId));
     toast.success("✅ Item removido do carrinho!");
   };
 
@@ -277,34 +214,12 @@ export default function POSPage() {
       return;
     }
 
-    const currentItem = cart.find(item => item.id === productId);
-    const product = selectedMenu?.items.find((p: MenuItem) => p.id === productId);
+    const currentItem = cart.find((item) => item.id === productId);
+    const product = selectedMenu?.items.find((p: MenuItem) => String(p.id) === productId);
 
-    if (currentItem && newQuantity > currentItem.quantity) {
-      if (product && product.quantity !== null && product.quantity <= 0) {
-        toast.error("❌ Quantidade máxima atingida!");
-        return;
-      }
-    }
-
-    if (currentItem && product) {
-      const quantityDifference = currentItem.quantity - newQuantity;
-      const updatedMenus = menus.map(menu =>
-        menu.id === selectedMenu.id
-          ? {
-              ...menu,
-              items: menu.items.map((item: MenuItem) =>
-                item.id === productId
-                  ? { ...item, quantity: item.quantity !== null ? item.quantity + quantityDifference : 0 }
-                  : item
-              ),
-            }
-          : menu
-      );
-      setMenus(updatedMenus);
-      const updatedSelectedMenu = updatedMenus.find(m => m.id === selectedMenu.id);
-      if (updatedSelectedMenu) setSelectedMenu(updatedSelectedMenu);
-      localStorage.setItem("weeklyMenus", JSON.stringify(updatedMenus));
+    if (currentItem && product && newQuantity > product.quantity) {
+      toast.error("❌ Quantidade máxima atingida!");
+      return;
     }
 
     setCart(
@@ -346,7 +261,7 @@ export default function POSPage() {
     setShowConfirm(true);
   };
 
-  const handleConfirmOrder = () => {
+  const handleConfirmOrder = async () => {
     const customer = getExplicitCustomer(selectedCustomer);
     if (!customer) {
       setShowConfirm(false);
@@ -377,38 +292,41 @@ export default function POSPage() {
         : [];
     });
 
-    // Salvar pedido
-    const sessions = JSON.parse(localStorage.getItem("cashierSessions") || "[]");
-    
-    const newOrder = {
-      id: Date.now(),
-      paymentMethod,
-      total: total,
-      status: "completed",
-      amountReceived: paymentMethod === "cash" ? amountReceived : null,
-      change: paymentMethod === "cash" ? change : null,
-      items: cart,
-      customerId: customer.id,
-      customerName: customer.name,
-      createdAt: new Date().toISOString(),
-    };
-
-    // Encontrar ou criar sessão para este cardápio
-    let session = sessions.find((s: any) => s.weeklyMenuId === selectedMenu.id && !s.closedAt);
-    
-    if (!session) {
-      session = {
-        id: Date.now(),
-        weeklyMenuId: selectedMenu.id,
-        openedAt: new Date().toISOString(),
-        closedAt: null,
-        orders: [],
-      };
-      sessions.push(session);
+        const responsibleId = Number(selectedMenu.responsibleId);
+    const productItems = cart.map((item) => ({
+      productId: Number(item.productId),
+      quantity: item.quantity,
+      unitPrice: item.price,
+    }));
+    if (productItems.some((item) => !Number.isInteger(item.productId) || item.productId <= 0)) {
+      toast.error("Não foi possível identificar um produto oficial do cardápio.");
+      return;
     }
 
-    session.orders.push(newOrder);
-    localStorage.setItem("cashierSessions", JSON.stringify(sessions));
+    try {
+      let cashierSessionId = openSessionQuery.data?.id;
+      if (!cashierSessionId) {
+        const session = await openSessionMutation.mutateAsync({ responsibleId, weeklyMenuId: selectedMenu.id, initialBalance: 0 });
+        cashierSessionId = session?.id;
+      }
+      if (!cashierSessionId) throw new Error("Não foi possível abrir a sessão de caixa compartilhada.");
+
+      await createOrderMutation.mutateAsync({
+        cashierSessionId,
+        weeklyMenuId: selectedMenu.id,
+        customerId: customer.id,
+        paymentMethod,
+        items: productItems,
+      });
+      await Promise.all([
+        utils.pdv.menu.list.invalidate(),
+        utils.pdv.products.list.invalidate(),
+        utils.pdv.cashier.getOpenSession.invalidate(),
+      ]);
+    } catch (error: any) {
+      toast.error(error?.message || "Não foi possível registrar a venda no banco compartilhado.");
+      return;
+    }
 
     // Salvar itens do pedido para impressão
     setLastOrderItems(cart);
@@ -739,10 +657,11 @@ export default function POSPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {selectedMenu.items.map((product: MenuItem) => {
                         const globalProduct = findGlobalProduct(product);
-                        const cartQuantity = cart.find((item) => item.id === product.id)?.quantity || 0;
-                        const globalRemainingQuantity = globalProduct && globalProduct.quantity !== null
+                        const cartQuantity = cart.find((item) => item.id === String(product.id))?.quantity || 0;
+                        const menuRemainingQuantity = getRemainingMenuQuantity(product);
+                        const globalRemainingQuantity = globalProduct
                           ? Number(globalProduct.quantity) - cartQuantity
-                          : null;
+                          : 0;
                         const lowGlobalStock = globalProduct
                           ? isLowGlobalStock(globalProduct, globalRemainingQuantity)
                           : false;
@@ -756,7 +675,7 @@ export default function POSPage() {
                             <span className="text-primary font-bold">R$ {product.price.toFixed(2)}</span>
                           </div>
                           <p className="text-xs text-muted-foreground mb-3">
-                            {product.quantity} disponível(is)
+                            {menuRemainingQuantity} disponível(is) neste cardápio
                           </p>
                           {lowGlobalStock && globalProduct && (
                             <p className="mb-3 rounded-md border border-amber-300 bg-amber-50 p-2 text-xs font-semibold text-amber-900" role="alert">
@@ -766,7 +685,7 @@ export default function POSPage() {
                           <Button
                             onClick={() => handleAddToCart(product)}
                             className="w-full bg-gradient-to-r from-primary to-secondary text-white"
-                            disabled={product.quantity !== null && product.quantity <= 0}
+                            disabled={menuRemainingQuantity <= 0}
                           >
                             Adicionar
                           </Button>

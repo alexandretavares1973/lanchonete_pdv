@@ -6,8 +6,8 @@ import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Trash2, Plus, Edit2, Eye, EyeOff, Download, Upload, History, RotateCcw, Save, Settings } from "lucide-react";
-import { CustomerBackup, readCustomerBackups, restoreCustomerBackup, saveCustomerBackup } from "@/lib/customerBackups";
+import { Trash2, Plus, Edit2, Eye, EyeOff, Download, Upload, Settings } from "lucide-react";
+import { trpc } from "@/lib/trpc";
 
 interface Customer {
   id: number;
@@ -23,11 +23,10 @@ export default function Dashboard() {
   const { user, logout } = useAuth();
   const [, setLocation] = useLocation();
   
-  // Estados para gerenciamento de clientes
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [customersLoaded, setCustomersLoaded] = useState(false);
-  const [backups, setBackups] = useState<CustomerBackup<Customer>[]>([]);
-  const [showBackupsDialog, setShowBackupsDialog] = useState(false);
+  // O banco é a fonte compartilhada; a UI renderiza diretamente a query.
+  const { data: sharedCustomers } = trpc.pdv.customers.list.useQuery(undefined, { refetchInterval: 5000 });
+  const customers = (sharedCustomers || []) as Customer[];
+  const utils = trpc.useUtils();
   const [showCustomerDialog, setShowCustomerDialog] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState({
@@ -35,50 +34,29 @@ export default function Dashboard() {
     phone: "",
     email: "",
   });
-
-  // Carregar clientes do localStorage
-  useEffect(() => {
-    const stored = localStorage.getItem("customers");
-    if (stored) {
-      setCustomers(JSON.parse(stored));
-    } else {
-      const defaultCustomer: Customer = {
-        id: 1,
-        name: "GERAL",
-        phone: "",
-        email: "",
-        isDefault: true,
-        isActive: true,
-        createdAt: new Date(),
-      };
-      setCustomers([defaultCustomer]);
-      localStorage.setItem("customers", JSON.stringify([defaultCustomer]));
-    }
-    setBackups(readCustomerBackups<Customer>(localStorage));
-    setCustomersLoaded(true);
-  }, []);
-
-  // Cria snapshots automaticamente sempre que a lista de clientes muda.
-  useEffect(() => {
-    if (!customersLoaded || customers.length === 0) return;
-    setBackups(saveCustomerBackup(customers, localStorage));
-  }, [customers, customersLoaded]);
-
-  const handleCreateManualBackup = () => {
-    const nextBackups = saveCustomerBackup(customers, localStorage);
-    setBackups(nextBackups);
-    toast.success("✅ Backup de clientes salvo com data e hora.");
-  };
-
-  const handleRestoreBackup = (backup: CustomerBackup<Customer>) => {
-    if (!window.confirm(`Restaurar o backup de ${new Date(backup.createdAt).toLocaleString("pt-BR")} com ${backup.customers.length} cliente(s)?`)) return;
-    saveCustomerBackup(customers, localStorage);
-    const restoredCustomers = restoreCustomerBackup(backup, localStorage);
-    setCustomers(restoredCustomers);
-    setBackups(readCustomerBackups<Customer>(localStorage));
-    toast.success("✅ Backup restaurado com sucesso.");
-    setShowBackupsDialog(false);
-  };
+  const createCustomerMutation = trpc.pdv.customers.create.useMutation({
+    onSuccess: async () => {
+      await utils.pdv.customers.list.invalidate();
+      toast.success(`✅ Cliente "${formData.name}" cadastrado com sucesso!`);
+      handleCloseDialog();
+    },
+    onError: (error) => toast.error(error.message || "Não foi possível cadastrar o cliente."),
+  });
+  const updateCustomerMutation = trpc.pdv.customers.update.useMutation({
+    onSuccess: async () => {
+      await utils.pdv.customers.list.invalidate();
+      toast.success("✅ Cliente atualizado!");
+      handleCloseDialog();
+    },
+    onError: (error) => toast.error(error.message || "Não foi possível atualizar o cliente."),
+  });
+  const deleteCustomerMutation = trpc.pdv.customers.delete.useMutation({
+    onSuccess: async () => {
+      await utils.pdv.customers.list.invalidate();
+      toast.success("✅ Cliente removido!");
+    },
+    onError: (error) => toast.error(error.message || "Não foi possível remover o cliente."),
+  });
 
   const handleLogout = async () => {
     await logout();
@@ -92,34 +70,19 @@ export default function Dashboard() {
     }
 
     if (editingId) {
-      // Editar cliente existente
-      const updated = customers.map(c =>
-        c.id === editingId
-          ? { ...c, name: formData.name, phone: formData.phone, email: formData.email }
-          : c
-      );
-      setCustomers(updated);
-      localStorage.setItem("customers", JSON.stringify(updated));
-      toast.success("✅ Cliente atualizado!");
+      updateCustomerMutation.mutate({
+        id: editingId,
+        name: formData.name.trim(),
+        phone: formData.phone.trim() || undefined,
+        email: formData.email.trim() || undefined,
+      });
     } else {
-      // Adicionar novo cliente
-      const newCustomer: Customer = {
-        id: Date.now(),
-        name: formData.name,
-        phone: formData.phone || undefined,
-        email: formData.email || undefined,
-        isDefault: false,
-        isActive: true,
-        createdAt: new Date(),
-      };
-
-      const updated = [...customers, newCustomer];
-      setCustomers(updated);
-      localStorage.setItem("customers", JSON.stringify(updated));
-      toast.success(`✅ Cliente "${formData.name}" cadastrado com sucesso!`);
+      createCustomerMutation.mutate({
+        name: formData.name.trim(),
+        phone: formData.phone.trim() || undefined,
+        email: formData.email.trim() || undefined,
+      });
     }
-
-    handleCloseDialog();
   };
 
   const handleEditCustomer = (customer: Customer) => {
@@ -143,14 +106,8 @@ export default function Dashboard() {
       return;
     }
 
-    const updated = customers.map(c =>
-      c.id === id ? { ...c, isActive: !c.isActive } : c
-    );
-    setCustomers(updated);
-    localStorage.setItem("customers", JSON.stringify(updated));
-    
-    const status = updated.find(c => c.id === id)?.isActive ? "ativado" : "inativado";
-    toast.success(`✅ Cliente ${status}!`);
+    const nextActive = !customer?.isActive;
+    updateCustomerMutation.mutate({ id, isActive: nextActive });
   };
 
   const handleDeleteCustomer = (id: number) => {
@@ -159,10 +116,9 @@ export default function Dashboard() {
       toast.error("❌ Não é possível deletar o cliente GERAL");
       return;
     }
-    const updated = customers.filter(c => c.id !== id);
-    setCustomers(updated);
-    localStorage.setItem("customers", JSON.stringify(updated));
-    toast.success("✅ Cliente removido!");
+    if (window.confirm("Deseja realmente remover este cliente?")) {
+      deleteCustomerMutation.mutate({ id });
+    }
   };
 
   const handleCloseDialog = () => {
@@ -225,17 +181,28 @@ export default function Dashboard() {
           }
         }
 
-        const mergedCustomers = [...customers];
-        newCustomers.forEach((newCustomer) => {
-          if (!mergedCustomers.find((c) => c.name === newCustomer.name)) {
-            mergedCustomers.push(newCustomer);
+        void (async () => {
+          const existingNames = new Set(customers.map((customer) => customer.name.trim().toLocaleLowerCase()));
+          let createdCount = 0;
+          for (const imported of newCustomers) {
+            const normalizedName = imported.name.trim().toLocaleLowerCase();
+            if (!normalizedName || existingNames.has(normalizedName)) continue;
+            const created = await createCustomerMutation.mutateAsync({
+              name: imported.name.trim(),
+              phone: imported.phone,
+              email: imported.email,
+            });
+            if (!imported.isActive && created?.id) {
+              await updateCustomerMutation.mutateAsync({ id: created.id, isActive: false });
+            }
+            existingNames.add(normalizedName);
+            createdCount += 1;
           }
+          await utils.pdv.customers.list.invalidate();
+          toast.success(`✅ ${createdCount} cliente(s) importado(s) para o banco compartilhado.`);
+        })().catch((error: any) => {
+          toast.error(error?.message || "❌ Erro ao importar clientes para o banco compartilhado.");
         });
-
-        setCustomers(mergedCustomers);
-        localStorage.setItem("customers", JSON.stringify(mergedCustomers));
-
-        toast.success(`✅ ${newCustomers.length} cliente(s) importado(s) com sucesso!`);
       } catch (error) {
         toast.error("❌ Erro ao importar arquivo CSV!");
         console.error(error);
@@ -439,24 +406,6 @@ export default function Dashboard() {
                   <Download className="w-4 h-4" />
                   Exportar CSV
                 </Button>
-                <Button
-                  onClick={() => setShowBackupsDialog(true)}
-                  variant="outline"
-                  size="sm"
-                  className="gap-2"
-                >
-                  <History className="w-4 h-4" />
-                  Backups ({backups.length})
-                </Button>
-                <Button
-                  onClick={handleCreateManualBackup}
-                  variant="outline"
-                  size="sm"
-                  className="gap-2"
-                >
-                  <Save className="w-4 h-4" />
-                  Backup agora
-                </Button>
                 <label>
                   <Button
                     variant="outline"
@@ -599,36 +548,6 @@ export default function Dashboard() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={showBackupsDialog} onOpenChange={setShowBackupsDialog}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Backups automáticos de clientes</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">
-              Os últimos 10 snapshots são mantidos localmente para recuperação rápida dos dados.
-            </p>
-            {backups.length === 0 ? (
-              <p className="rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground">Nenhum backup disponível.</p>
-            ) : (
-              <div className="max-h-80 space-y-2 overflow-y-auto">
-                {backups.map((backup) => (
-                  <div key={backup.id} className="flex items-center justify-between gap-3 rounded-lg border border-border p-3">
-                    <div>
-                      <p className="text-sm font-medium text-foreground">{new Date(backup.createdAt).toLocaleString("pt-BR")}</p>
-                      <p className="text-xs text-muted-foreground">{backup.customers.length} cliente(s)</p>
-                    </div>
-                    <Button size="sm" variant="outline" className="gap-1" onClick={() => handleRestoreBackup(backup)}>
-                      <RotateCcw className="h-3.5 w-3.5" />
-                      Restaurar
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

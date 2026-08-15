@@ -1,10 +1,11 @@
-import { useState, useEffect } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useLocation } from "wouter";
 import { ArrowLeft, Download, Upload } from "lucide-react";
 import { toast } from "sonner";
+import { trpc } from "@/lib/trpc";
 
 interface Customer {
   id: number;
@@ -12,7 +13,7 @@ interface Customer {
   phone?: string;
   email?: string;
   isActive?: boolean;
-  createdAt: Date;
+  createdAt: Date | string;
 }
 
 interface Order {
@@ -21,15 +22,15 @@ interface Order {
   total: number;
   paymentMethod: "pix" | "card" | "cash";
   status?: "pending" | "completed" | "cancelled";
-  createdAt: string;
-  items?: Array<{productName: string; quantity: number; price?: number}>;
+  createdAt: Date | string;
+  items?: Array<{productName: string; quantity: number; refundedQuantity?: number; price?: number; unitPrice?: number}>;
 }
 
 interface CashierSession {
   id: number;
-  weeklyMenuId: number;
-  openedAt: string;
-  closedAt: string | null;
+  weeklyMenuId?: number | null;
+  openedAt: Date | string;
+  closedAt: Date | string | null;
   orders: Order[];
 }
 
@@ -37,52 +38,31 @@ interface CustomerStats {
   customer: Customer;
   orderCount: number;
   totalSpent: number;
-  lastOrder?: Date;
+  lastOrder?: Date | string;
   averageOrderValue: number;
 }
 
 export default function CustomerReportPage() {
   const [, setLocation] = useLocation();
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [orders, setOrders] = useState<Order[]>([]);
+  const { data: sharedCustomers } = trpc.pdv.customers.list.useQuery(undefined, { refetchInterval: 5000 });
+  const { data: sharedSessions } = trpc.pdv.cashier.getAllSessionsWithOrders.useQuery(undefined, { refetchInterval: 5000 });
+  const customers = useMemo(() => (sharedCustomers ?? []) as Customer[], [sharedCustomers]);
+  const orders = useMemo(
+    () => (sharedSessions ?? []).flatMap((session) => session.orders || []) as Order[],
+    [sharedSessions],
+  );
   const [stats, setStats] = useState<CustomerStats[]>([]);
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
   const [sortBy, setSortBy] = useState<"frequency" | "spending">("spending");
+  const utils = trpc.useUtils();
+  const createCustomerMutation = trpc.pdv.customers.create.useMutation();
 
   useEffect(() => {
-    // Carregar clientes do localStorage
-    const storedCustomers = localStorage.getItem("customers");
-    if (storedCustomers) {
-      try {
-        setCustomers(JSON.parse(storedCustomers));
-      } catch (e) {
-        console.error("Erro ao carregar clientes:", e);
-      }
-    }
-
-    // Carregar pedidos de cashierSessions
-    const storedSessions = localStorage.getItem("cashierSessions");
-    if (storedSessions) {
-      try {
-        const sessions: CashierSession[] = JSON.parse(storedSessions);
-        const allOrders: Order[] = [];
-        sessions.forEach((session) => {
-          if (session.orders && Array.isArray(session.orders)) {
-            allOrders.push(...session.orders);
-          }
-        });
-        setOrders(allOrders);
-      } catch (e) {
-        console.error("Erro ao carregar pedidos:", e);
-      }
-    }
-
-    // Definir período padrão (últimos 30 dias)
     const today = new Date();
     const thirtyDaysAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
-    setStartDate(thirtyDaysAgo.toISOString().split("T")[0]);
-    setEndDate(today.toISOString().split("T")[0]);
+    setStartDate((current) => current || thirtyDaysAgo.toISOString().split("T")[0]);
+    setEndDate((current) => current || today.toISOString().split("T")[0]);
   }, []);
 
   useEffect(() => {
@@ -216,16 +196,25 @@ export default function CustomerReportPage() {
           });
         }
 
-        const merged = [...customers];
-        importedCustomers.forEach((imported) => {
-          if (!merged.find((c) => c.name === imported.name)) {
-            merged.push(imported);
+        void (async () => {
+          const existingNames = new Set(customers.map((customer) => customer.name.trim().toLocaleLowerCase()));
+          let createdCount = 0;
+          for (const imported of importedCustomers) {
+            const normalizedName = imported.name.trim().toLocaleLowerCase();
+            if (!normalizedName || existingNames.has(normalizedName)) continue;
+            await createCustomerMutation.mutateAsync({
+              name: imported.name.trim(),
+              phone: imported.phone,
+              email: imported.email,
+            });
+            existingNames.add(normalizedName);
+            createdCount += 1;
           }
+          await utils.pdv.customers.list.invalidate();
+          toast.success(`${createdCount} cliente(s) importado(s) para o banco compartilhado.`);
+        })().catch((error: any) => {
+          toast.error(error?.message || "Erro ao importar clientes para o banco compartilhado.");
         });
-
-        localStorage.setItem("customers", JSON.stringify(merged));
-        setCustomers(merged);
-        toast.success(`${importedCustomers.length} cliente(s) importado(s)!`);
       } catch (error) {
         toast.error("Erro ao importar arquivo CSV");
       }

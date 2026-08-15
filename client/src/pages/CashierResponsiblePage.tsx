@@ -1,33 +1,56 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useLocation } from "wouter";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { trpc } from "@/lib/trpc";
 
 interface Responsible {
   id: number;
   name: string;
-  cpf: string;
-  phone: string;
-  createdAt: string;
+  cpf: string | null;
+  phone: string | null;
+  createdAt: Date | string;
 }
 
 export default function CashierResponsiblePage() {
   const [, setLocation] = useLocation();
-  const [responsibles, setResponsibles] = useState<Responsible[]>([]);
+  const { data: responsibles = [], isLoading } = trpc.pdv.cashierResponsibles.list.useQuery(undefined, { refetchInterval: 5000 });
+  const utils = trpc.useUtils();
   const [showDialog, setShowDialog] = useState(false);
   const [formData, setFormData] = useState({ name: "", cpf: "", phone: "" });
   const [editingId, setEditingId] = useState<number | null>(null);
 
-  // Carregar responsáveis do localStorage (simulação)
-  useEffect(() => {
-    const stored = localStorage.getItem("cashierResponsibles");
-    if (stored) {
-      setResponsibles(JSON.parse(stored));
-    }
-  }, []);
+  const createResponsibleMutation = trpc.pdv.cashierResponsibles.create.useMutation({
+    onSuccess: async () => {
+      await utils.pdv.cashierResponsibles.list.invalidate();
+      toast.success("Responsável cadastrado!");
+      setFormData({ name: "", cpf: "", phone: "" });
+      setShowDialog(false);
+    },
+    onError: (error) => toast.error(error.message || "Não foi possível cadastrar o responsável."),
+  });
+  const updateResponsibleMutation = trpc.pdv.cashierResponsibles.update.useMutation({
+    onSuccess: async () => {
+      await utils.pdv.cashierResponsibles.list.invalidate();
+      await utils.pdv.menu.list.invalidate();
+      toast.success("Responsável atualizado!");
+      setFormData({ name: "", cpf: "", phone: "" });
+      setEditingId(null);
+      setShowDialog(false);
+    },
+    onError: (error) => toast.error(error.message || "Não foi possível atualizar o responsável."),
+  });
+  const deleteResponsibleMutation = trpc.pdv.cashierResponsibles.delete.useMutation({
+    onSuccess: async () => {
+      await utils.pdv.cashierResponsibles.list.invalidate();
+      await utils.pdv.menu.list.invalidate();
+      toast.success("Responsável removido!");
+    },
+    onError: (error) => toast.error(error.message || "Não foi possível remover o responsável."),
+  });
 
   const handleAddResponsible = () => {
     if (!formData.name || !formData.cpf) {
@@ -35,49 +58,41 @@ export default function CashierResponsiblePage() {
       return;
     }
 
-    const newResponsible: Responsible = {
-      id: editingId || Date.now(),
-      name: formData.name,
-      cpf: formData.cpf,
-      phone: formData.phone,
-      createdAt: new Date().toISOString(),
-    };
-
-    let updated: Responsible[];
     if (editingId) {
-      updated = responsibles.map(r => r.id === editingId ? newResponsible : r);
-      toast.success("Responsável atualizado!");
+      updateResponsibleMutation.mutate({
+        id: editingId,
+        name: formData.name.trim(),
+        cpf: formData.cpf.trim() || null,
+        phone: formData.phone.trim() || null,
+      });
     } else {
-      updated = [...responsibles, newResponsible];
-      toast.success("Responsável cadastrado!");
+      createResponsibleMutation.mutate({
+        name: formData.name.trim(),
+        cpf: formData.cpf.trim(),
+        phone: formData.phone.trim() || undefined,
+      });
     }
-
-    setResponsibles(updated);
-    localStorage.setItem("cashierResponsibles", JSON.stringify(updated));
-    setFormData({ name: "", cpf: "", phone: "" });
-    setEditingId(null);
-    setShowDialog(false);
   };
 
   const handleEditResponsible = (responsible: Responsible) => {
     setFormData({
       name: responsible.name,
-      cpf: responsible.cpf,
-      phone: responsible.phone,
+      cpf: responsible.cpf || "",
+      phone: responsible.phone || "",
     });
     setEditingId(responsible.id);
     setShowDialog(true);
   };
 
   const handleDeleteResponsible = (id: number) => {
-    const updated = responsibles.filter(r => r.id !== id);
-    setResponsibles(updated);
-    localStorage.setItem("cashierResponsibles", JSON.stringify(updated));
-    toast.success("Responsável removido!");
+    if (window.confirm("Deseja realmente remover este responsável? Cardápios associados permanecerão sem responsável.")) {
+      deleteResponsibleMutation.mutate({ id });
+    }
   };
 
-  const formatCPF = (cpf: string) => {
-    return cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+  const formatCPF = (cpf: string | null) => {
+    const digits = (cpf || "").replace(/\D/g, "");
+    return digits ? digits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4") : "-";
   };
 
   return (
@@ -123,7 +138,9 @@ export default function CashierResponsiblePage() {
                 </tr>
               </thead>
               <tbody>
-                {responsibles.length === 0 ? (
+                {isLoading ? (
+                  <tr><td colSpan={5} className="py-8 px-4 text-center text-muted-foreground">Carregando responsáveis...</td></tr>
+                ) : responsibles.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="py-8 px-4 text-center text-muted-foreground">
                       Nenhum responsável cadastrado
@@ -136,7 +153,7 @@ export default function CashierResponsiblePage() {
                         <p className="font-medium text-foreground">{responsible.name}</p>
                       </td>
                       <td className="py-3 px-4 text-foreground">
-                        {formatCPF(responsible.cpf.replace(/\D/g, "").padStart(11, "0"))}
+                        {formatCPF(responsible.cpf)}
                       </td>
                       <td className="py-3 px-4 text-foreground">{responsible.phone || "-"}</td>
                       <td className="py-3 px-4 text-foreground">

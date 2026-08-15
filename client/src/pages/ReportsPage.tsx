@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useLocation } from "wouter";
@@ -10,18 +10,17 @@ import { AlertTriangle, ArrowLeft, CheckCircle2, FileDown, Loader2, Printer, Rot
 import { createTextPdf, downloadTextPdf } from "@/lib/simplePdf";
 
 interface MenuItem {
-  id: string;
+  id: number | string;
   productId?: number;
   productName: string;
   price: number;
   quantity: number | null;
-  isUnlimited: boolean;
   isAvailable?: boolean;
 }
 
 interface WeeklyMenu {
   id: number;
-  saturdayDate: string;
+  saturdayDate: Date | string;
   saturdayOrder: number;
   responsibleId: number | null;
   responsibleName?: string;
@@ -29,7 +28,7 @@ interface WeeklyMenu {
 }
 
 interface OrderItem {
-  id?: string;
+  id?: number;
   productId?: number;
   productName: string;
   quantity: number;
@@ -46,16 +45,16 @@ interface Order {
   total: number;
   status?: "pending" | "completed" | "cancelled";
   items: OrderItem[];
-  createdAt: string;
+  createdAt: Date | string;
 }
 
 interface CashierSession {
   id: number;
   legacyId?: string | number;
   responsibleId?: number | null;
-  weeklyMenuId: number;
-  openedAt: string;
-  closedAt: string | null;
+  weeklyMenuId?: number | null;
+  openedAt: Date | string;
+  closedAt: Date | string | null;
   orders: Order[];
 }
 
@@ -65,15 +64,19 @@ interface Customer {
   phone?: string;
   email?: string;
   isDefault?: boolean;
-  createdAt: Date;
+  createdAt: Date | string;
 }
 
 export default function ReportsPage() {
   const [, setLocation] = useLocation();
+  const { data: sharedMenus } = trpc.pdv.menu.list.useQuery(undefined, { refetchInterval: 5000 });
+  const { data: sharedSessions, isLoading: sessionsLoading } = trpc.pdv.cashier.getAllSessionsWithOrders.useQuery(undefined, { refetchInterval: 5000 });
   const [menus, setMenus] = useState<WeeklyMenu[]>([]);
-  const [sessions, setSessions] = useState<CashierSession[]>([]);
   const [selectedMenuId, setSelectedMenuId] = useState<number | null>(null);
-  const [customers, setCustomers] = useState<Customer[]>([]);
+  const sessions = useMemo(
+    () => (sharedSessions ?? []).filter((session) => session.weeklyMenuId !== null && session.weeklyMenuId !== undefined) as CashierSession[],
+    [sharedSessions],
+  );
   const [selectedSession, setSelectedSession] = useState<CashierSession | null>(null);
   const [showDetails, setShowDetails] = useState(false);
   const [pendingPaymentChange, setPendingPaymentChange] = useState<{
@@ -91,7 +94,8 @@ export default function ReportsPage() {
   const refundItemsMutation = trpc.pdv.orders.refundItems.useMutation({
     onSuccess: async () => {
       await Promise.all([
-        utils.pdv.orders.getBySession.invalidate(),
+        utils.pdv.cashier.getAllSessionsWithOrders.invalidate(),
+        utils.pdv.orders.getItems.invalidate({ orderId: orderToCancel?.id ?? 0 }),
         utils.pdv.products.list.invalidate(),
         utils.pdv.menu.getItems.invalidate(),
       ]);
@@ -101,70 +105,17 @@ export default function ReportsPage() {
       setRefundQuantities({});
     },
     onError: (err) => {
-      if (orderToCancel && isOrderMissingInBackend(err)) {
-        // Se o pedido for estritamente local (não sincronizado com o banco), aplicamos o estorno localmente
-        restoreLocalMenuStock(orderToCancel);
-        updateOrderInLocalStorage(orderToCancel.id, { status: "cancelled" });
-        toast.success("Estorno aplicado no registro local do relatório e estoque restaurado.");
-        setOrderToCancel(null);
-        setCancelReason("");
-        setRefundQuantities({});
-        return;
-      }
       toast.error(`❌ Erro ao estornar itens: ${err.message}`);
     },
   });
   const [selectedOrderIds, setSelectedOrderIds] = useState<number[]>([]);
-  const legacySyncAttempted = useRef(false);
   const utils = trpc.useUtils();
   const updatePaymentMethodMutation = trpc.pdv.orders.updatePaymentMethod.useMutation();
-  const cancelOrderMutation = trpc.pdv.orders.cancel.useMutation();
-  const syncLegacyMutation = trpc.pdv.orders.syncLegacy.useMutation();
   const refundAuditsQuery = trpc.pdv.orders.getRefundAudits.useQuery(
     { orderIds: selectedOrderIds },
     { enabled: showDetails && selectedOrderIds.length > 0 },
   );
 
-  const persistSessions = (nextSessions: CashierSession[]) => {
-    setSessions(nextSessions);
-    localStorage.setItem("cashierSessions", JSON.stringify(nextSessions));
-    if (selectedSession) {
-      const refreshed = nextSessions.find((session) => session.id === selectedSession.id);
-      if (refreshed) setSelectedSession(refreshed);
-    }
-  };
-
-  const updateOrderInLocalStorage = (orderId: number, patch: Partial<Order>) => {
-    const nextSessions = sessions.map((session) => ({
-      ...session,
-      orders: (session.orders || []).map((order) => order.id === orderId ? { ...order, ...patch } : order),
-    }));
-    persistSessions(nextSessions);
-  };
-
-  const restoreLocalMenuStock = (order: Order) => {
-    const session = sessions.find((candidate) => (candidate.orders || []).some((candidateOrder) => candidateOrder.id === order.id));
-    if (!session) return;
-    const productIds = new Map<string, number>();
-    order.items.forEach((item) => {
-      const productId = item.productId ?? item.id;
-      if (productId !== undefined) productIds.set(String(productId), (productIds.get(String(productId)) || 0) + item.quantity);
-    });
-    const nextMenus = menus.map((menu) => menu.id !== session.weeklyMenuId ? menu : ({
-      ...menu,
-      items: menu.items.map((item) => {
-        const key = String(item.productId ?? item.id);
-        const restored = productIds.get(key) || productIds.get(String(item.id));
-        if (!restored || item.quantity === null) return item;
-        const quantity = item.quantity + restored;
-        return { ...item, quantity, isAvailable: quantity > 0 };
-      }),
-    }));
-    setMenus(nextMenus);
-    localStorage.setItem("weeklyMenus", JSON.stringify(nextMenus));
-  };
-
-  const isOrderMissingInBackend = (error: any) => error?.data?.code === "NOT_FOUND" || /pedido não encontrado/i.test(error?.message || "");
 
   const handleRequestPaymentChange = (order: Order, paymentMethod: Order["paymentMethod"]) => {
     if (order.status === "cancelled" || order.paymentMethod === paymentMethod) return;
@@ -182,144 +133,26 @@ export default function ReportsPage() {
         orderId: pendingPaymentChange.orderId,
         paymentMethod: pendingPaymentChange.paymentMethod,
       });
-      updateOrderInLocalStorage(pendingPaymentChange.orderId, {
-        paymentMethod: pendingPaymentChange.paymentMethod,
-      });
-      await utils.pdv.orders.getBySession.invalidate();
-      await utils.pdv.orders.getItems.invalidate({ orderId: pendingPaymentChange.orderId });
+      await Promise.all([
+        utils.pdv.cashier.getAllSessionsWithOrders.invalidate(),
+        utils.pdv.orders.getItems.invalidate({ orderId: pendingPaymentChange.orderId }),
+      ]);
       toast.success("Forma de pagamento corrigida com sucesso.");
       setPendingPaymentChange(null);
     } catch (error: any) {
-      if (isOrderMissingInBackend(error)) {
-        // Pedidos criados no fluxo legado ficam apenas no localStorage; ainda assim
-        // permitimos a correção local sem mascarar erros de autenticação ou banco.
-        updateOrderInLocalStorage(pendingPaymentChange.orderId, {
-          paymentMethod: pendingPaymentChange.paymentMethod,
-        });
-        toast.success("Forma de pagamento corrigida no registro local do relatório.");
-        setPendingPaymentChange(null);
-        return;
-      }
       toast.error(error?.message || "Não foi possível corrigir a forma de pagamento.");
     }
   };
 
-  const handleConfirmCancellation = async () => {
-    if (!orderToCancel) return;
-    try {
-      await cancelOrderMutation.mutateAsync({
-        orderId: orderToCancel.id,
-        reason: cancelReason.trim() || undefined,
-      });
-      updateOrderInLocalStorage(orderToCancel.id, { status: "cancelled" });
-      await Promise.all([
-        utils.pdv.orders.getBySession.invalidate(),
-        utils.pdv.orders.getItems.invalidate({ orderId: orderToCancel.id }),
-        utils.pdv.products.list.invalidate(),
-        utils.pdv.menu.getItems.invalidate(),
-      ]);
-      toast.success("Venda estornada. O estoque foi devolvido e os totais foram atualizados.");
-      setOrderToCancel(null);
-      setCancelReason("");
-    } catch (error: any) {
-      if (isOrderMissingInBackend(error)) {
-        restoreLocalMenuStock(orderToCancel);
-        updateOrderInLocalStorage(orderToCancel.id, { status: "cancelled" });
-        toast.success("Venda estornada no registro local do relatório e estoque do cardápio restaurado.");
-        setOrderToCancel(null);
-        setCancelReason("");
-        return;
-      }
-      toast.error(error?.message || "Não foi possível estornar a venda.");
-    }
-  };
+  useEffect(() => {
+    setMenus((sharedMenus ?? []) as WeeklyMenu[]);
+  }, [sharedMenus]);
 
   useEffect(() => {
-    const storedMenus = localStorage.getItem("weeklyMenus");
-    if (storedMenus) {
-      setMenus(JSON.parse(storedMenus));
-    }
-
-    const storedSessions = localStorage.getItem("cashierSessions");
-    if (storedSessions) {
-      setSessions(JSON.parse(storedSessions));
-    const storedCustomers = localStorage.getItem("customers");
-    if (storedCustomers) {
-      setCustomers(JSON.parse(storedCustomers));
-    }
-    }
-  }, []);
-
-  const synchronizeLegacyOrders = async (manual = false) => {
-    if (sessions.length === 0 || syncLegacyMutation.isPending) return;
-    if (!manual && legacySyncAttempted.current) return;
-    legacySyncAttempted.current = true;
-
-    const normalizePaymentMethod = (value: unknown): Order["paymentMethod"] =>
-      value === "pix" || value === "card" || value === "cash" ? value : "cash";
-
-    const payload = sessions.map((session) => ({
-      id: session.legacyId ?? session.id,
-      // Não enviamos o responsibleId numérico porque ele pode ser um ID local (Date.now()) inválido para o banco.
-      // O backend resolverá o responsável pelo nome ou pelo usuário autenticado.
-      responsibleName: menus.find((menu) => menu.id === session.weeklyMenuId)?.responsibleName,
-      openedAt: session.openedAt,
-      closedAt: session.closedAt,
-      orders: (session.orders || []).map((order) => {
-        const legacyOrder = order as Order & { customerName?: string; customer?: { name?: string } };
-        return {
-          id: order.legacyId ?? order.id,
-          paymentMethod: normalizePaymentMethod(order.paymentMethod),
-          total: Number(order.total || 0),
-          status: order.status || "completed",
-          customerName: legacyOrder.customerName || legacyOrder.customer?.name,
-          createdAt: order.createdAt,
-          items: (order.items || []).map((item) => ({
-            id: item.id,
-            productId: item.productId,
-            productName: item.productName,
-            quantity: Number(item.quantity || 0),
-            price: Number(item.price ?? item.unitPrice ?? 0),
-            unitPrice: Number(item.unitPrice ?? item.price ?? 0),
-            subtotal: Number(item.subtotal || 0),
-          })),
-        };
-      }),
-    }));
-
-    try {
-      const result = await syncLegacyMutation.mutateAsync({ sessions: payload });
-      if (result.ordersCreated === 0 && result.ordersSkipped === 0) {
-        if (manual) toast.info("Nenhum pedido legado pendente foi encontrado.");
-        return;
-      }
-      const orderMapping = new Map(result.orderMappings.map((entry) => [entry.legacyKey, entry.officialId]));
-      const sessionMapping = new Map(result.sessionMappings.map((entry) => [String(entry.legacySessionId), entry.officialId]));
-      const nextSessions = sessions.map((session) => {
-        const legacySessionId = session.legacyId ?? session.id;
-        return {
-          ...session,
-          legacyId: session.legacyId ?? session.id,
-          id: sessionMapping.get(String(legacySessionId)) ?? session.id,
-          orders: (session.orders || []).map((order) => {
-            const legacyKey = `local:${String(legacySessionId)}:${String(order.legacyId ?? order.id)}`;
-            const officialId = orderMapping.get(legacyKey);
-            return officialId ? { ...order, legacyId: order.legacyId ?? order.id, id: officialId } : order;
-          }),
-        };
-      });
-      persistSessions(nextSessions);
-      toast.success(`${result.ordersCreated} novo(s) pedido(s) legado(s) integrado(s); ${result.ordersSkipped} já existente(s).`);
-    } catch (error: any) {
-      legacySyncAttempted.current = false;
-      if (manual) toast.error(error?.message || "Não foi possível integrar os pedidos legados.");
-      console.error("Falha ao sincronizar pedidos legados", error);
-    }
-  };
-
-  useEffect(() => {
-    void synchronizeLegacyOrders();
-  }, [sessions.length]);
+    if (!selectedSession) return;
+    const refreshed = sessions.find((session) => session.id === selectedSession.id);
+    if (refreshed && refreshed !== selectedSession) setSelectedSession(refreshed);
+  }, [sessions, selectedSession]);
 
   const getSaturdayLabel = (order: number) => {
     const labels = ["1º", "2º", "3º", "4º", "5º"];
@@ -706,21 +539,9 @@ export default function ReportsPage() {
 
         {/* Menu Filter */}
           <Card className="p-6 mb-6">
-          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h2 className="font-semibold text-foreground">Filtrar por Cardápio</h2>
-              <p className="text-xs text-muted-foreground">Pedidos locais são integrados ao banco de forma idempotente.</p>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => void synchronizeLegacyOrders(true)}
-              disabled={syncLegacyMutation.isPending || sessions.length === 0}
-              className="gap-2"
-            >
-              {syncLegacyMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
-              Integrar pedidos locais
-            </Button>
+          <div className="mb-4">
+            <h2 className="font-semibold text-foreground">Filtrar por Cardápio</h2>
+            <p className="text-xs text-muted-foreground">Os dados exibidos vêm das sessões, pedidos e cardápios compartilhados no banco.</p>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
             <Button
@@ -964,7 +785,7 @@ export default function ReportsPage() {
                                     setCancelReason("");
                                     setRefundQuantities({});
                                   }}
-                                  disabled={cancelOrderMutation.isPending}
+                                  disabled={refundItemsMutation.isPending}
                                 >
                                   <RotateCcw className="h-3.5 w-3.5" />
                                   Estornar Venda
@@ -1154,17 +975,6 @@ export default function ReportsPage() {
 
                     if (itemsPayload.length === 0) {
                       toast.error("Informe ao menos uma quantidade para estornar.");
-                      return;
-                    }
-
-                    // Se o ID for um timestamp local (pedido legado não sincronizado), forçamos a sincronização prévia ou tratamos localmente
-                    if (orderToCancel.id > 1000000000) {
-                      restoreLocalMenuStock(orderToCancel);
-                      updateOrderInLocalStorage(orderToCancel.id, { status: "cancelled" });
-                      toast.success("Pedido legado estornado com sucesso no registro local e estoque devolvido.");
-                      setOrderToCancel(null);
-                      setCancelReason("");
-                      setRefundQuantities({});
                       return;
                     }
 

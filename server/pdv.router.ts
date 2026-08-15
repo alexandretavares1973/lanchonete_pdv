@@ -60,55 +60,98 @@ export const pdvRouter = router({
       }),
   }),
 
-  // Cardápio Semanal
+  // Cardápio Semanal — fonte única compartilhada no banco
   menu: router({
+    list: publicProcedure.query(async () => db.getAllWeeklyMenus()),
+
     getByDate: publicProcedure
       .input(z.object({ date: z.string() }))
-      .query(async ({ input }) => {
-        return await db.getWeeklyMenuByDate(input.date);
-      }),
+      .query(async ({ input }) => db.getWeeklyMenuByDate(input.date)),
 
     create: protectedProcedure
-      .input(
-        z.object({
-          saturdayDate: z.string(),
-          saturdayOrder: z.number(),
-        })
-      )
+      .input(z.object({
+        saturdayDate: z.string(),
+        saturdayOrder: z.number(),
+        responsibleId: z.number().nullable().optional(),
+        status: z.enum(["open", "closed"]).optional(),
+      }))
+      .mutation(async ({ input }) => db.createWeeklyMenu({
+        saturdayDate: input.saturdayDate,
+        saturdayOrder: input.saturdayOrder,
+        responsibleId: input.responsibleId ?? null,
+        status: input.status ?? "closed",
+      })),
+
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        saturdayDate: z.string().optional(),
+        saturdayOrder: z.number().optional(),
+        responsibleId: z.number().nullable().optional(),
+        status: z.enum(["open", "closed"]).optional(),
+      }))
       .mutation(async ({ input }) => {
-        return await db.createWeeklyMenu(input);
+        const { id, ...data } = input;
+        return db.updateWeeklyMenu(id, data);
       }),
 
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => db.deleteWeeklyMenu(input.id)),
+
+    syncLegacy: protectedProcedure
+      .input(z.object({
+        menus: z.array(z.object({
+          saturdayDate: z.string(),
+          saturdayOrder: z.number(),
+          responsibleName: z.string().optional(),
+          responsibleCpf: z.string().optional(),
+          responsiblePhone: z.string().optional(),
+          status: z.enum(["open", "closed"]).optional(),
+          items: z.array(z.object({
+            productId: z.number().optional(),
+            productName: z.string().optional(),
+            name: z.string().optional(),
+            quantity: z.number().nullable().optional(),
+            availableQuantity: z.number().nullable().optional(),
+          })).optional(),
+        })),
+      }))
+      .mutation(async ({ input, ctx }) => db.syncLegacyMenus(input.menus, {
+        userId: ctx.user.id,
+        username: ctx.user.name || ctx.user.email || `usuario-${ctx.user.id}`,
+      })),
+
     addItem: protectedProcedure
-      .input(
-        z.object({
-          menuId: z.number(),
-          productId: z.number(),
-          availableQuantity: z.number().nullable(),
-        })
-      )
+      .input(z.object({
+        menuId: z.number(),
+        productId: z.number(),
+        availableQuantity: z.number().min(0).nullable(),
+      }))
+      .mutation(async ({ input }) => db.createMenuItem(input)),
+
+    updateItem: protectedProcedure
+      .input(z.object({
+        menuItemId: z.number(),
+        availableQuantity: z.number().min(0).nullable().optional(),
+        isAvailable: z.boolean().optional(),
+      }))
       .mutation(async ({ input }) => {
-        return await db.createMenuItem(input);
+        const { menuItemId, ...data } = input;
+        return db.updateMenuItem(menuItemId, data);
       }),
 
     updateItemAvailability: protectedProcedure
-      .input(
-        z.object({
-          menuItemId: z.number(),
-          isAvailable: z.boolean(),
-        })
-      )
-      .mutation(async ({ input }) => {
-        return await db.updateMenuItem(input.menuItemId, {
-          isAvailable: input.isAvailable,
-        });
-      }),
+      .input(z.object({ menuItemId: z.number(), isAvailable: z.boolean() }))
+      .mutation(async ({ input }) => db.updateMenuItem(input.menuItemId, { isAvailable: input.isAvailable })),
+
+    deleteItem: protectedProcedure
+      .input(z.object({ menuItemId: z.number() }))
+      .mutation(async ({ input }) => db.deleteMenuItem(input.menuItemId)),
 
     getItems: publicProcedure
       .input(z.object({ menuId: z.number() }))
-      .query(async ({ input }) => {
-        return await db.getMenuItemsByMenuId(input.menuId);
-      }),
+      .query(async ({ input }) => db.getMenuItemsByMenuId(input.menuId)),
   }),
 
   // Pedidos
@@ -125,6 +168,8 @@ export const pdvRouter = router({
             })
           ),
           paymentMethod: z.enum(["pix", "card", "cash"]),
+          customerId: z.number().optional(),
+          weeklyMenuId: z.number().optional(),
         })
       )
       .mutation(async ({ input }) => {
@@ -137,6 +182,7 @@ export const pdvRouter = router({
           cashierSessionId: input.cashierSessionId,
           totalAmount,
           paymentMethod: input.paymentMethod,
+          customerId: input.customerId,
           status: "completed",
         });
 
@@ -175,6 +221,19 @@ export const pdvRouter = router({
                 quantity: newQuantity,
                 isAvailable: newQuantity > 0,
               });
+            }
+          }
+
+          if (input.weeklyMenuId) {
+            const menuItem = await db.getMenuItemByMenuAndProduct(input.weeklyMenuId, item.productId);
+            if (menuItem && menuItem.availableQuantity !== null) {
+              const availableQuantity = Math.max(0, menuItem.availableQuantity - item.quantity);
+              await db.updateMenuItem(menuItem.id, {
+                availableQuantity,
+                isAvailable: availableQuantity > 0,
+              });
+            } else {
+              console.warn(`[StockWarning] Item ${item.productId} não possui quantidade controlada no cardápio ${input.weeklyMenuId}.`);
             }
           }
         }
@@ -302,6 +361,7 @@ export const pdvRouter = router({
           responsibleName: z.string().optional(),
           responsibleCpf: z.string().optional(),
           responsiblePhone: z.string().optional(),
+          weeklyMenuId: z.number().nullable().optional(),
           openedAt: z.string().optional(),
           closedAt: z.string().nullable().optional(),
           orders: z.array(z.object({
@@ -333,28 +393,55 @@ export const pdvRouter = router({
       }),
   }),
 
+  // Responsáveis pelo caixa — dados compartilhados entre usuários
+  cashierResponsibles: router({
+    list: publicProcedure.query(async () => db.getAllCashierResponsibles()),
+
+    create: protectedProcedure
+      .input(z.object({ name: z.string().min(1), cpf: z.string().optional(), phone: z.string().optional() }))
+      .mutation(async ({ input, ctx }) => db.createCashierResponsible({
+        userId: ctx.user.id,
+        name: input.name.trim(),
+        cpf: input.cpf?.trim() || null,
+        phone: input.phone?.trim() || null,
+      })),
+
+    update: protectedProcedure
+      .input(z.object({ id: z.number(), name: z.string().min(1).optional(), cpf: z.string().nullable().optional(), phone: z.string().nullable().optional() }))
+      .mutation(async ({ input }) => {
+        const { id, ...data } = input;
+        return db.updateCashierResponsible(id, data);
+      }),
+
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => db.deleteCashierResponsible(input.id)),
+  }),
+
   // Caixa
   cashier: router({
     openSession: protectedProcedure
       .input(
         z.object({
           responsibleId: z.number(),
+          weeklyMenuId: z.number().optional(),
           initialBalance: z.number().default(0),
         })
       )
       .mutation(async ({ input }) => {
         return await db.createCashierSession({
-          responsibleId: input.responsibleId,
-          initialBalance: input.initialBalance,
+            responsibleId: input.responsibleId,
+            weeklyMenuId: input.weeklyMenuId,
+            initialBalance: input.initialBalance,
           status: "open",
         });
       }),
 
     getOpenSession: publicProcedure
-      .input(z.object({ responsibleId: z.number() }))
-      .query(async ({ input }) => {
-        return await db.getOpenCashierSession(input.responsibleId);
-      }),
+      .input(z.object({ responsibleId: z.number(), weeklyMenuId: z.number().optional() }))
+      .query(async ({ input }) => db.getOpenCashierSession(input.responsibleId, input.weeklyMenuId)),
+
+    getAllSessionsWithOrders: protectedProcedure.query(async () => db.getAllCashierSessionsWithOrders()),
 
     closeSession: protectedProcedure
       .input(

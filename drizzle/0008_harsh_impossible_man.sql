@@ -1,0 +1,1 @@
+ALTER TABLE `cashier_sessions` ADD `weeklyMenuId` int;

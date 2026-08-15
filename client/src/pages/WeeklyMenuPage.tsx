@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -6,6 +6,7 @@ import { useLocation } from "wouter";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Lock, Unlock } from "lucide-react";
+import { trpc } from "@/lib/trpc";
 
 interface Responsible {
   id: number;
@@ -15,16 +16,15 @@ interface Responsible {
 }
 
 interface MenuItem {
-  id: string;
+  id: number | string;
   productName: string;
   price: number;
   quantity: number | null;
-  isUnlimited: boolean;
 }
 
 interface WeeklyMenu {
   id: number;
-  saturdayDate: string;
+  saturdayDate: Date | string;
   saturdayOrder: number;
   responsibleId: number | null;
   responsibleName?: string;
@@ -34,8 +34,10 @@ interface WeeklyMenu {
 
 export default function WeeklyMenuPage() {
   const [, setLocation] = useLocation();
-  const [menus, setMenus] = useState<any[]>([]);
-  const [responsibles, setResponsibles] = useState<Responsible[]>([]);
+  const { data: menus = [], isLoading: menusLoading } = trpc.pdv.menu.list.useQuery(undefined, { refetchInterval: 5000 });
+  const { data: responsibles = [] } = trpc.pdv.cashierResponsibles.list.useQuery(undefined, { refetchInterval: 5000 });
+  const { data: globalProducts = [] } = trpc.pdv.products.list.useQuery();
+  const utils = trpc.useUtils();
   const [selectedMenu, setSelectedMenu] = useState<any>(null);
   const [showDetails, setShowDetails] = useState(false);
   const [showAddMenu, setShowAddMenu] = useState(false);
@@ -52,7 +54,6 @@ export default function WeeklyMenuPage() {
     productName: "",
     price: "",
     quantity: "",
-    isUnlimited: false,
   });
 
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
@@ -60,18 +61,57 @@ export default function WeeklyMenuPage() {
     quantity: "",
   });
 
-  // Carregar responsáveis do localStorage
-  useEffect(() => {
-    const stored = localStorage.getItem("cashierResponsibles");
-    if (stored) {
-      setResponsibles(JSON.parse(stored));
-    }
-
-    const storedMenus = localStorage.getItem("weeklyMenus");
-    if (storedMenus) {
-      setMenus(JSON.parse(storedMenus));
-    }
-  }, []);
+  const createMenuMutation = trpc.pdv.menu.create.useMutation({
+    onSuccess: async (menu) => {
+      await utils.pdv.menu.list.invalidate();
+      toast.success("Cardápio criado! Agora adicione os produtos.");
+      if (menu?.id) {
+        setEditingMenuId(menu.id);
+        setShowAddProducts(true);
+      }
+      setFormData({ saturdayDate: "", saturdayOrder: 1, responsibleId: "" });
+      setShowAddMenu(false);
+    },
+    onError: (error) => toast.error(error.message || "Não foi possível criar o cardápio."),
+  });
+  const addMenuItemMutation = trpc.pdv.menu.addItem.useMutation({
+    onSuccess: async () => {
+      await utils.pdv.menu.list.invalidate();
+      toast.success("Produto adicionado ao cardápio!");
+      setProductForm({ productName: "", price: "", quantity: "" });
+    },
+    onError: (error) => toast.error(error.message || "Não foi possível adicionar o produto."),
+  });
+  const updateMenuMutation = trpc.pdv.menu.update.useMutation({
+    onSuccess: async () => {
+      await utils.pdv.menu.list.invalidate();
+      toast.success("Status do cardápio atualizado!");
+    },
+    onError: (error) => toast.error(error.message || "Não foi possível atualizar o cardápio."),
+  });
+  const deleteMenuMutation = trpc.pdv.menu.delete.useMutation({
+    onSuccess: async () => {
+      await utils.pdv.menu.list.invalidate();
+      setSelectedMenu(null);
+      toast.success("Cardápio removido!");
+    },
+    onError: (error) => toast.error(error.message || "Não foi possível remover o cardápio."),
+  });
+  const updateMenuItemMutation = trpc.pdv.menu.updateItem.useMutation({
+    onSuccess: async () => {
+      await utils.pdv.menu.list.invalidate();
+      setEditingProductId(null);
+      toast.success("Quantidade atualizada!");
+    },
+    onError: (error) => toast.error(error.message || "Não foi possível atualizar a quantidade."),
+  });
+  const deleteMenuItemMutation = trpc.pdv.menu.deleteItem.useMutation({
+    onSuccess: async () => {
+      await utils.pdv.menu.list.invalidate();
+      toast.success("Produto removido!");
+    },
+    onError: (error) => toast.error(error.message || "Não foi possível remover o produto."),
+  });
 
   const handleAddMenu = () => {
     if (!formData.saturdayDate || !formData.responsibleId) {
@@ -79,67 +119,40 @@ export default function WeeklyMenuPage() {
       return;
     }
 
-    const responsible = responsibles.find(r => r.id === parseInt(formData.responsibleId));
-    if (!responsible) {
+    const responsibleId = Number(formData.responsibleId);
+    if (!Number.isInteger(responsibleId)) {
       toast.error("Responsável não encontrado");
       return;
     }
 
-    const newMenu: any = {
-      id: Date.now(),
+    createMenuMutation.mutate({
       saturdayDate: formData.saturdayDate,
       saturdayOrder: formData.saturdayOrder,
-      responsibleId: parseInt(formData.responsibleId),
-      responsibleName: responsible.name,
-      status: "closed" as const,
-      items: [],
-    };
-
-    const updated = [...menus, newMenu];
-    setMenus(updated);
-    localStorage.setItem("weeklyMenus", JSON.stringify(updated));
-    
-    toast.success("Cardápio criado! Agora adicione os produtos.");
-    setEditingMenuId(newMenu.id);
-    setShowAddProducts(true);
-    setFormData({ saturdayDate: "", saturdayOrder: 1, responsibleId: "" });
-    setShowAddMenu(false);
+      responsibleId,
+      status: "closed",
+    });
   };
 
   const handleAddProduct = () => {
-    if (!productForm.productName || !productForm.price) {
-      toast.error("Preencha nome e preço do produto");
+    if (!productForm.productName || !productForm.quantity) {
+      toast.error("Selecione um produto cadastrado e informe a quantidade.");
       return;
     }
-
     if (!editingMenuId) {
       toast.error("Nenhum cardápio selecionado");
       return;
     }
-
-    const price = parseFloat(productForm.price);
-    const quantity = productForm.quantity ? parseInt(productForm.quantity) : 0;
-
-    const newProduct: any = {
-      id: `${Date.now()}-${Math.random()}`,
-      productName: productForm.productName,
-      price,
-      quantity,
-      isUnlimited: false,
-    };
-
-    const updated = menus.map((menu: any) => {
-      if (menu.id === editingMenuId) {
-        return { ...menu, items: [...menu.items, newProduct] };
-      }
-      return menu;
-    });
-
-    setMenus(updated);
-    localStorage.setItem("weeklyMenus", JSON.stringify(updated));
-    
-    toast.success("Produto adicionado!");
-    setProductForm({ productName: "", price: "", quantity: "", isUnlimited: false });
+    const product = globalProducts.find((candidate) => candidate.name.trim().toLocaleLowerCase() === productForm.productName.trim().toLocaleLowerCase());
+    if (!product) {
+      toast.error("Produto não encontrado no cadastro global. Cadastre-o em Produtos antes de adicioná-lo ao cardápio.");
+      return;
+    }
+    const quantity = Number(productForm.quantity);
+    if (!Number.isInteger(quantity) || quantity < 0) {
+      toast.error("Informe uma quantidade inteira não negativa.");
+      return;
+    }
+    addMenuItemMutation.mutate({ menuId: editingMenuId, productId: product.id, availableQuantity: quantity });
   };
 
   const handleEditProductQuantity = (item: any) => {
@@ -147,7 +160,7 @@ export default function WeeklyMenuPage() {
     setEditingProductForm({ quantity: item.quantity?.toString() || "" });
   };
 
-  const handleSaveProductQuantity = (menuId: number, productId: string) => {
+  const handleSaveProductQuantity = (_menuId: number, productId: string) => {
     if (!editingProductForm.quantity) {
       toast.error("Informe a quantidade");
       return;
@@ -159,50 +172,29 @@ export default function WeeklyMenuPage() {
       return;
     }
 
-    const updatedMenus = menus.map(menu =>
-      menu.id === menuId
-        ? {
-            ...menu,
-            items: menu.items.map((item: any) =>
-              item.id === productId
-                ? { ...item, quantity: newQuantity }
-                : item
-            ),
-          }
-        : menu
-    );
-
-    setMenus(updatedMenus);
-    localStorage.setItem("weeklyMenus", JSON.stringify(updatedMenus));
-    setEditingProductId(null);
-    toast.success("Quantidade atualizada!");
+    const menuItemId = Number(productId);
+    if (!Number.isInteger(menuItemId)) {
+      toast.error("Identificador do item de cardápio inválido.");
+      return;
+    }
+    updateMenuItemMutation.mutate({ menuItemId, availableQuantity: newQuantity });
   };
 
-  const handleRemoveProduct = (menuId: number, productId: string) => {
-    const updated = menus.map((menu: any) => {
-      if (menu.id === menuId) {
-        return { ...menu, items: menu.items.filter((item: any) => item.id !== productId) };
-      }
-      return menu;
-    });
-
-    setMenus(updated);
-    localStorage.setItem("weeklyMenus", JSON.stringify(updated));
-    toast.success("Produto removido!");
+  const handleRemoveProduct = (_menuId: number, productId: string) => {
+    const menuItemId = Number(productId);
+    if (!Number.isInteger(menuItemId)) {
+      toast.error("Identificador do item de cardápio inválido.");
+      return;
+    }
+    if (window.confirm("Deseja remover este produto do cardápio?")) {
+      deleteMenuItemMutation.mutate({ menuItemId });
+    }
   };
 
   const handleToggleStatus = (menuId: number) => {
-    const updated = menus.map((menu: any) => {
-      if (menu.id === menuId) {
-        const newStatus = menu.status === "open" ? "closed" : "open" as const;
-        toast.success(newStatus === "open" ? "Cardápio aberto!" : "Cardápio fechado!");
-        return { ...menu, status: newStatus };
-      }
-      return menu;
-    });
-
-    setMenus(updated);
-    localStorage.setItem("weeklyMenus", JSON.stringify(updated));
+    const menu = menus.find((candidate: any) => candidate.id === menuId);
+    if (!menu) return;
+    updateMenuMutation.mutate({ id: menuId, status: menu.status === "open" ? "closed" : "open" });
   };
 
   const getSaturdayLabel = (order: number) => {
@@ -216,10 +208,9 @@ export default function WeeklyMenuPage() {
   };
 
   const handleDeleteMenu = (id: number) => {
-    const updated = menus.filter((m: any) => m.id !== id);
-    setMenus(updated);
-    localStorage.setItem("weeklyMenus", JSON.stringify(updated));
-    toast.success("Cardápio removido!");
+    if (window.confirm("Deseja realmente deletar este cardápio e seus itens?")) {
+      deleteMenuMutation.mutate({ id });
+    }
   };
 
   const handleEditProducts = (menu: any) => {
@@ -427,9 +418,7 @@ export default function WeeklyMenuPage() {
                         <div className="flex-1">
                           <p className="font-medium text-foreground">{item.productName}</p>
                           <p className="text-xs text-muted-foreground">
-                            {item.isUnlimited
-                              ? "Quantidade ilimitada"
-                              : `${item.quantity} disponível`}
+                            {`${item.quantity ?? 0} disponível`}
                           </p>
                         </div>
                         <p className="font-bold text-primary">R$ {item.price.toFixed(2)}</p>
@@ -571,7 +560,7 @@ export default function WeeklyMenuPage() {
                         <div className="flex-1">
                           <p className="font-medium text-foreground">{item.productName}</p>
                           <p className="text-xs text-muted-foreground">
-                            R$ {item.price.toFixed(2)} • {item.isUnlimited ? "Ilimitado" : `${item.quantity} un`}
+                            R$ {item.price.toFixed(2)} • {item.quantity ?? 0} un
                           </p>
                         </div>
                         {editingProductId === item.id ? (
@@ -628,31 +617,26 @@ export default function WeeklyMenuPage() {
                 <div className="space-y-3">
                   <div>
                     <label className="text-sm font-medium text-foreground block mb-2">
-                      Nome do Produto *
+                      Produto cadastrado *
                     </label>
-                    <Input
+                    <select
                       value={productForm.productName}
-                      onChange={(e) => setProductForm({ ...productForm, productName: e.target.value })}
-                      placeholder="Ex: Hambúrguer Clássico"
-                      className="w-full"
-                    />
+                      onChange={(e) => {
+                        const selected = globalProducts.find((product) => product.name === e.target.value);
+                        setProductForm({ ...productForm, productName: e.target.value, price: selected ? String(selected.price) : "" });
+                      }}
+                      className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground"
+                    >
+                      <option value="">Selecione um produto global</option>
+                      {globalProducts.map((product) => (
+                        <option key={product.id} value={product.name}>
+                          {product.name} — R$ {Number(product.price).toFixed(2)}
+                        </option>
+                      ))}
+                    </select>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-sm font-medium text-foreground block mb-2">
-                        Preço (R$) *
-                      </label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        value={productForm.price}
-                        onChange={(e) => setProductForm({ ...productForm, price: e.target.value })}
-                        placeholder="0.00"
-                        className="w-full"
-                      />
-                    </div>
-
+                  <div>
                     <div>
                       <label className="text-sm font-medium text-foreground block mb-2">
                         Quantidade
@@ -681,7 +665,7 @@ export default function WeeklyMenuPage() {
                   onClick={() => {
                     setShowAddProducts(false);
                     setEditingMenuId(null);
-                    setProductForm({ productName: "", price: "", quantity: "", isUnlimited: false });
+                    setProductForm({ productName: "", price: "", quantity: "" });
                   }}
                   className="flex-1 bg-gradient-to-r from-primary to-secondary"
                 >

@@ -1,9 +1,10 @@
-import { useState, useEffect } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useLocation } from "wouter";
 import { ArrowLeft, Download, FileDown, Printer } from "lucide-react";
 import { toast } from "sonner";
+import { trpc } from "@/lib/trpc";
 import { downloadTextPdf } from "@/lib/simplePdf";
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 
@@ -11,12 +12,11 @@ interface MenuItem {
   id: string;
   productName: string;
   price: number;
-  quantity: number | null;
-  isUnlimited: boolean;
+  quantity: number;
 }
 
 interface OrderItem {
-  id?: string;
+  id?: number;
   productId?: number;
   productName: string;
   quantity: number;
@@ -33,14 +33,14 @@ interface Order {
   total: number;
   status?: "pending" | "completed" | "cancelled";
   items: OrderItem[];
-  createdAt: string;
+  createdAt: Date | string;
 }
 
 interface CashierSession {
   id: number;
-  weeklyMenuId: number;
-  openedAt: string;
-  closedAt: string | null;
+  weeklyMenuId?: number | null;
+  openedAt: Date | string;
+  closedAt: Date | string | null;
   orders: Order[];
 }
 
@@ -51,7 +51,7 @@ interface Customer {
   email?: string;
   isDefault?: boolean;
   isActive?: boolean;
-  createdAt: Date;
+  createdAt: Date | string;
 }
 
 interface CustomerBehavior {
@@ -62,14 +62,16 @@ interface CustomerBehavior {
   purchaseFrequency: number;
   favoriteProducts: { name: string; quantity: number; percentage: number }[];
   paymentMethods: { method: string; count: number; percentage: number }[];
-  lastPurchase?: string;
-  firstPurchase?: string;
+  lastPurchase?: Date | string;
+  firstPurchase?: Date | string;
 }
 
 export default function CustomerBehaviorAnalysisPage() {
   const [, setLocation] = useLocation();
-  const [sessions, setSessions] = useState<CashierSession[]>([]);
-  const [customers, setCustomers] = useState<Customer[]>([]);
+  const { data: sharedSessions } = trpc.pdv.cashier.getAllSessionsWithOrders.useQuery(undefined, { refetchInterval: 5000 });
+  const { data: sharedCustomers } = trpc.pdv.customers.list.useQuery(undefined, { refetchInterval: 5000 });
+  const sessions = useMemo(() => (sharedSessions ?? []) as CashierSession[], [sharedSessions]);
+  const customers = useMemo(() => (sharedCustomers ?? []) as Customer[], [sharedCustomers]);
   const [behaviors, setBehaviors] = useState<CustomerBehavior[]>([]);
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
@@ -77,18 +79,6 @@ export default function CustomerBehaviorAnalysisPage() {
   const [selectedCustomer, setSelectedCustomer] = useState<number | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<string | null>(null);
   const [allProducts, setAllProducts] = useState<string[]>([]);
-
-  useEffect(() => {
-    const storedSessions = localStorage.getItem("cashierSessions");
-    if (storedSessions) {
-      setSessions(JSON.parse(storedSessions));
-    }
-
-    const storedCustomers = localStorage.getItem("customers");
-    if (storedCustomers) {
-      setCustomers(JSON.parse(storedCustomers));
-    }
-  }, []);
 
   useEffect(() => {
     const products = new Set<string>();
@@ -139,7 +129,11 @@ export default function CustomerBehaviorAnalysisPage() {
 
         if (behavior) {
           behavior.totalPurchases += 1;
-          behavior.totalSpent += order.total;
+          const orderNetTotal = order.items.reduce((sum, item) => {
+            const netQuantity = Math.max(0, item.quantity - ((item as OrderItem & { refundedQuantity?: number }).refundedQuantity || 0));
+            return sum + netQuantity * Number(item.unitPrice ?? item.price ?? 0);
+          }, 0);
+          behavior.totalSpent += orderNetTotal;
           behavior.lastPurchase = order.createdAt;
           if (!behavior.firstPurchase) {
             behavior.firstPurchase = order.createdAt;
@@ -157,11 +151,13 @@ export default function CustomerBehaviorAnalysisPage() {
           // Rastrear produtos favoritos
           order.items?.forEach((item) => {
             const productName = item.productName;
+            const quantity = Math.max(0, item.quantity - ((item as OrderItem & { refundedQuantity?: number }).refundedQuantity || 0));
+            if (quantity <= 0) return;
             const existingProduct = behavior.favoriteProducts.find(p => p.name === productName);
             if (existingProduct) {
-              existingProduct.quantity += item.quantity;
+              existingProduct.quantity += quantity;
             } else {
-              behavior.favoriteProducts.push({ name: productName, quantity: item.quantity, percentage: 0 });
+              behavior.favoriteProducts.push({ name: productName, quantity, percentage: 0 });
             }
           });
         }

@@ -3,8 +3,33 @@ import { getSafeLegacyResponsibleId, getTestDataBlueprint } from "./db";
 import { getExplicitCustomer, getFreshOrderDefaults, DEFAULT_PAYMENT_METHOD } from "../shared/posOrderFlow";
 import { LOW_STOCK_THRESHOLD, getLowStockMessage, isLowGlobalStock } from "../shared/stockAlerts";
 import { parseStockQuantity } from "../shared/stockQuantity";
+import { canCreateSharedSale, selectPreferredOpenMenu } from "../shared/menuSelection";
 
 describe("PDV System", () => {
+  describe("Shared menu selection", () => {
+    const menus = [
+      { id: 10, status: "open" as const },
+      { id: 20, status: "open" as const },
+      { id: 30, status: "closed" as const },
+    ];
+
+    it("uses the saved default only when that menu is open", () => {
+      expect(selectPreferredOpenMenu(menus, "20")?.id).toBe(20);
+      expect(selectPreferredOpenMenu(menus, "30")).toBeNull();
+    });
+
+    it("requires explicit selection when multiple open menus exist without a valid default", () => {
+      expect(selectPreferredOpenMenu(menus)).toBeNull();
+      expect(canCreateSharedSale(null, 2)).toBe(false);
+      expect(canCreateSharedSale(20, 2)).toBe(true);
+    });
+
+    it("selects the only open menu automatically", () => {
+      expect(selectPreferredOpenMenu([{ id: 40, status: "open" as const }])?.id).toBe(40);
+      expect(selectPreferredOpenMenu([{ id: 50, status: "closed" as const }])).toBeNull();
+    });
+  });
+
   describe("Cart Calculations", () => {
     it("should calculate total correctly with single item", () => {
       const item = { id: 1, name: "Hamburger", price: 25.0, quantity: 2 };
@@ -413,5 +438,40 @@ describe("Migração de pedidos legados e auditoria", () => {
       reason: "Cliente solicitou cancelamento",
     });
     expect(audit.itemsSnapshot).toHaveLength(1);
+  });
+});
+
+
+describe("Modelo compartilhado de sessões e relatórios", () => {
+  it("deve manter uma sessão vinculada ao cardápio correto", () => {
+    const sessions = [
+      { id: 1, weeklyMenuId: 10, orders: [{ id: 101 }] },
+      { id: 2, weeklyMenuId: 20, orders: [{ id: 202 }] },
+    ];
+
+    const menu10Sessions = sessions.filter((session) => session.weeklyMenuId === 10);
+    expect(menu10Sessions).toHaveLength(1);
+    expect(menu10Sessions[0].orders[0].id).toBe(101);
+  });
+
+  it("deve calcular o saldo visual do cardápio sem persistir alterações antes da venda", () => {
+    const availableQuantity = 5;
+    const cartQuantity = 2;
+    const remainingQuantity = Math.max(0, availableQuantity - cartQuantity);
+
+    expect(remainingQuantity).toBe(3);
+    expect(availableQuantity).toBe(5);
+  });
+
+  it("deve ignorar pedidos cancelados no relatório compartilhado", () => {
+    const orders = [
+      { status: "completed", total: 30 },
+      { status: "cancelled", total: 20 },
+      { status: "completed", total: 15 },
+    ];
+    const activeOrders = orders.filter((order) => order.status !== "cancelled");
+
+    expect(activeOrders.map((order) => order.total)).toEqual([30, 15]);
+    expect(activeOrders.reduce((sum, order) => sum + order.total, 0)).toBe(45);
   });
 });

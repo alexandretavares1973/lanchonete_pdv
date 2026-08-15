@@ -102,8 +102,29 @@ export async function getCashierResponsibleByUserId(userId: number) {
 export async function createCashierResponsible(data: any) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const result = await db.insert(cashierResponsibles).values(data);
-  return result;
+  const [result] = await db.insert(cashierResponsibles).values(data);
+  const id = Number((result as any)?.insertId || 0);
+  return (await db.select().from(cashierResponsibles).where(eq(cashierResponsibles.id, id)).limit(1))[0];
+}
+
+export async function getAllCashierResponsibles() {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(cashierResponsibles).orderBy(desc(cashierResponsibles.name));
+}
+
+export async function updateCashierResponsible(id: number, data: Partial<{ name: string; cpf: string | null; phone: string | null }>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(cashierResponsibles).set(data).where(eq(cashierResponsibles.id, id));
+  return (await db.select().from(cashierResponsibles).where(eq(cashierResponsibles.id, id)).limit(1))[0];
+}
+
+export async function deleteCashierResponsible(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(cashierResponsibles).where(eq(cashierResponsibles.id, id));
+  return { success: true, id };
 }
 
 /**
@@ -146,11 +167,137 @@ export async function getWeeklyMenuByDate(saturdayDate: Date | string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
+export async function getAllWeeklyMenus() {
+  const db = await getDb();
+  if (!db) return [];
+  const [menus, items, productRows, responsibleRows] = await Promise.all([
+    db.select().from(weeklyMenus).orderBy(desc(weeklyMenus.saturdayDate)),
+    db.select().from(menuItems),
+    db.select().from(products),
+    db.select().from(cashierResponsibles),
+  ]);
+  const productById = new Map(productRows.map((product) => [product.id, product]));
+  const responsibleById = new Map(responsibleRows.map((responsible) => [responsible.id, responsible]));
+  return menus.map((menu) => ({
+    ...menu,
+    responsibleName: menu.responsibleId ? responsibleById.get(menu.responsibleId)?.name : undefined,
+    items: items.filter((item) => item.menuId === menu.id).map((item) => {
+      const product = productById.get(item.productId);
+      return {
+        id: item.id,
+        menuId: item.menuId,
+        productId: item.productId,
+        productName: product?.name || `Produto #${item.productId}`,
+        price: product ? Number(product.price) : 0,
+        quantity: item.availableQuantity,
+        availableQuantity: item.availableQuantity,
+        isAvailable: item.isAvailable,
+      };
+    }),
+  }));
+}
+
+export async function updateWeeklyMenu(id: number, data: Partial<{ saturdayDate: string; saturdayOrder: number; responsibleId: number | null; status: "open" | "closed" }>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(weeklyMenus).set(data as any).where(eq(weeklyMenus.id, id));
+  return (await db.select().from(weeklyMenus).where(eq(weeklyMenus.id, id)).limit(1))[0];
+}
+
+export async function deleteWeeklyMenu(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.transaction(async (tx) => {
+    await tx.delete(menuItems).where(eq(menuItems.menuId, id));
+    await tx.delete(weeklyMenus).where(eq(weeklyMenus.id, id));
+  });
+  return { success: true, id };
+}
+
 export async function createWeeklyMenu(data: any) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const result = await db.insert(weeklyMenus).values(data);
-  return result;
+  const dateValue = data.saturdayDate instanceof Date ? data.saturdayDate : new Date(`${data.saturdayDate}T00:00:00Z`);
+  const existing = await db.select().from(weeklyMenus).where(eq(weeklyMenus.saturdayDate, dateValue)).limit(1);
+  if (existing[0]) return existing[0];
+  const [result] = await db.insert(weeklyMenus).values({ ...data, saturdayDate: dateValue });
+  const id = Number((result as any)?.insertId || 0);
+  return (await db.select().from(weeklyMenus).where(eq(weeklyMenus.id, id)).limit(1))[0];
+}
+
+export async function syncLegacyMenus(legacyMenus: any[], actor: { userId: number; username: string }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const productsRows = await db.select().from(products);
+  const responsiblesRows = await db.select().from(cashierResponsibles);
+  const summary = { menusCreated: 0, menusAlreadyPresent: 0, itemsCreated: 0, itemsAlreadyPresent: 0, unknownProducts: [] as string[], failures: [] as string[] };
+
+  for (const legacyMenu of legacyMenus) {
+    try {
+      const dateValue = legacyMenu.saturdayDate instanceof Date ? legacyMenu.saturdayDate : new Date(`${String(legacyMenu.saturdayDate).slice(0, 10)}T00:00:00Z`);
+      if (Number.isNaN(dateValue.getTime())) {
+        summary.failures.push(`Cardápio sem data válida: ${String(legacyMenu.saturdayDate)}`);
+        continue;
+      }
+      const dateRows = await db.select().from(weeklyMenus).where(eq(weeklyMenus.saturdayDate, dateValue)).limit(1);
+      let menu = dateRows[0];
+      if (menu) {
+        summary.menusAlreadyPresent += 1;
+      } else {
+        const responsibleName = String(legacyMenu.responsibleName || "").trim();
+        let responsible = responsiblesRows.find((candidate) => responsibleName && candidate.name.trim().toLocaleLowerCase() === responsibleName.toLocaleLowerCase());
+        if (!responsible) {
+          const [responsibleResult] = await db.insert(cashierResponsibles).values({
+            userId: actor.userId,
+            name: responsibleName || actor.username || "Operador compartilhado",
+            cpf: legacyMenu.responsibleCpf || null,
+            phone: legacyMenu.responsiblePhone || null,
+          });
+          const responsibleId = Number((responsibleResult as any)?.insertId || 0);
+          responsible = (await db.select().from(cashierResponsibles).where(eq(cashierResponsibles.id, responsibleId)).limit(1))[0];
+          if (responsible) responsiblesRows.push(responsible);
+        }
+        const [menuResult] = await db.insert(weeklyMenus).values({
+          saturdayDate: dateValue,
+          saturdayOrder: Number(legacyMenu.saturdayOrder || 1),
+          responsibleId: responsible?.id || null,
+          status: legacyMenu.status === "open" ? "open" : "closed",
+        });
+        const menuId = Number((menuResult as any)?.insertId || 0);
+        menu = (await db.select().from(weeklyMenus).where(eq(weeklyMenus.id, menuId)).limit(1))[0];
+        summary.menusCreated += 1;
+      }
+      if (!menu) continue;
+      const currentItems = await db.select().from(menuItems).where(eq(menuItems.menuId, menu.id));
+      for (const legacyItem of Array.isArray(legacyMenu.items) ? legacyMenu.items : []) {
+        const productName = String(legacyItem.productName || legacyItem.name || "").trim();
+        const product = productsRows.find((candidate) =>
+          (legacyItem.productId && candidate.id === Number(legacyItem.productId)) ||
+          (productName && candidate.name.trim().toLocaleLowerCase() === productName.toLocaleLowerCase())
+        );
+        if (!product) {
+          if (productName && !summary.unknownProducts.includes(productName)) summary.unknownProducts.push(productName);
+          continue;
+        }
+        if (currentItems.some((item) => item.productId === product.id)) {
+          summary.itemsAlreadyPresent += 1;
+          continue;
+        }
+        const quantityValue = legacyItem.availableQuantity ?? legacyItem.quantity ?? 0;
+        const availableQuantity = Number.isFinite(Number(quantityValue)) ? Math.max(0, Math.trunc(Number(quantityValue))) : 0;
+        await db.insert(menuItems).values({
+          menuId: menu.id,
+          productId: product.id,
+          availableQuantity,
+          isAvailable: availableQuantity > 0,
+        });
+        summary.itemsCreated += 1;
+      }
+    } catch (error) {
+      summary.failures.push(error instanceof Error ? error.message : String(error));
+    }
+  }
+  return summary;
 }
 
 export async function getMenuItemsByMenuId(menuId: number) {
@@ -159,16 +306,32 @@ export async function getMenuItemsByMenuId(menuId: number) {
   return await db.select().from(menuItems).where(eq(menuItems.menuId, menuId));
 }
 
+export async function getMenuItemByMenuAndProduct(menuId: number, productId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  return (await db.select().from(menuItems).where(and(eq(menuItems.menuId, menuId), eq(menuItems.productId, productId))).limit(1))[0];
+}
+
 export async function createMenuItem(data: any) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  return await db.insert(menuItems).values(data);
+  const [result] = await db.insert(menuItems).values(data);
+  const id = Number((result as any)?.insertId || 0);
+  return (await db.select().from(menuItems).where(eq(menuItems.id, id)).limit(1))[0];
 }
 
 export async function updateMenuItem(id: number, data: any) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  return await db.update(menuItems).set(data).where(eq(menuItems.id, id));
+  await db.update(menuItems).set(data).where(eq(menuItems.id, id));
+  return (await db.select().from(menuItems).where(eq(menuItems.id, id)).limit(1))[0];
+}
+
+export async function deleteMenuItem(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(menuItems).where(eq(menuItems.id, id));
+  return { success: true, id };
 }
 
 /**
@@ -177,15 +340,17 @@ export async function updateMenuItem(id: number, data: any) {
 export async function createCashierSession(data: any) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  return await db.insert(cashierSessions).values(data);
+  const [result] = await db.insert(cashierSessions).values(data);
+  const id = Number((result as any)?.insertId || 0);
+  return (await db.select().from(cashierSessions).where(eq(cashierSessions.id, id)).limit(1))[0];
 }
 
-export async function getOpenCashierSession(responsibleId: number) {
+export async function getOpenCashierSession(responsibleId: number, weeklyMenuId?: number) {
   const db = await getDb();
   if (!db) return undefined;
-  const result = await db.select().from(cashierSessions)
-    .where(and(eq(cashierSessions.responsibleId, responsibleId), eq(cashierSessions.status, "open")))
-    .limit(1);
+  const conditions = [eq(cashierSessions.responsibleId, responsibleId), eq(cashierSessions.status, "open")];
+  if (weeklyMenuId) conditions.push(eq(cashierSessions.weeklyMenuId, weeklyMenuId));
+  const result = await db.select().from(cashierSessions).where(and(...conditions)).limit(1);
   return result.length > 0 ? result[0] : undefined;
 }
 
@@ -197,6 +362,37 @@ export async function closeCashierSession(id: number, finalBalance: any) {
     closedAt: new Date(),
     finalBalance: finalBalance
   }).where(eq(cashierSessions.id, id));
+}
+
+export async function getAllCashierSessionsWithOrders() {
+  const db = await getDb();
+  if (!db) return [];
+  const [sessionRows, orderRows, itemRows, productRows, customerRows] = await Promise.all([
+    db.select().from(cashierSessions).orderBy(desc(cashierSessions.openedAt)),
+    db.select().from(orders).orderBy(desc(orders.createdAt)),
+    db.select().from(orderItems),
+    db.select().from(products),
+    db.select().from(customers),
+  ]);
+  const productById = new Map(productRows.map((product) => [product.id, product]));
+  const customerById = new Map(customerRows.map((customer) => [customer.id, customer]));
+  return sessionRows.map((session) => ({
+    ...session,
+    orders: orderRows.filter((order) => order.cashierSessionId === session.id).map((order) => ({
+      ...order,
+      total: Number(order.totalAmount),
+      customerName: order.customerId ? customerById.get(order.customerId)?.name : undefined,
+      items: itemRows.filter((item) => item.orderId === order.id).map((item) => ({
+        ...item,
+        productName: productById.get(item.productId)?.name || `Produto #${item.productId}`,
+        quantity: item.quantity,
+        refundedQuantity: item.refundedQuantity,
+        price: Number(item.unitPrice),
+        unitPrice: Number(item.unitPrice),
+        subtotal: Number(item.subtotal),
+      })),
+    })),
+  }));
 }
 
 /**
@@ -279,8 +475,9 @@ export async function getDefaultCustomer() {
 export async function createCustomer(data: any) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const result = await db.insert(customers).values(data);
-  return result;
+  const [result] = await db.insert(customers).values(data);
+  const id = Number((result as any)?.insertId || 0);
+  return (await db.select().from(customers).where(eq(customers.id, id)).limit(1))[0];
 }
 
 export async function updateCustomer(id: number, data: any) {
@@ -433,6 +630,7 @@ export interface LegacySessionInput {
   responsibleName?: string;
   responsibleCpf?: string;
   responsiblePhone?: string;
+  weeklyMenuId?: number | null;
   openedAt?: string;
   closedAt?: string | null;
   orders: LegacyOrderInput[];
@@ -539,8 +737,13 @@ export async function syncLegacySessions(sessions: LegacySessionInput[], actor: 
           officialResponsibleId,
         });
         const openedAt = parseLegacyDate(legacySession.openedAt, new Date());
+        const legacyMenuId = Number(legacySession.weeklyMenuId);
+        const validMenu = Number.isInteger(legacyMenuId) && legacyMenuId > 0
+          ? (await tx.select({ id: weeklyMenus.id }).from(weeklyMenus).where(eq(weeklyMenus.id, legacyMenuId)).limit(1))[0]
+          : undefined;
         const [sessionResult] = await tx.insert(cashierSessions).values({
           responsibleId: officialResponsibleId,
+          weeklyMenuId: validMenu?.id ?? null,
           openedAt,
           closedAt: legacySession.closedAt ? parseLegacyDate(legacySession.closedAt, openedAt) : null,
           initialBalance: "0",
@@ -847,6 +1050,7 @@ export async function generateTestData(actor: TestDataActor): Promise<GeneratedT
     const closedAt = new Date(now.getTime() - 30 * 60 * 1000);
     const [sessionResult] = await tx.insert(cashierSessions).values({
       responsibleId: responsible.id,
+      weeklyMenuId: menuId,
       openedAt,
       closedAt,
       initialBalance: initialBalance.toFixed(2),

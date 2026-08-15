@@ -101,6 +101,7 @@ export type InsertMenuItem = typeof menuItems.$inferInsert;
 export const cashierSessions = mysqlTable("cashier_sessions", {
   id: int("id").autoincrement().primaryKey(),
   responsibleId: int("responsibleId").notNull(),
+  weeklyMenuId: int("weeklyMenuId"),
   openedAt: timestamp("openedAt").defaultNow().notNull(),
   closedAt: timestamp("closedAt"),
   initialBalance: decimal("initialBalance", { precision: 10, scale: 2 }).default("0"),

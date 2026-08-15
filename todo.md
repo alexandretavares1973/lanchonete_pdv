@@ -613,3 +613,36 @@
 - [x] Ajustar `POSPage.tsx` para verificar se existe um cardápio padrão salvo e se ele está com status `open`
 - [x] Caso o cardápio padrão esteja aberto, selecioná-lo automaticamente mesmo com múltiplos cardápios abertos
 - [x] Validar testes, compilação TypeScript e build de produção
+
+
+## Fonte Única Compartilhada e Sincronização entre Usuários (15/08/2026)
+- [x] Adicionar listagem e CRUD completo de cardápios no backend, incluindo atualização de status e exclusão
+- [x] Adicionar CRUD/listagem compartilhada de responsáveis e consulta de cardápio com itens
+- [x] Migrar `WeeklyMenuPage.tsx` de `localStorage` para tRPC/banco
+- [x] Migrar `CashierResponsiblePage.tsx` de `localStorage` para tRPC/banco
+- [x] Migrar `POSPage.tsx` para ler cardápios, clientes, estoque, sessões e pedidos do backend
+- [x] Remover fallbacks locais que façam dados compartilhados divergirem entre usuários
+- [x] Adicionar invalidação e atualização periódica/reativa das queries compartilhadas
+- [ ] Adicionar testes de visibilidade entre usuários e consistência após criar/editar/excluir
+- [x] Validar TypeScript, Vitest, build e salvar checkpoint
+
+
+## Migração para modelo compartilhado — sessão atual
+
+- [x] Adicionar `weeklyMenuId` ao schema e aplicar migration não destrutiva em `cashier_sessions`
+- [x] Vincular novas sessões de caixa ao cardápio selecionado
+- [x] Consultar sessões, pedidos, itens, produtos e clientes compartilhados no backend
+- [x] Migrar `ReportsPage` de `localStorage` para a consulta compartilhada
+- [x] Remover fallback de mutação local para pagamento e estorno no relatório
+- [x] Migrar `CustomerBehaviorAnalysisPage` para dados compartilhados
+- [x] Migrar `CustomerReportPage` para dados compartilhados
+- [x] Migrar importação CSV de clientes para criação via backend
+- [x] Remover snapshots de clientes, cardápios e sessões de `localStorage`
+- [x] Remover sincronização automática de cardápios locais no frontend
+- [x] Remover escritas locais de estoque do carrinho do POS
+- [x] Calcular saldo visual do cardápio a partir do estoque compartilhado e do carrinho
+- [x] Garantir vínculo `weeklyMenuId` na geração futura de dados de teste
+- [x] Adicionar testes de regressão para sessões por cardápio, saldo visual e pedidos cancelados
+- [x] Executar Vitest, TypeScript e build de produção
+- [ ] Validar manualmente dois usuários em paralelo criando cardápio, alterando estoque e finalizando venda
+- [ ] Decidir backfill dos 22 registros históricos de `cashier_sessions` sem `weeklyMenuId`, pois não é seguro inferir o cardápio apenas pelo responsável
