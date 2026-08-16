@@ -368,24 +368,32 @@ export async function closeCashierSession(id: number, finalBalance: any) {
 export async function getAllCashierSessionsWithOrders() {
   const db = await getDb();
   if (!db) return [];
-  const [sessionRows, orderRows, itemRows, productRows, customerRows, responsibleRows] = await Promise.all([
+  const orderRowsWithCustomer = await db.select({
+    order: orders,
+    customer: customers,
+  }).from(orders)
+    .leftJoin(customers, eq(orders.customerId, customers.id))
+    .orderBy(desc(orders.createdAt));
+
+  const [sessionRows, itemRows, productRows, responsibleRows] = await Promise.all([
     db.select().from(cashierSessions).orderBy(desc(cashierSessions.openedAt)),
-    db.select().from(orders).orderBy(desc(orders.createdAt)),
     db.select().from(orderItems),
     db.select().from(products),
-    db.select().from(customers),
     db.select().from(cashierResponsibles),
   ]);
   const productById = new Map(productRows.map((product) => [product.id, product]));
-  const customerById = new Map(customerRows.map((customer) => [customer.id, customer]));
   const responsibleById = new Map(responsibleRows.map((responsible) => [responsible.id, responsible]));
-  return sessionRows.map((session) => ({
-    ...session,
-    responsibleName: responsibleById.get(session.responsibleId)?.name,
-    orders: orderRows.filter((order) => order.cashierSessionId === session.id).map((order) => ({
+
+  const ordersBySession = new Map<number, any[]>();
+  for (const row of orderRowsWithCustomer) {
+    const order = row.order;
+    const customer = row.customer;
+    const sessionId = order.cashierSessionId;
+    const list = ordersBySession.get(sessionId) || [];
+    list.push({
       ...order,
       total: Number(order.totalAmount),
-      customerName: order.customerId ? customerById.get(order.customerId)?.name : undefined,
+      customerName: customer?.name || (order.customerId ? `Cliente #${order.customerId}` : "GERAL"),
       items: itemRows.filter((item) => item.orderId === order.id).map((item) => ({
         ...item,
         productName: productById.get(item.productId)?.name || `Produto #${item.productId}`,
@@ -395,7 +403,14 @@ export async function getAllCashierSessionsWithOrders() {
         unitPrice: Number(item.unitPrice),
         subtotal: Number(item.subtotal),
       })),
-    })),
+    });
+    ordersBySession.set(sessionId, list);
+  }
+
+  return sessionRows.map((session) => ({
+    ...session,
+    responsibleName: responsibleById.get(session.responsibleId)?.name,
+    orders: ordersBySession.get(session.id) || [],
   }));
 }
 
