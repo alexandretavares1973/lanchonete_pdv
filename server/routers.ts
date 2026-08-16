@@ -8,6 +8,7 @@ import { getUserIdFromReq, setLocalSessionCookie, clearLocalSessionCookie } from
 import * as bcrypt from "bcrypt";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+import { publishRealtimeEvent } from "./realtime";
 
 export const appRouter = router({
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
@@ -16,10 +17,12 @@ export const appRouter = router({
   settings: router({
     generateTestData: adminProcedure.mutation(async ({ ctx }) => {
       const username = ctx.user.name || ctx.user.email || `admin-${ctx.user.id}`;
-      return await import("./db").then(({ generateTestData }) => generateTestData({
+      const result = await import("./db").then(({ generateTestData }) => generateTestData({
         userId: ctx.user.id,
         username,
       }));
+      publishRealtimeEvent({ entity: "simulation", action: "completed" });
+      return result;
     }),
   }),
   auth: router({

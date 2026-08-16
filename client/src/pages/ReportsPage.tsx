@@ -69,8 +69,8 @@ interface Customer {
 
 export default function ReportsPage() {
   const [, setLocation] = useLocation();
-  const { data: sharedMenus } = trpc.pdv.menu.list.useQuery(undefined, { refetchInterval: 5000 });
-  const { data: sharedSessions, isLoading: sessionsLoading } = trpc.pdv.cashier.getAllSessionsWithOrders.useQuery(undefined, { refetchInterval: 5000 });
+  const { data: sharedMenus } = trpc.pdv.menu.list.useQuery();
+  const { data: sharedSessions, isLoading: sessionsLoading } = trpc.pdv.cashier.getAllSessionsWithOrders.useQuery();
   const [menus, setMenus] = useState<WeeklyMenu[]>([]);
   const [selectedMenuId, setSelectedMenuId] = useState<number | null>(null);
   const allSessions = useMemo(() => (sharedSessions ?? []) as CashierSession[], [sharedSessions]);

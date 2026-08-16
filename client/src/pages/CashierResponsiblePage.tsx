@@ -17,7 +17,7 @@ interface Responsible {
 
 export default function CashierResponsiblePage() {
   const [, setLocation] = useLocation();
-  const { data: responsibles = [], isLoading } = trpc.pdv.cashierResponsibles.list.useQuery(undefined, { refetchInterval: 5000 });
+  const { data: responsibles = [], isLoading } = trpc.pdv.cashierResponsibles.list.useQuery();
   const utils = trpc.useUtils();
   const [showDialog, setShowDialog] = useState(false);
   const [formData, setFormData] = useState({ name: "", cpf: "", phone: "" });

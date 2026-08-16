@@ -2,6 +2,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import * as db from "./db";
+import { publishRealtimeEvent } from "./realtime";
 
 export const pdvRouter = router({
   // Produtos
@@ -26,7 +27,7 @@ export const pdvRouter = router({
         })
       )
       .mutation(async ({ input }) => {
-        return await db.createProduct({
+        const result = await db.createProduct({
           name: input.name,
           price: input.price,
           quantity: input.quantity,
@@ -34,6 +35,9 @@ export const pdvRouter = router({
           description: input.description,
           isAvailable: true,
         });
+        const productId = Number((result as any)?.insertId || 0);
+        publishRealtimeEvent({ entity: "product", action: "created", ids: productId > 0 ? { productId } : undefined });
+        return result;
       }),
 
     update: protectedProcedure
@@ -56,7 +60,9 @@ export const pdvRouter = router({
           updateData.isUnlimited = false; // Forçar false ou ignorar o true
         }
         
-        return await db.updateProduct(id, updateData);
+        const result = await db.updateProduct(id, updateData);
+        publishRealtimeEvent({ entity: "product", action: "updated", ids: { productId: id } });
+        return result;
       }),
   }),
 
@@ -75,12 +81,16 @@ export const pdvRouter = router({
         responsibleId: z.number().nullable().optional(),
         status: z.enum(["open", "closed"]).optional(),
       }))
-      .mutation(async ({ input }) => db.createWeeklyMenu({
-        saturdayDate: input.saturdayDate,
-        saturdayOrder: input.saturdayOrder,
-        responsibleId: input.responsibleId ?? null,
-        status: input.status ?? "closed",
-      })),
+      .mutation(async ({ input }) => {
+        const result = await db.createWeeklyMenu({
+          saturdayDate: input.saturdayDate,
+          saturdayOrder: input.saturdayOrder,
+          responsibleId: input.responsibleId ?? null,
+          status: input.status ?? "closed",
+        });
+        publishRealtimeEvent({ entity: "menu", action: "created", ids: { menuId: result.id } });
+        return result;
+      }),
 
     update: protectedProcedure
       .input(z.object({
@@ -92,12 +102,18 @@ export const pdvRouter = router({
       }))
       .mutation(async ({ input }) => {
         const { id, ...data } = input;
-        return db.updateWeeklyMenu(id, data);
+        const result = await db.updateWeeklyMenu(id, data);
+        publishRealtimeEvent({ entity: "menu", action: "updated", ids: { menuId: id } });
+        return result;
       }),
 
     delete: protectedProcedure
       .input(z.object({ id: z.number() }))
-      .mutation(async ({ input }) => db.deleteWeeklyMenu(input.id)),
+      .mutation(async ({ input }) => {
+        const result = await db.deleteWeeklyMenu(input.id);
+        publishRealtimeEvent({ entity: "menu", action: "deleted", ids: { menuId: input.id } });
+        return result;
+      }),
 
     syncLegacy: protectedProcedure
       .input(z.object({
@@ -128,7 +144,11 @@ export const pdvRouter = router({
         productId: z.number(),
         availableQuantity: z.number().min(0).nullable(),
       }))
-      .mutation(async ({ input }) => db.createMenuItem(input)),
+      .mutation(async ({ input }) => {
+        const result = await db.createMenuItem(input);
+        publishRealtimeEvent({ entity: "menu", action: "updated", ids: { menuId: input.menuId, productId: input.productId } });
+        return result;
+      }),
 
     updateItem: protectedProcedure
       .input(z.object({
@@ -138,16 +158,26 @@ export const pdvRouter = router({
       }))
       .mutation(async ({ input }) => {
         const { menuItemId, ...data } = input;
-        return db.updateMenuItem(menuItemId, data);
+        const result = await db.updateMenuItem(menuItemId, data);
+        publishRealtimeEvent({ entity: "menu", action: "updated", ids: { menuItemId } });
+        return result;
       }),
 
     updateItemAvailability: protectedProcedure
       .input(z.object({ menuItemId: z.number(), isAvailable: z.boolean() }))
-      .mutation(async ({ input }) => db.updateMenuItem(input.menuItemId, { isAvailable: input.isAvailable })),
+      .mutation(async ({ input }) => {
+        const result = await db.updateMenuItem(input.menuItemId, { isAvailable: input.isAvailable });
+        publishRealtimeEvent({ entity: "menu", action: "updated", ids: { menuItemId: input.menuItemId } });
+        return result;
+      }),
 
     deleteItem: protectedProcedure
       .input(z.object({ menuItemId: z.number() }))
-      .mutation(async ({ input }) => db.deleteMenuItem(input.menuItemId)),
+      .mutation(async ({ input }) => {
+        const result = await db.deleteMenuItem(input.menuItemId);
+        publishRealtimeEvent({ entity: "menu", action: "updated", ids: { menuItemId: input.menuItemId } });
+        return result;
+      }),
 
     getItems: publicProcedure
       .input(z.object({ menuId: z.number() }))
@@ -178,67 +208,39 @@ export const pdvRouter = router({
           0
         );
 
-        const orderResult = await db.createOrder({
-          cashierSessionId: input.cashierSessionId,
-          totalAmount,
-          paymentMethod: input.paymentMethod,
-          customerId: input.customerId,
-          status: "completed",
-        });
-
-        // O resultado agora é o objeto do pedido criado
-        const orderId = (orderResult as any)?.id;
-        
-        if (!orderId) {
-          throw new Error("Failed to get order ID after creation");
-        }
-        
-        for (const item of input.items) {
-          await db.createOrderItem({
-            orderId: orderId,
-            productId: item.productId,
-            quantity: item.quantity,
-            unitPrice: item.unitPrice,
-            subtotal: item.quantity * item.unitPrice,
+        try {
+          const orderResult = await db.createOrderWithInventory({
+            cashierSessionId: input.cashierSessionId,
+            totalAmount,
+            paymentMethod: input.paymentMethod,
+            customerId: input.customerId,
+            weeklyMenuId: input.weeklyMenuId,
+            items: input.items,
           });
 
-          // Registrar no histórico de estoque
-          await db.createStockHistory({
-            productId: item.productId,
-            orderId: orderId,
-            quantityChange: -item.quantity,
-            reason: "Venda",
+          const orderId = orderResult.id;
+          publishRealtimeEvent({
+            entity: "order",
+            action: "created",
+            ids: {
+              orderId: Number(orderId),
+              cashierSessionId: input.cashierSessionId,
+              ...(input.weeklyMenuId ? { menuId: input.weeklyMenuId } : {}),
+            },
           });
-
-          // Atualizar quantidade do produto com fallback seguro
-          const product = await db.getProductById(item.productId);
-          if (product) {
-            if (product.isUnlimited || product.quantity === null) {
-              console.warn(`[StockWarning] Produto ID ${item.productId} ("${product.name}") possui estoque ilimitado ou nulo. Atualização de estoque ignorada.`);
-            } else {
-              const newQuantity = Math.max(0, product.quantity - item.quantity);
-              await db.updateProduct(item.productId, {
-                quantity: newQuantity,
-                isAvailable: newQuantity > 0,
-              });
-            }
-          }
-
-          if (input.weeklyMenuId) {
-            const menuItem = await db.getMenuItemByMenuAndProduct(input.weeklyMenuId, item.productId);
-            if (menuItem && menuItem.availableQuantity !== null) {
-              const availableQuantity = Math.max(0, menuItem.availableQuantity - item.quantity);
-              await db.updateMenuItem(menuItem.id, {
-                availableQuantity,
-                isAvailable: availableQuantity > 0,
-              });
-            } else {
-              console.warn(`[StockWarning] Item ${item.productId} não possui quantidade controlada no cardápio ${input.weeklyMenuId}.`);
-            }
-          }
+          return orderResult;
+        } catch (error) {
+          const code = error instanceof Error ? error.message : "UNKNOWN";
+          if (code === "SESSION_NOT_FOUND") throw new TRPCError({ code: "NOT_FOUND", message: "Sessão de caixa não encontrada." });
+          if (code === "SESSION_MENU_MISMATCH") throw new TRPCError({ code: "CONFLICT", message: "A sessão de caixa pertence a outro cardápio." });
+          if (code === "MENU_NOT_FOUND") throw new TRPCError({ code: "NOT_FOUND", message: "Cardápio não encontrado." });
+          if (code === "MENU_CLOSED") throw new TRPCError({ code: "BAD_REQUEST", message: "O cardápio selecionado está fechado." });
+          if (code.startsWith("MENU_ITEM_NOT_FOUND:")) throw new TRPCError({ code: "BAD_REQUEST", message: `O produto ${code.slice("MENU_ITEM_NOT_FOUND:".length)} não está cadastrado no cardápio selecionado.` });
+          if (code.startsWith("INSUFFICIENT_STOCK:")) throw new TRPCError({ code: "CONFLICT", message: `Estoque global insuficiente para ${code.slice("INSUFFICIENT_STOCK:".length)}.` });
+          if (code.startsWith("INSUFFICIENT_MENU_STOCK:")) throw new TRPCError({ code: "CONFLICT", message: `Quantidade insuficiente no cardápio para ${code.slice("INSUFFICIENT_MENU_STOCK:".length)}.` });
+          if (code.startsWith("PRODUCT_NOT_FOUND:")) throw new TRPCError({ code: "NOT_FOUND", message: "Produto não encontrado." });
+          throw error;
         }
-
-        return orderResult;
       }),
 
     getBySession: publicProcedure
@@ -266,7 +268,9 @@ export const pdvRouter = router({
         if (order.status === "cancelled") {
           throw new TRPCError({ code: "BAD_REQUEST", message: "Não é possível alterar o pagamento de um pedido cancelado." });
         }
-        return await db.updateOrderPaymentMethod(input.orderId, input.paymentMethod);
+        const result = await db.updateOrderPaymentMethod(input.orderId, input.paymentMethod);
+        publishRealtimeEvent({ entity: "order", action: "updated", ids: { orderId: input.orderId } });
+        return result;
       }),
 
     refundItems: protectedProcedure
@@ -306,6 +310,7 @@ export const pdvRouter = router({
           }
           throw new TRPCError({ code: "CONFLICT", message: "O pedido já foi processado por outra operação." });
         }
+        publishRealtimeEvent({ entity: "order", action: "refunded", ids: { orderId: input.orderId } });
         return result;
       }),
 
@@ -344,6 +349,7 @@ export const pdvRouter = router({
           }
           throw new TRPCError({ code: "CONFLICT", message: "O pedido já foi processado por outra operação." });
         }
+        publishRealtimeEvent({ entity: "order", action: "refunded", ids: { orderId: input.orderId } });
         return { ok: true, status: result.status };
       }),
 
@@ -386,10 +392,12 @@ export const pdvRouter = router({
       }))
       .mutation(async ({ input, ctx }) => {
         const username = ctx.user.name || ctx.user.email || `admin-${ctx.user.id}`;
-        return await db.syncLegacySessions(input.sessions, {
+        const result = await db.syncLegacySessions(input.sessions, {
           userId: ctx.user.id,
           username,
         });
+        publishRealtimeEvent({ entity: "historical-session", action: "linked" });
+        return result;
       }),
   }),
 
@@ -399,23 +407,33 @@ export const pdvRouter = router({
 
     create: protectedProcedure
       .input(z.object({ name: z.string().min(1), cpf: z.string().optional(), phone: z.string().optional() }))
-      .mutation(async ({ input, ctx }) => db.createCashierResponsible({
-        userId: ctx.user.id,
-        name: input.name.trim(),
-        cpf: input.cpf?.trim() || null,
-        phone: input.phone?.trim() || null,
-      })),
+      .mutation(async ({ input, ctx }) => {
+        const result = await db.createCashierResponsible({
+          userId: ctx.user.id,
+          name: input.name.trim(),
+          cpf: input.cpf?.trim() || null,
+          phone: input.phone?.trim() || null,
+        });
+        publishRealtimeEvent({ entity: "responsible", action: "created", ids: result?.id ? { responsibleId: result.id } : undefined });
+        return result;
+      }),
 
     update: protectedProcedure
       .input(z.object({ id: z.number(), name: z.string().min(1).optional(), cpf: z.string().nullable().optional(), phone: z.string().nullable().optional() }))
       .mutation(async ({ input }) => {
         const { id, ...data } = input;
-        return db.updateCashierResponsible(id, data);
+        const result = await db.updateCashierResponsible(id, data);
+        publishRealtimeEvent({ entity: "responsible", action: "updated", ids: { responsibleId: id } });
+        return result;
       }),
 
     delete: protectedProcedure
       .input(z.object({ id: z.number() }))
-      .mutation(async ({ input }) => db.deleteCashierResponsible(input.id)),
+      .mutation(async ({ input }) => {
+        const result = await db.deleteCashierResponsible(input.id);
+        publishRealtimeEvent({ entity: "responsible", action: "deleted", ids: { responsibleId: input.id } });
+        return result;
+      }),
   }),
 
   // Caixa
@@ -429,12 +447,14 @@ export const pdvRouter = router({
         })
       )
       .mutation(async ({ input }) => {
-        return await db.createCashierSession({
-            responsibleId: input.responsibleId,
-            weeklyMenuId: input.weeklyMenuId,
-            initialBalance: input.initialBalance,
+        const result = await db.createCashierSession({
+          responsibleId: input.responsibleId,
+          weeklyMenuId: input.weeklyMenuId,
+          initialBalance: input.initialBalance,
           status: "open",
         });
+        publishRealtimeEvent({ entity: "session", action: "opened", ids: { sessionId: result.id, ...(input.weeklyMenuId ? { menuId: input.weeklyMenuId } : {}) } });
+        return result;
       }),
 
     getOpenSession: publicProcedure
@@ -442,6 +462,24 @@ export const pdvRouter = router({
       .query(async ({ input }) => db.getOpenCashierSession(input.responsibleId, input.weeklyMenuId)),
 
     getAllSessionsWithOrders: protectedProcedure.query(async () => db.getAllCashierSessionsWithOrders()),
+
+    getUnlinkedSessionsForReview: protectedProcedure.query(async () => db.getUnlinkedCashierSessionsForReview()),
+
+    linkHistoricalSession: protectedProcedure
+      .input(z.object({ sessionId: z.number().int().positive(), weeklyMenuId: z.number().int().positive() }))
+      .mutation(async ({ input }) => {
+        try {
+          const result = await db.linkCashierSessionToMenu(input.sessionId, input.weeklyMenuId);
+          publishRealtimeEvent({ entity: "historical-session", action: "linked", ids: { sessionId: input.sessionId, menuId: input.weeklyMenuId } });
+          return result;
+        } catch (error) {
+          const code = error instanceof Error ? error.message : "UNKNOWN";
+          if (code === "SESSION_NOT_FOUND") throw new TRPCError({ code: "NOT_FOUND", message: "Sessão histórica não encontrada." });
+          if (code === "SESSION_ALREADY_LINKED") throw new TRPCError({ code: "CONFLICT", message: "Esta sessão já está vinculada a um cardápio." });
+          if (code === "MENU_NOT_FOUND") throw new TRPCError({ code: "NOT_FOUND", message: "Cardápio não encontrado." });
+          throw error;
+        }
+      }),
 
     closeSession: protectedProcedure
       .input(
@@ -451,7 +489,9 @@ export const pdvRouter = router({
         })
       )
       .mutation(async ({ input }) => {
-        return await db.closeCashierSession(input.sessionId, input.finalBalance);
+        const result = await db.closeCashierSession(input.sessionId, input.finalBalance);
+        publishRealtimeEvent({ entity: "session", action: "closed", ids: { sessionId: input.sessionId } });
+        return result;
       }),
 
     // Clientes
@@ -486,12 +526,14 @@ export const pdvRouter = router({
         })
       )
       .mutation(async ({ input }) => {
-        return await db.createCustomer({
+        const result = await db.createCustomer({
           name: input.name,
           phone: input.phone || null,
           email: input.email || null,
           isActive: true,
         });
+        publishRealtimeEvent({ entity: "customer", action: "created", ids: result?.id ? { customerId: result.id } : undefined });
+        return result;
       }),
 
     update: protectedProcedure
@@ -506,13 +548,17 @@ export const pdvRouter = router({
       )
       .mutation(async ({ input }) => {
         const { id, ...data } = input;
-        return await db.updateCustomer(id, data);
+        const result = await db.updateCustomer(id, data);
+        publishRealtimeEvent({ entity: "customer", action: "updated", ids: { customerId: id } });
+        return result;
       }),
 
     delete: protectedProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input }) => {
-        return await db.deleteCustomer(input.id);
+        const result = await db.deleteCustomer(input.id);
+        publishRealtimeEvent({ entity: "customer", action: "deleted", ids: { customerId: input.id } });
+        return result;
       }),
 
     getOrdersWithCustomers: publicProcedure

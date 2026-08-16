@@ -68,8 +68,8 @@ interface CustomerBehavior {
 
 export default function CustomerBehaviorAnalysisPage() {
   const [, setLocation] = useLocation();
-  const { data: sharedSessions } = trpc.pdv.cashier.getAllSessionsWithOrders.useQuery(undefined, { refetchInterval: 5000 });
-  const { data: sharedCustomers } = trpc.pdv.customers.list.useQuery(undefined, { refetchInterval: 5000 });
+  const { data: sharedSessions } = trpc.pdv.cashier.getAllSessionsWithOrders.useQuery();
+  const { data: sharedCustomers } = trpc.pdv.customers.list.useQuery();
   const sessions = useMemo(() => (sharedSessions ?? []) as CashierSession[], [sharedSessions]);
   const customers = useMemo(() => (sharedCustomers ?? []) as Customer[], [sharedCustomers]);
   const [behaviors, setBehaviors] = useState<CustomerBehavior[]>([]);

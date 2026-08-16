@@ -50,8 +50,8 @@ interface Customer {
 
 export default function POSPage() {
   const [, setLocation] = useLocation();
-  const { data: sharedMenus } = trpc.pdv.menu.list.useQuery(undefined, { refetchInterval: 5000 });
-  const { data: sharedCustomers } = trpc.pdv.customers.list.useQuery(undefined, { refetchInterval: 5000 });
+  const { data: sharedMenus } = trpc.pdv.menu.list.useQuery();
+  const { data: sharedCustomers } = trpc.pdv.customers.list.useQuery();
   const [menus, setMenus] = useState<any[]>([]);
   const [selectedMenu, setSelectedMenu] = useState<any>(null);
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -66,11 +66,11 @@ export default function POSPage() {
   const [lastAmountReceived, setLastAmountReceived] = useState<number>(0);
   const [lastCustomerName, setLastCustomerName] = useState<string>("");
   const [customers, setCustomers] = useState<Customer[]>([]);
-  const { data: globalProducts = [] } = trpc.pdv.products.list.useQuery(undefined, { refetchInterval: 5000 });
+  const { data: globalProducts = [] } = trpc.pdv.products.list.useQuery();
   const utils = trpc.useUtils();
   const openSessionQuery = trpc.pdv.cashier.getOpenSession.useQuery(
     { responsibleId: Number(selectedMenu?.responsibleId || 0), weeklyMenuId: Number(selectedMenu?.id || 0) },
-    { enabled: Number.isInteger(Number(selectedMenu?.responsibleId)) && Number(selectedMenu?.responsibleId) > 0, refetchInterval: 5000 },
+    { enabled: Number.isInteger(Number(selectedMenu?.responsibleId)) && Number(selectedMenu?.responsibleId) > 0 },
   );
   const openSessionMutation = trpc.pdv.cashier.openSession.useMutation();
   const createOrderMutation = trpc.pdv.orders.create.useMutation();

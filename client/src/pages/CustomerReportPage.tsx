@@ -44,8 +44,8 @@ interface CustomerStats {
 
 export default function CustomerReportPage() {
   const [, setLocation] = useLocation();
-  const { data: sharedCustomers } = trpc.pdv.customers.list.useQuery(undefined, { refetchInterval: 5000 });
-  const { data: sharedSessions } = trpc.pdv.cashier.getAllSessionsWithOrders.useQuery(undefined, { refetchInterval: 5000 });
+  const { data: sharedCustomers } = trpc.pdv.customers.list.useQuery();
+  const { data: sharedSessions } = trpc.pdv.cashier.getAllSessionsWithOrders.useQuery();
   const customers = useMemo(() => (sharedCustomers ?? []) as Customer[], [sharedCustomers]);
   const orders = useMemo(
     () => (sharedSessions ?? []).flatMap((session) => session.orders || []) as Order[],

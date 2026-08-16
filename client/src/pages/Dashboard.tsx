@@ -24,7 +24,7 @@ export default function Dashboard() {
   const [, setLocation] = useLocation();
   
   // O banco é a fonte compartilhada; a UI renderiza diretamente a query.
-  const { data: sharedCustomers } = trpc.pdv.customers.list.useQuery(undefined, { refetchInterval: 5000 });
+  const { data: sharedCustomers } = trpc.pdv.customers.list.useQuery();
   const customers = (sharedCustomers || []) as Customer[];
   const utils = trpc.useUtils();
   const [showCustomerDialog, setShowCustomerDialog] = useState(false);
@@ -351,6 +351,30 @@ export default function Dashboard() {
                 <div>
                   <h3 className="text-lg font-semibold text-foreground">Responsáveis</h3>
                   <p className="text-sm text-muted-foreground">Gerenciar operadores</p>
+                </div>
+              </div>
+            </Card>
+
+            <Card className="p-8 hover:shadow-lg transition-all cursor-pointer border-2 border-slate-500/20 hover:border-slate-500/40" onClick={() => setLocation("/historical-sessions")}>
+              <div className="text-center space-y-4">
+                <div className="w-16 h-16 bg-gradient-to-br from-slate-500/20 to-gray-500/20 rounded-xl flex items-center justify-center mx-auto">
+                  <span className="text-3xl">🔗</span>
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-foreground">Revisar Sessões Históricas</h3>
+                  <p className="text-sm text-muted-foreground">Vincular vendas a cardápios</p>
+                </div>
+              </div>
+            </Card>
+
+            <Card className="p-8 hover:shadow-lg transition-all cursor-pointer border-2 border-rose-500/20 hover:border-rose-500/40" onClick={() => setLocation("/concurrency-simulator")}>
+              <div className="text-center space-y-4">
+                <div className="w-16 h-16 bg-gradient-to-br from-rose-500/20 to-orange-500/20 rounded-xl flex items-center justify-center mx-auto">
+                  <span className="text-3xl">⚡</span>
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-foreground">Simular Concorrência</h3>
+                  <p className="text-sm text-muted-foreground">Testar vendas simultâneas</p>
                 </div>
               </div>
             </Card>

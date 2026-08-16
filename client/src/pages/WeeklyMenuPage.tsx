@@ -34,8 +34,8 @@ interface WeeklyMenu {
 
 export default function WeeklyMenuPage() {
   const [, setLocation] = useLocation();
-  const { data: menus = [], isLoading: menusLoading } = trpc.pdv.menu.list.useQuery(undefined, { refetchInterval: 5000 });
-  const { data: responsibles = [] } = trpc.pdv.cashierResponsibles.list.useQuery(undefined, { refetchInterval: 5000 });
+  const { data: menus = [], isLoading: menusLoading } = trpc.pdv.menu.list.useQuery();
+  const { data: responsibles = [] } = trpc.pdv.cashierResponsibles.list.useQuery();
   const { data: globalProducts = [] } = trpc.pdv.products.list.useQuery();
   const utils = trpc.useUtils();
   const [selectedMenu, setSelectedMenu] = useState<any>(null);

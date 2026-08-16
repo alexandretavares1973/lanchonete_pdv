@@ -11,7 +11,7 @@ export default function SettingsPage() {
   const [, setLocation] = useLocation();
   const [showTestDataDialog, setShowTestDataDialog] = useState(false);
   const [defaultMenuId, setDefaultMenuId] = useState<string>(() => localStorage.getItem("defaultWeeklyMenuId") || "");
-  const { data: sharedMenus = [] } = trpc.pdv.menu.list.useQuery(undefined, { refetchInterval: 5000 });
+  const { data: sharedMenus = [] } = trpc.pdv.menu.list.useQuery();
   const utils = trpc.useUtils();
   const generateTestDataMutation = trpc.settings.generateTestData.useMutation({
     onSuccess: async (result) => {

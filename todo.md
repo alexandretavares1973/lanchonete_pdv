@@ -646,3 +646,29 @@
 - [x] Executar Vitest, TypeScript e build de produção
 - [x] Implementar atualização periódica/invalidação para dois usuários e cobrir a visibilidade compartilhada com teste automatizado; validação manual adicional recomendada
 - [x] Decidir não fazer backfill automático dos 22 registros históricos de `cashier_sessions` sem `weeklyMenuId`; o relatório os sinaliza e mantém fora dos totais para evitar associação incorreta
+
+
+## Tempo real, revisão histórica e concorrência — sessão atual
+
+- [x] Substituir o polling de sessões, pedidos, produtos e cardápios por WebSocket com invalidação tRPC direcionada
+- [x] Implementar reconexão, revalidação ao reconectar/retornar à aba e indicação visual do estado da conexão; no Autoscale, o canal é de melhor esforço
+- [x] Criar consulta e mutation protegidas para listar sessões históricas sem `weeklyMenuId` e vinculá-las manualmente a cardápios
+- [x] Criar interface de revisão das sessões históricas com prévia de pedidos e confirmação do vínculo
+- [x] Criar simulador controlado de vendas simultâneas de múltiplos usuários, com ensaio sem gravação por padrão e modo persistente explícito
+- [x] Garantir concorrência segura no débito de estoque com transação/condição atômica e relatório de resultados da simulação
+- [x] Adicionar testes unitários de concorrência e regressão para vínculo/estoque; WebSocket validado por TypeScript e preview, sem teste de socket persistente em Autoscale
+- [x] Validar TypeScript, Vitest, build e prévia visual; checkpoint pendente
+
+
+## Tempo real, revisão histórica e concorrência — Autoscale
+- [x] Manter hospedagem Autoscale; não habilitar Reserved Hosting
+- [x] Implementar canal WebSocket de melhor esforço com reconexão automática e sincronização após reconectar
+- [x] Remover polling das páginas de dados compartilhados sem deixar loops de renderização
+- [x] Emitir eventos após mutações de produtos, cardápios, clientes, responsáveis, sessões, pedidos e geração de dados de teste
+- [x] Criar revisão manual das sessões históricas sem `weeklyMenuId`
+- [x] Criar vínculo transacional de sessão histórica a cardápio, sem sobrescrever vínculo existente
+- [x] Criar simulador de vendas concorrentes com modo de ensaio e modo persistente explícito
+- [x] Proteger criação de pedidos com débito atômico de estoque, validação de cardápio e rollback transacional
+- [x] Adicionar testes unitários e de regressão para vínculo manual, concorrência e estoque
+- [x] Validar TypeScript, Vitest, build e preview
+- [ ] Salvar checkpoint publicado no modo Autoscale

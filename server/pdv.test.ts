@@ -4,6 +4,7 @@ import { getExplicitCustomer, getFreshOrderDefaults, DEFAULT_PAYMENT_METHOD } fr
 import { LOW_STOCK_THRESHOLD, getLowStockMessage, isLowGlobalStock } from "../shared/stockAlerts";
 import { parseStockQuantity } from "../shared/stockQuantity";
 import { canCreateSharedSale, selectPreferredOpenMenu } from "../shared/menuSelection";
+import { planDryRun, summarizeSimulationResults } from "../shared/concurrency";
 
 describe("PDV System", () => {
   describe("Shared menu selection", () => {
@@ -368,6 +369,28 @@ describe("Estorno Parcial por Item", () => {
     expect(itemsPayload[0].orderItemId).toBe(1);
     expect(itemsPayload[0].quantity).toBe(1);
     expect(Number.isNaN(itemsPayload[0].orderItemId)).toBe(false);
+  });
+});
+
+describe("Concorrência de vendas", () => {
+  it("aceita somente a quantidade de vendas suportada pelo estoque no ensaio", () => {
+    const outcomes = planDryRun(5, 2, 6);
+    expect(outcomes.filter((outcome) => outcome.status === "accepted")).toHaveLength(3);
+    expect(outcomes.filter((outcome) => outcome.status === "rejected")).toHaveLength(2);
+  });
+
+  it("resume corretamente resultados concorrentes", () => {
+    const summary = summarizeSimulationResults([
+      { actor: "Usuário 1", status: "accepted" },
+      { actor: "Usuário 2", status: "rejected" },
+      { actor: "Usuário 3", status: "error" },
+    ]);
+    expect(summary).toEqual({ accepted: 1, rejected: 1, errors: 1, total: 3 });
+  });
+
+  it("não aceita venda teórica quando o saldo é zero", () => {
+    const outcomes = planDryRun(4, 1, 0);
+    expect(outcomes.every((outcome) => outcome.status === "rejected")).toBe(true);
   });
 });
 

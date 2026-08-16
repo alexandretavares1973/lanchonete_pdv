@@ -395,6 +395,28 @@ export async function getAllCashierSessionsWithOrders() {
   }));
 }
 
+export async function getUnlinkedCashierSessionsForReview() {
+  const sessions = await getAllCashierSessionsWithOrders();
+  return sessions.filter((session) => session.weeklyMenuId === null || session.weeklyMenuId === undefined);
+}
+
+export async function linkCashierSessionToMenu(sessionId: number, weeklyMenuId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  return await db.transaction(async (tx) => {
+    const session = (await tx.select().from(cashierSessions).where(eq(cashierSessions.id, sessionId)).limit(1))[0];
+    if (!session) throw new Error("SESSION_NOT_FOUND");
+    if (session.weeklyMenuId !== null && session.weeklyMenuId !== undefined) throw new Error("SESSION_ALREADY_LINKED");
+
+    const menu = (await tx.select().from(weeklyMenus).where(eq(weeklyMenus.id, weeklyMenuId)).limit(1))[0];
+    if (!menu) throw new Error("MENU_NOT_FOUND");
+
+    await tx.update(cashierSessions).set({ weeklyMenuId }).where(eq(cashierSessions.id, sessionId));
+    return (await tx.select().from(cashierSessions).where(eq(cashierSessions.id, sessionId)).limit(1))[0];
+  });
+}
+
 /**
  * Funções para Pedidos
  */
@@ -419,6 +441,99 @@ export async function createOrder(data: any) {
   }
   
   return createdOrder[0];
+}
+
+export async function createOrderWithInventory(data: {
+  cashierSessionId: number;
+  totalAmount: number;
+  paymentMethod: "pix" | "card" | "cash";
+  customerId?: number;
+  weeklyMenuId?: number;
+  items: Array<{ productId: number; quantity: number; unitPrice: number }>;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  return await db.transaction(async (tx) => {
+    const session = (await tx.select().from(cashierSessions).where(eq(cashierSessions.id, data.cashierSessionId)).limit(1))[0];
+    if (!session) throw new Error("SESSION_NOT_FOUND");
+    if (data.weeklyMenuId && session.weeklyMenuId !== data.weeklyMenuId) {
+      throw new Error("SESSION_MENU_MISMATCH");
+    }
+
+    if (data.weeklyMenuId) {
+      const menu = (await tx.select().from(weeklyMenus).where(eq(weeklyMenus.id, data.weeklyMenuId)).limit(1))[0];
+      if (!menu) throw new Error("MENU_NOT_FOUND");
+      if (menu.status !== "open") throw new Error("MENU_CLOSED");
+    }
+
+    const [insertResult] = await tx.insert(orders).values([{
+      cashierSessionId: data.cashierSessionId,
+      totalAmount: String(data.totalAmount),
+      paymentMethod: data.paymentMethod,
+      customerId: data.customerId,
+      status: "completed",
+    }]);
+    const orderId = Number((insertResult as any)?.insertId || 0);
+    if (!orderId) throw new Error("ORDER_ID_NOT_FOUND");
+
+    for (const item of data.items) {
+      const product = (await tx.select().from(products).where(eq(products.id, item.productId)).limit(1))[0];
+      if (!product) throw new Error(`PRODUCT_NOT_FOUND:${item.productId}`);
+
+      if (!product.isUnlimited && product.quantity !== null) {
+        const stockResult = await tx.update(products).set({
+          quantity: sql`${products.quantity} - ${item.quantity}`,
+          isAvailable: sql`(${products.quantity} - ${item.quantity}) > 0`,
+        }).where(and(
+          eq(products.id, item.productId),
+          eq(products.isUnlimited, false),
+          sql`${products.quantity} >= ${item.quantity}`,
+        ));
+        if (!(stockResult as any).affectedRows) {
+          throw new Error(`INSUFFICIENT_STOCK:${product.name}`);
+        }
+      } else {
+        console.warn(`[StockWarning] Produto ID ${item.productId} ("${product.name}") possui estoque ilimitado ou nulo. Atualização global ignorada.`);
+      }
+
+      await tx.insert(orderItems).values([{
+        orderId,
+        productId: item.productId,
+        quantity: item.quantity,
+        unitPrice: String(item.unitPrice),
+        subtotal: String(item.quantity * item.unitPrice),
+      }]);
+      await tx.insert(stockHistory).values([{
+        productId: item.productId,
+        orderId,
+        quantityChange: -item.quantity,
+        reason: "Venda",
+      }]);
+
+      if (data.weeklyMenuId) {
+        const menuItem = (await tx.select().from(menuItems).where(and(
+          eq(menuItems.menuId, data.weeklyMenuId),
+          eq(menuItems.productId, item.productId),
+        )).limit(1))[0];
+        if (!menuItem) throw new Error(`MENU_ITEM_NOT_FOUND:${product.name}`);
+        if (menuItem.availableQuantity !== null) {
+          const menuStockResult = await tx.update(menuItems).set({
+            availableQuantity: sql`${menuItems.availableQuantity} - ${item.quantity}`,
+            isAvailable: sql`(${menuItems.availableQuantity} - ${item.quantity}) > 0`,
+          }).where(and(
+            eq(menuItems.id, menuItem.id),
+            sql`${menuItems.availableQuantity} >= ${item.quantity}`,
+          ));
+          if (!(menuStockResult as any).affectedRows) {
+            throw new Error(`INSUFFICIENT_MENU_STOCK:${product.name}`);
+          }
+        }
+      }
+    }
+
+    return (await tx.select().from(orders).where(eq(orders.id, orderId)).limit(1))[0];
+  });
 }
 
 export async function createOrderItem(data: any) {
