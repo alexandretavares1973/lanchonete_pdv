@@ -10,6 +10,7 @@ import { filterOrdersByReportDate, getReportDateShortcutRange, isReportDateRange
 import { getCustomerSearchSuggestions } from "../shared/reportSearchSuggestions";
 import { getMysqlAffectedRows } from "../shared/mysqlResult";
 import { resolveRefundProductName } from "../shared/refundItemDisplay";
+import { getReportCustomerLabel } from "../shared/reportCustomerDisplay";
 
 describe("Nome dos produtos no estorno", () => {
   it("prioriza o nome retornado pelo item oficial do pedido", () => {
@@ -22,6 +23,18 @@ describe("Nome dos produtos no estorno", () => {
 
   it("exibe um fallback identificável quando o produto não existe mais", () => {
     expect(resolveRefundProductName({ productId: 12345 }, [])).toBe("Produto #12345");
+  });
+});
+
+describe("Identificação do cliente no relatório de vendas", () => {
+  it("exibe o nome do cliente associado ao pedido", () => {
+    const order = { customerName: "Maria Santos" };
+    expect(`Cliente: ${getReportCustomerLabel(order.customerName)}`).toBe("Cliente: Maria Santos");
+  });
+
+  it("usa GERAL para pedidos sem cliente identificado", () => {
+    expect(getReportCustomerLabel(null)).toBe("GERAL");
+    expect(getReportCustomerLabel("  ")).toBe("GERAL");
   });
 });
 

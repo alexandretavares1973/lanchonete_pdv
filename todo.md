@@ -722,8 +722,22 @@
 
 
 ## Correção do nome do produto no diálogo de estorno
-- [ ] Inspecionar o componente do diálogo de estorno em ReportsPage.tsx
-- [ ] Verificar por que o nome do produto não está sendo renderizado na tabela de itens do pedido
-- [ ] Corrigir a propriedade exibida para garantir que o nome de cada produto apareça corretamente
-- [ ] Adicionar teste unitário de regressão para a renderização dos itens no estorno
+- [x] Inspecionar o componente do diálogo de estorno em ReportsPage.tsx
+- [x] Verificar por que o nome do produto não está sendo renderizado na tabela de itens do pedido
+- [x] Corrigir a propriedade exibida para garantir que o nome de cada produto apareça corretamente
+- [x] Adicionar teste unitário de regressão para a renderização dos itens no estorno
+- [x] Validar TypeScript, Vitest, build e salvar checkpoint publicado
+
+
+## Exibição do cliente no diálogo de Pedidos da Sessão
+- [ ] Atualizar o helper getAllCashierSessionsWithOrders no backend para garantir que orders inclua customerName via leftJoin
+- [ ] Exibir o nome do cliente em destaque em cada card de pedido no diálogo "Pedidos da Sessão"
+- [ ] Adicionar teste unitário de regressão para a exibição do cliente no pedido
 - [ ] Validar TypeScript, Vitest, build e salvar checkpoint publicado
+
+
+## Exibição do cliente no diálogo de Pedidos da Sessão
+- [x] Atualizar o helper getAllCashierSessionsWithOrders no backend para garantir que orders inclua customerName via leftJoin
+- [x] Exibir o nome do cliente em destaque em cada card de pedido no diálogo "Pedidos da Sessão"
+- [x] Adicionar teste unitário de regressão para a exibição do cliente no pedido
+- [x] Validar TypeScript, Vitest, build e salvar checkpoint publicado

@@ -11,6 +11,7 @@ import { createTextPdf, downloadTextPdf } from "@/lib/simplePdf";
 import { filterOrdersByReportDate, getReportDateShortcutRange, isReportDateRangeValid, matchesReportSearch, type ReportDateRange, type ReportDateShortcut } from "../../../shared/reportDateFilters";
 import { getCustomerSearchSuggestions } from "../../../shared/reportSearchSuggestions";
 import { resolveRefundProductName } from "../../../shared/refundItemDisplay";
+import { getReportCustomerLabel } from "../../../shared/reportCustomerDisplay";
 
 interface MenuItem {
   id: number | string;
@@ -879,6 +880,7 @@ export default function ReportsPage() {
                       const refundAudit = refundAuditsQuery.data?.find((audit) => audit.orderId === order.id);
                       const isCancelled = orderStatus === "cancelled";
                       const paymentLabel = order.paymentMethod === "pix" ? "PIX" : order.paymentMethod === "card" ? "Cartão" : "Dinheiro";
+                      const customerLabel = getReportCustomerLabel(order.customerName);
                       return (
                         <div
                           key={order.id}
@@ -895,6 +897,9 @@ export default function ReportsPage() {
                               </div>
                               <p className="mt-1 text-xs text-muted-foreground no-underline">
                                 {new Date(order.createdAt).toLocaleString("pt-BR")} · Total: R$ {Number(order.total || 0).toFixed(2)}
+                              </p>
+                              <p className="mt-2 inline-flex rounded-md bg-primary/10 px-2 py-1 text-sm font-semibold text-primary no-underline">
+                                Cliente: {customerLabel}
                               </p>
                               <div className="mt-2 space-y-1 text-xs text-muted-foreground no-underline">
                                 {order.items.map((item, index) => (
