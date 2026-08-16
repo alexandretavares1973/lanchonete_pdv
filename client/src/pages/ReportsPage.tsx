@@ -288,6 +288,21 @@ export default function ReportsPage() {
       return sum + orderNetTotal;
     }, 0);
 
+    const customerSummary: Record<string, { name: string; ordersCount: number; totalSpent: number }> = {};
+    orders.forEach(order => {
+      const customerName = getReportCustomerLabel(order.customerName);
+      const orderNetTotal = order.items.reduce((itemSum, item) => {
+        const netQty = item.quantity - (item.refundedQuantity || 0);
+        const uPrice = item.unitPrice || item.price || 0;
+        return itemSum + (netQty * uPrice);
+      }, 0);
+      if (!customerSummary[customerName]) {
+        customerSummary[customerName] = { name: customerName, ordersCount: 0, totalSpent: 0 };
+      }
+      customerSummary[customerName].ordersCount += 1;
+      customerSummary[customerName].totalSpent += orderNetTotal;
+    });
+
     return {
       menu,
       productSales,
@@ -295,6 +310,7 @@ export default function ReportsPage() {
       grandTotal,
       totalItems: orders.reduce((sum, order) => sum + order.items.reduce((itemSum, item) => itemSum + (item.quantity - (item.refundedQuantity || 0)), 0), 0),
       ordersCount: orders.length,
+      customerSummary: Object.values(customerSummary).sort((a, b) => b.totalSpent - a.totalSpent),
     };
   };
 
@@ -330,6 +346,10 @@ export default function ReportsPage() {
       `Dinheiro: R$ ${report.paymentTotals.cash.toFixed(2)}`,
       "",
       `TOTAL GERAL: R$ ${report.grandTotal.toFixed(2)}`,
+      "",
+      "RESUMO POR CLIENTE:",
+      ...report.customerSummary.map((c: any) => `- ${c.name} | ${c.ordersCount} pedido(s) | Total: R$ ${c.totalSpent.toFixed(2)}`),
+      "",
       `Gerado em: ${new Date().toLocaleString("pt-BR")}`,
     ];
     downloadTextPdf(`relatorio-vendas-sabado-${session.weeklyMenuId}.pdf`, `Relatório de Vendas - ${menuLabel}`, lines);
@@ -354,6 +374,9 @@ export default function ReportsPage() {
       ...Object.entries(report.productSales).map(([_, prod]) =>
         `• ${prod.name}: ${prod.quantity}x (R$ ${prod.subtotal.toFixed(2)})`
       ),
+      "",
+      "👤 *Resumo por Cliente:*",
+      ...report.customerSummary.map((c: any) => `• ${c.name}: ${c.ordersCount} pedido(s) (R$ ${c.totalSpent.toFixed(2)})`),
     ].join("\n");
 
     const filename = `relatorio-vendas-sabado-${session.weeklyMenuId}.pdf`;
@@ -756,21 +779,40 @@ export default function ReportsPage() {
                     </div>
                   </div>
 
-                  {/* Products Details */}
-                  <div className="mb-4 p-4 bg-muted/30 rounded-lg border border-border">
-                    <h4 className="font-semibold text-foreground mb-3">Detalhes dos Produtos</h4>
-                    <div className="space-y-2">
-                      {Object.entries(report.productSales).map(([key, product]) => (
-                        <div key={key} className="flex justify-between items-center p-2 bg-background rounded border border-border/50">
-                          <div className="flex-1">
-                            <p className="font-medium text-foreground">{product.name}</p>
-                            <p className="text-xs text-muted-foreground">Qtd: {product.quantity} × R$ {product.unitPrice.toFixed(2)}</p>
+                  {/* Products Details & Customer Summary */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div className="p-4 bg-muted/30 rounded-lg border border-border">
+                      <h4 className="font-semibold text-foreground mb-3">Detalhes dos Produtos</h4>
+                      <div className="space-y-2">
+                        {Object.entries(report.productSales).map(([key, product]) => (
+                          <div key={key} className="flex justify-between items-center p-2 bg-background rounded border border-border/50">
+                            <div className="flex-1">
+                              <p className="font-medium text-foreground">{product.name}</p>
+                              <p className="text-xs text-muted-foreground">Qtd: {product.quantity} × R$ {product.unitPrice.toFixed(2)}</p>
+                            </div>
+                            <div className="text-right">
+                              <p className="font-semibold text-primary">R$ {product.subtotal.toFixed(2)}</p>
+                            </div>
                           </div>
-                          <div className="text-right">
-                            <p className="font-semibold text-primary">R$ {product.subtotal.toFixed(2)}</p>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="p-4 bg-muted/30 rounded-lg border border-border">
+                      <h4 className="font-semibold text-foreground mb-3">Resumo por Cliente</h4>
+                      <div className="space-y-2">
+                        {report.customerSummary.map((customer: any, idx: number) => (
+                          <div key={`customer-summary-${idx}`} className="flex justify-between items-center p-2 bg-background rounded border border-border/50">
+                            <div className="flex-1">
+                              <p className="font-medium text-foreground">👤 {customer.name}</p>
+                              <p className="text-xs text-muted-foreground">{customer.ordersCount} pedido(s)</p>
+                            </div>
+                            <div className="text-right">
+                              <p className="font-semibold text-primary">R$ {customer.totalSpent.toFixed(2)}</p>
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
                   </div>
 

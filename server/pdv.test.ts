@@ -44,6 +44,34 @@ describe("Identificação do cliente no relatório de vendas e cupons", () => {
     expect(formatCouponCustomer(null)).toBe("GERAL");
     expect(formatCouponCustomer("   ")).toBe("GERAL");
   });
+
+  it("calcula corretamente o resumo de vendas por cliente no período", () => {
+    const orders = [
+      { customerName: "Carlos", items: [{ quantity: 2, unitPrice: 10, refundedQuantity: 0 }], paymentMethod: "pix" },
+      { customerName: null, items: [{ quantity: 1, unitPrice: 15, refundedQuantity: 0 }], paymentMethod: "cash" },
+      { customerName: "Carlos", items: [{ quantity: 1, unitPrice: 10, refundedQuantity: 0 }], paymentMethod: "card" },
+    ];
+
+    const customerSummary: Record<string, { name: string; ordersCount: number; totalSpent: number }> = {};
+    orders.forEach(order => {
+      const customerName = getReportCustomerLabel(order.customerName);
+      const orderNetTotal = order.items.reduce((itemSum, item) => itemSum + ((item.quantity - item.refundedQuantity) * item.unitPrice), 0);
+      if (!customerSummary[customerName]) {
+        customerSummary[customerName] = { name: customerName, ordersCount: 0, totalSpent: 0 };
+      }
+      customerSummary[customerName].ordersCount += 1;
+      customerSummary[customerName].totalSpent += orderNetTotal;
+    });
+
+    const summaryList = Object.values(customerSummary).sort((a, b) => b.totalSpent - a.totalSpent);
+    expect(summaryList).toHaveLength(2);
+    expect(summaryList[0].name).toBe("Carlos");
+    expect(summaryList[0].ordersCount).toBe(2);
+    expect(summaryList[0].totalSpent).toBe(30);
+    expect(summaryList[1].name).toBe("GERAL");
+    expect(summaryList[1].ordersCount).toBe(1);
+    expect(summaryList[1].totalSpent).toBe(15);
+  });
 });
 
 describe("Resultado de atualização MySQL2", () => {

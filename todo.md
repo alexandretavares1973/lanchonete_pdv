@@ -88,3 +88,11 @@
 - [x] Garantir fallback para "GERAL" quando o pedido não tiver cliente vinculado
 - [x] Adicionar teste unitário de regressão para a presença do cliente no card de estorno
 - [x] Validar TypeScript, testar com Vitest, realizar build e salvar checkpoint publicado
+
+
+## Inclusão do Cliente nos Relatórios Resumidos por Período (ReportsPage.tsx)
+- [x] Auditar a função de cálculo de relatório e os blocos de exibição de pedidos filtrados por período em ReportsPage.tsx
+- [x] Atualizar o resumo consolidado por período e os textos/PDFs gerados para listar explicitamente o cliente de cada pedido considerado no intervalo
+- [x] Garantir fallback para "GERAL" quando o pedido do período não tiver cliente cadastrado
+- [x] Adicionar teste unitário de regressão validando o resumo por período com clientes
+- [x] Validar TypeScript, testar com Vitest, realizar build e salvar checkpoint publicado
