@@ -1,6 +1,7 @@
 import { eq, desc, and, inArray, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { InsertUser, users, cashierResponsibles, products, weeklyMenus, menuItems, cashierSessions, orders, orderItems, stockHistory, customers, localUsers, refundAudits } from "../drizzle/schema";
+import { getMysqlAffectedRows } from "../shared/mysqlResult";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -493,7 +494,7 @@ export async function createOrderWithInventory(data: {
           eq(products.isUnlimited, false),
           sql`${products.quantity} >= ${item.quantity}`,
         ));
-        if (!(stockResult as any).affectedRows) {
+        if (getMysqlAffectedRows(stockResult) < 1) {
           throw new Error(`INSUFFICIENT_STOCK:${product.name}`);
         }
       } else {
@@ -528,7 +529,7 @@ export async function createOrderWithInventory(data: {
             eq(menuItems.id, menuItem.id),
             sql`${menuItems.availableQuantity} >= ${item.quantity}`,
           ));
-          if (!(menuStockResult as any).affectedRows) {
+          if (getMysqlAffectedRows(menuStockResult) < 1) {
             throw new Error(`INSUFFICIENT_MENU_STOCK:${product.name}`);
           }
         }

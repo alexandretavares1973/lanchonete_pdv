@@ -8,6 +8,19 @@ import { planDryRun, summarizeSimulationResults } from "../shared/concurrency";
 import { filterAndSortHistoricalSessions } from "../shared/historicalSessionFilters";
 import { filterOrdersByReportDate, getReportDateShortcutRange, isReportDateRangeValid, matchesReportSearch } from "../shared/reportDateFilters";
 import { getCustomerSearchSuggestions } from "../shared/reportSearchSuggestions";
+import { getMysqlAffectedRows } from "../shared/mysqlResult";
+
+describe("Resultado de atualização MySQL2", () => {
+  it("lê affectedRows quando o driver retorna [ResultSetHeader, FieldPacket[]]", () => {
+    expect(getMysqlAffectedRows([{ affectedRows: 1 }, []])).toBe(1);
+    expect(getMysqlAffectedRows([{ affectedRows: 0 }, []])).toBe(0);
+  });
+
+  it("aceita também um ResultSetHeader direto", () => {
+    expect(getMysqlAffectedRows({ affectedRows: 2 })).toBe(2);
+    expect(getMysqlAffectedRows(undefined)).toBe(0);
+  });
+});
 
 describe("PDV System", () => {
   describe("Shared menu selection", () => {

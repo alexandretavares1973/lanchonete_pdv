@@ -711,3 +711,11 @@
 - [x] Permitir selecionar sugestão por clique ou teclado com fechamento ao perder foco
 - [x] Adicionar testes unitários para o filtro de sugestões de clientes
 - [x] Validar TypeScript, Vitest, build e salvar checkpoint publicado
+
+
+## Correção do bloqueio de estoque da Macarronada
+- [x] Inspecionar a transação createOrderWithInventory em server/db.ts
+- [x] Verificar se a validação compara incorretamente o estoque global ou exige que o produto esteja no cardápio sem subtrair do menu_items
+- [x] Corrigir a verificação de estoque e garantir baixa simultânea no global e no cardápio específico
+- [x] Adicionar teste unitário de regressão para a venda de produtos com estoque global e de cardápio
+- [x] Validar TypeScript, Vitest, build e salvar checkpoint publicado
