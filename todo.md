@@ -680,3 +680,10 @@
 - [x] Exibir contagem de resultados e estado vazio orientado
 - [x] Adicionar testes unitários para filtragem e ordenação
 - [x] Validar TypeScript, Vitest, build e preview; salvar checkpoint publicado
+
+
+## Busca textual nas sessões históricas
+- [x] Adicionar campo de busca textual para ID da sessão ou nome do cliente
+- [x] Atualizar helper de filtro e ordenação para suportar o termo de busca
+- [x] Adicionar testes unitários para a busca textual
+- [x] Validar TypeScript, Vitest, build e salvar checkpoint publicado

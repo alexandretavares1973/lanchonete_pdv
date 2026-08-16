@@ -375,14 +375,24 @@ describe("Estorno Parcial por Item", () => {
 
 describe("Filtros de sessões históricas", () => {
   const sessions = [
-    { id: 1, openedAt: "2026-08-10T09:00:00.000Z", orders: [{ total: 20 }, { total: 10 }] },
-    { id: 2, openedAt: "2026-08-12T09:00:00.000Z", orders: [{ total: 100 }] },
+    { id: 1, openedAt: "2026-08-10T09:00:00.000Z", orders: [{ total: 20, customerName: "Maria Santos" }, { total: 10, customerName: "João" }] },
+    { id: 2, openedAt: "2026-08-12T09:00:00.000Z", orders: [{ total: 100, customerName: "Carlos Silva" }] },
     { id: 3, openedAt: "2026-08-12T18:00:00.000Z", orders: [] },
   ];
 
   it("filtra pelo intervalo inclusivo da data de abertura", () => {
     const result = filterAndSortHistoricalSessions(sessions, { startDate: "2026-08-12", endDate: "2026-08-12" });
     expect(result.map((session) => session.id)).toEqual([3, 2]);
+  });
+
+  it("localiza por ID da sessão ou nome do cliente sem diferenciar maiúsculas", () => {
+    expect(filterAndSortHistoricalSessions(sessions, { searchTerm: "2" }).map((session) => session.id)).toEqual([2]);
+    expect(filterAndSortHistoricalSessions(sessions, { searchTerm: "mArIa" }).map((session) => session.id)).toEqual([1]);
+  });
+
+  it("combina a busca textual com o intervalo de datas", () => {
+    const result = filterAndSortHistoricalSessions(sessions, { searchTerm: "carlos", startDate: "2026-08-12", endDate: "2026-08-12" });
+    expect(result.map((session) => session.id)).toEqual([2]);
   });
 
   it("ordena pela maior quantidade de pedidos", () => {

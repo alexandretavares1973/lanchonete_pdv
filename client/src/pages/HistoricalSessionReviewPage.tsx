@@ -22,7 +22,7 @@ type HistoricalSession = {
   closedAt: Date | string | null;
   status: "open" | "closed";
   weeklyMenuId: number | null;
-  orders: Array<{ id: number; total: number; status: string; items: HistoricalItem[] }>;
+  orders: Array<{ id: number; total: number; status: string; customerName?: string | null; items: HistoricalItem[] }>;
 };
 
 type Menu = {
@@ -50,6 +50,7 @@ export default function HistoricalSessionReviewPage() {
   const menus = rawMenus as Menu[];
   const utils = trpc.useUtils();
   const [selectedMenuBySession, setSelectedMenuBySession] = useState<Record<number, string>>({});
+  const [searchTerm, setSearchTerm] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [sortBy, setSortBy] = useState<HistoricalSessionFilterOrder>("openedAtDesc");
@@ -65,11 +66,12 @@ export default function HistoricalSessionReviewPage() {
   });
 
   const visibleSessions = useMemo(
-    () => filterAndSortHistoricalSessions(sessions, { startDate, endDate, sortBy }),
-    [sessions, startDate, endDate, sortBy],
+    () => filterAndSortHistoricalSessions(sessions, { searchTerm, startDate, endDate, sortBy }),
+    [sessions, searchTerm, startDate, endDate, sortBy],
   );
 
   const resetFilters = () => {
+    setSearchTerm("");
     setStartDate("");
     setEndDate("");
     setSortBy("openedAtDesc");
@@ -141,11 +143,12 @@ export default function HistoricalSessionReviewPage() {
                 <p className="text-xs text-muted-foreground">Use o período de abertura para localizar registros antigos.</p>
               </div>
             </div>
-            <Button type="button" variant="outline" size="sm" onClick={resetFilters} className="gap-2" disabled={!startDate && !endDate && sortBy === "openedAtDesc"}>
+            <Button type="button" variant="outline" size="sm" onClick={resetFilters} className="gap-2" disabled={!searchTerm && !startDate && !endDate && sortBy === "openedAtDesc"}>
               <RotateCcw className="h-3.5 w-3.5" /> Limpar filtros
             </Button>
           </div>
-          <div className="grid gap-3 md:grid-cols-[1fr_1fr_1.4fr_auto] md:items-end">
+          <div className="grid gap-3 md:grid-cols-[1.4fr_1fr_1fr_1.4fr_auto] md:items-end">
+            <label className="text-sm font-medium text-foreground" htmlFor="historical-search">Buscar por sessão ou cliente<Input id="historical-search" type="search" value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="ID da sessão ou nome do cliente" className="mt-1" /></label>
             <label className="text-sm font-medium text-foreground" htmlFor="historical-start-date">Data inicial<Input id="historical-start-date" type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} className="mt-1" /></label>
             <label className="text-sm font-medium text-foreground" htmlFor="historical-end-date">Data final<Input id="historical-end-date" type="date" value={endDate} onChange={(event) => setEndDate(event.target.value)} className="mt-1" /></label>
             <label className="text-sm font-medium text-foreground" htmlFor="historical-sort">Ordenar por<select id="historical-sort" value={sortBy} onChange={(event) => setSortBy(event.target.value as HistoricalSessionFilterOrder)} className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground"><option value="openedAtDesc">Data mais recente primeiro</option><option value="openedAtAsc">Data mais antiga primeiro</option><option value="ordersDesc">Maior quantidade de pedidos</option><option value="totalDesc">Maior valor total</option></select></label>
@@ -218,7 +221,7 @@ export default function HistoricalSessionReviewPage() {
                     <div className="rounded-lg border border-border bg-muted/20 p-4">
                       <h3 className="mb-3 font-semibold text-foreground">Pedidos para conferência</h3>
                       {session.orders.length === 0 ? <p className="text-sm text-muted-foreground">Nenhum pedido.</p> : (
-                        <div className="max-h-40 space-y-2 overflow-y-auto">{session.orders.map((order) => <div key={order.id} className="flex justify-between gap-3 rounded border border-border/60 bg-background p-2 text-sm"><span className="text-foreground">Pedido #{order.id} · {order.status}</span><strong className="text-primary">{money(Number(order.total || 0))}</strong></div>)}</div>
+                        <div className="max-h-40 space-y-2 overflow-y-auto">{session.orders.map((order) => <div key={order.id} className="flex justify-between gap-3 rounded border border-border/60 bg-background p-2 text-sm"><span className="text-foreground">Pedido #{order.id} · {order.customerName || "Cliente não identificado"} · {order.status}</span><strong className="text-primary">{money(Number(order.total || 0))}</strong></div>)}</div>
                       )}
                     </div>
                   </div>

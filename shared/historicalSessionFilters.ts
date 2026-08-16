@@ -4,12 +4,13 @@ export type HistoricalSessionFilterInput = {
   startDate?: string;
   endDate?: string;
   sortBy?: HistoricalSessionFilterOrder;
+  searchTerm?: string;
 };
 
 export type HistoricalSessionLike = {
   id: number;
   openedAt: Date | string;
-  orders: Array<{ total: number | string | null | undefined }>;
+  orders: Array<{ total: number | string | null | undefined; customerName?: string | null }>;
 };
 
 function timestamp(value: Date | string) {
@@ -35,9 +36,14 @@ export function filterAndSortHistoricalSessions<T extends HistoricalSessionLike>
 ) {
   const start = filters.startDate ? dayStart(filters.startDate) : Number.NEGATIVE_INFINITY;
   const end = filters.endDate ? dayEnd(filters.endDate) : Number.POSITIVE_INFINITY;
+  const searchTerm = (filters.searchTerm || "").trim().toLocaleLowerCase("pt-BR");
   const filtered = sessions.filter((session) => {
     const openedAt = timestamp(session.openedAt);
-    return openedAt >= start && openedAt <= end;
+    if (openedAt < start || openedAt > end) return false;
+    if (!searchTerm) return true;
+    const matchesSessionId = String(session.id).includes(searchTerm);
+    const matchesCustomer = session.orders.some((order) => (order.customerName || "").toLocaleLowerCase("pt-BR").includes(searchTerm));
+    return matchesSessionId || matchesCustomer;
   });
 
   return [...filtered].sort((left, right) => {
