@@ -687,3 +687,11 @@
 - [x] Atualizar helper de filtro e ordenação para suportar o termo de busca
 - [x] Adicionar testes unitários para a busca textual
 - [x] Validar TypeScript, Vitest, build e salvar checkpoint publicado
+
+
+## Filtro por data no Relatório de Vendas
+- [x] Adicionar inputs de data inicial e data final na página `ReportsPage.tsx`
+- [x] Filtrar sessões e pedidos pelo intervalo de datas selecionado
+- [x] Aplicar o filtro nos totais de faturamento, formas de pagamento e produtos favoritos
+- [x] Garantir que exportações PDF e compartilhamento WhatsApp respeitem o filtro ativo
+- [x] Validar TypeScript, Vitest, build e salvar checkpoint publicado

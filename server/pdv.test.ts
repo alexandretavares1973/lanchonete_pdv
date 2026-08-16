@@ -6,6 +6,7 @@ import { parseStockQuantity } from "../shared/stockQuantity";
 import { canCreateSharedSale, selectPreferredOpenMenu } from "../shared/menuSelection";
 import { planDryRun, summarizeSimulationResults } from "../shared/concurrency";
 import { filterAndSortHistoricalSessions } from "../shared/historicalSessionFilters";
+import { filterOrdersByReportDate, isReportDateRangeValid } from "../shared/reportDateFilters";
 
 describe("PDV System", () => {
   describe("Shared menu selection", () => {
@@ -370,6 +371,27 @@ describe("Estorno Parcial por Item", () => {
     expect(itemsPayload[0].orderItemId).toBe(1);
     expect(itemsPayload[0].quantity).toBe(1);
     expect(Number.isNaN(itemsPayload[0].orderItemId)).toBe(false);
+  });
+});
+
+describe("Filtro por data do Relatório de Vendas", () => {
+  const orders = [
+    { id: 1, createdAt: "2026-08-10T00:05:00.000Z" },
+    { id: 2, createdAt: "2026-08-15T12:00:00.000Z" },
+    { id: 3, createdAt: "2026-08-15T23:59:59.999Z" },
+  ];
+
+  it("inclui pedidos do início ao fim do dia selecionado", () => {
+    expect(filterOrdersByReportDate(orders, { startDate: "2026-08-15", endDate: "2026-08-15" }).map((order) => order.id)).toEqual([2, 3]);
+  });
+
+  it("rejeita intervalo com data inicial posterior à final", () => {
+    expect(isReportDateRangeValid({ startDate: "2026-08-16", endDate: "2026-08-15" })).toBe(false);
+    expect(filterOrdersByReportDate(orders, { startDate: "2026-08-16", endDate: "2026-08-15" })).toEqual([]);
+  });
+
+  it("permite informar somente um limite do período", () => {
+    expect(filterOrdersByReportDate(orders, { startDate: "2026-08-15" }).map((order) => order.id)).toEqual([2, 3]);
   });
 });
 

@@ -6,8 +6,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
-import { AlertTriangle, ArrowLeft, CheckCircle2, FileDown, Loader2, Printer, RotateCcw } from "lucide-react";
+import { AlertTriangle, ArrowLeft, CalendarDays, CheckCircle2, FileDown, Loader2, Printer, RotateCcw } from "lucide-react";
 import { createTextPdf, downloadTextPdf } from "@/lib/simplePdf";
+import { filterOrdersByReportDate, isReportDateRangeValid, type ReportDateRange } from "../../../shared/reportDateFilters";
 
 interface MenuItem {
   id: number | string;
@@ -73,6 +74,8 @@ export default function ReportsPage() {
   const { data: sharedSessions, isLoading: sessionsLoading } = trpc.pdv.cashier.getAllSessionsWithOrders.useQuery();
   const [menus, setMenus] = useState<WeeklyMenu[]>([]);
   const [selectedMenuId, setSelectedMenuId] = useState<number | null>(null);
+  const [reportStartDate, setReportStartDate] = useState("");
+  const [reportEndDate, setReportEndDate] = useState("");
   const allSessions = useMemo(() => (sharedSessions ?? []) as CashierSession[], [sharedSessions]);
   const sessions = useMemo(
     () => allSessions.filter((session) => session.weeklyMenuId !== null && session.weeklyMenuId !== undefined),
@@ -165,10 +168,22 @@ export default function ReportsPage() {
     return sessions.filter(s => s.weeklyMenuId === menuId);
   };
 
+  const reportDateRange: ReportDateRange = { startDate: reportStartDate, endDate: reportEndDate };
+  const reportDateRangeIsValid = isReportDateRangeValid(reportDateRange);
+  const hasReportDateFilter = Boolean(reportStartDate || reportEndDate);
+  const getReportOrders = (session: CashierSession) => filterOrdersByReportDate(session.orders || [], reportDateRange);
+  const reportDateLabel = reportStartDate || reportEndDate
+    ? `${reportStartDate ? new Date(`${reportStartDate}T00:00:00`).toLocaleDateString("pt-BR") : "início"} a ${reportEndDate ? new Date(`${reportEndDate}T00:00:00`).toLocaleDateString("pt-BR") : "hoje"}`
+    : "Todas as datas";
+  const resetReportDateFilter = () => {
+    setReportStartDate("");
+    setReportEndDate("");
+  };
+
   const calculateReportData = (session: CashierSession) => {
     const menu = menus.find(m => m.id === session.weeklyMenuId);
     if (!menu) return null;
-    const orders = (session.orders || []).filter((order) => order.status !== "cancelled");
+    const orders = getReportOrders(session).filter((order) => order.status !== "cancelled");
 
     // Agrupar vendas por produto
     const productSales: Record<string, { name: string; quantity: number; unitPrice: number; subtotal: number }> = {};
@@ -230,7 +245,7 @@ export default function ReportsPage() {
 
   const handleViewSession = (session: CashierSession) => {
     setSelectedSession(session);
-    setSelectedOrderIds((session.orders || []).map((order) => Number(order.id)).filter((id) => Number.isInteger(id) && id > 0));
+    setSelectedOrderIds(getReportOrders(session).map((order) => Number(order.id)).filter((id) => Number.isInteger(id) && id > 0));
     setShowDetails(true);
   };
 
@@ -243,6 +258,7 @@ export default function ReportsPage() {
       `Cardápio: ${menuLabel} (${menuDate})`,
       `Responsável: ${report.menu?.responsibleName || "N/A"}`,
       `Abertura: ${new Date(session.openedAt).toLocaleString("pt-BR")}`,
+      `Período filtrado: ${reportDateLabel}`,
       `Status: ${session.closedAt ? "Fechado" : "Aberto"}`,
       "",
       "PRODUTOS VENDIDOS:",
@@ -274,6 +290,7 @@ export default function ReportsPage() {
     const textSummary = [
       `📊 *Relatório de Vendas - ${menuLabel} (${menuDate})*`,
       `👤 Responsável: ${report.menu?.responsibleName || "N/A"}`,
+      `📅 Período: ${reportDateLabel}`,
       `📦 Total de Itens: ${report.totalItems} | Pedidos: ${report.ordersCount}`,
       `💰 *Total Geral: R$ ${report.grandTotal.toFixed(2)}*`,
       `📱 PIX: R$ ${report.paymentTotals.pix.toFixed(2)} | Cartão: R$ ${report.paymentTotals.card.toFixed(2)} | Dinheiro: R$ ${report.paymentTotals.cash.toFixed(2)}`,
@@ -288,6 +305,7 @@ export default function ReportsPage() {
     const pdfContent = createTextPdf(`Relatório de Vendas - ${menuLabel}`, [
       `Cardápio: ${menuLabel} (${menuDate})`,
       `Responsável: ${report.menu?.responsibleName || "N/A"}`,
+      `Período filtrado: ${reportDateLabel}`,
       `Total Geral: R$ ${report.grandTotal.toFixed(2)}`,
       "",
       ...Object.entries(report.productSales).map(([_, prod]) => `${prod.name} | ${prod.quantity}x | R$ ${prod.subtotal.toFixed(2)}`),
@@ -456,6 +474,7 @@ export default function ReportsPage() {
             <p><strong>Data:</strong> ${report.menu ? new Date(report.menu.saturdayDate).toLocaleDateString("pt-BR") : "N/A"}</p>
             <p><strong>Responsável:</strong> ${report.menu?.responsibleName || "N/A"}</p>
             <p><strong>Abertura:</strong> ${new Date(session.openedAt).toLocaleTimeString("pt-BR")}</p>
+            <p><strong>Período filtrado:</strong> ${reportDateLabel}</p>
           </div>
 
           <div class="section-title">PRODUTOS VENDIDOS</div>
@@ -517,7 +536,7 @@ export default function ReportsPage() {
     ? getSessionsForMenu(selectedMenuId)
     : sessions).filter(session => {
       const menu = menus.find(m => m.id === session.weeklyMenuId);
-      return Boolean(menu);
+      return Boolean(menu) && (!hasReportDateFilter || getReportOrders(session).length > 0);
     });
 
   return (
@@ -564,6 +583,33 @@ export default function ReportsPage() {
               </Button>
             ))}
           </div>
+        </Card>
+
+        <Card className="mb-6 p-5">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <CalendarDays className="h-5 w-5 text-primary" />
+              <div>
+                <h2 className="font-semibold text-foreground">Filtrar por período</h2>
+                <p className="text-xs text-muted-foreground">O período usa a data de criação dos pedidos e afeta totais, detalhes e exportações.</p>
+              </div>
+            </div>
+            <Button type="button" variant="outline" size="sm" onClick={resetReportDateFilter} disabled={!hasReportDateFilter} className="gap-2">
+              <RotateCcw className="h-3.5 w-3.5" /> Limpar datas
+            </Button>
+          </div>
+          <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto] md:items-end">
+            <label htmlFor="reports-start-date" className="text-sm font-medium text-foreground">
+              Data inicial
+              <Input id="reports-start-date" type="date" value={reportStartDate} onChange={(event) => setReportStartDate(event.target.value)} className="mt-1" />
+            </label>
+            <label htmlFor="reports-end-date" className="text-sm font-medium text-foreground">
+              Data final
+              <Input id="reports-end-date" type="date" value={reportEndDate} onChange={(event) => setReportEndDate(event.target.value)} className="mt-1" />
+            </label>
+            <div className="rounded-md bg-muted/50 px-3 py-2 text-sm text-muted-foreground"><strong className="text-foreground">{reportDateLabel}</strong></div>
+          </div>
+          {!reportDateRangeIsValid && <p className="mt-2 text-sm text-destructive">A data inicial deve ser anterior ou igual à data final.</p>}
         </Card>
 
         {unlinkedSessionCount > 0 && (
@@ -695,6 +741,7 @@ export default function ReportsPage() {
             <DialogTitle>Detalhes da Venda</DialogTitle>
           </DialogHeader>
           {selectedSession && (() => {
+            const displayedOrders = getReportOrders(selectedSession);
             const report = calculateReportData(selectedSession);
             if (!report) return <p className="text-muted-foreground">Cardápio associado foi excluído.</p>;
             return (
@@ -731,10 +778,10 @@ export default function ReportsPage() {
                 <div>
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="font-semibold text-foreground">Pedidos da Sessão</h3>
-                    <span className="text-xs text-muted-foreground">{(selectedSession.orders || []).length} pedido(s)</span>
+                    <span className="text-xs text-muted-foreground">{displayedOrders.length} pedido(s) no período</span>
                   </div>
                   <div className="space-y-3">
-                    {(selectedSession.orders || []).map((order) => {
+                    {displayedOrders.map((order) => {
                       const orderStatus = order.status || "completed";
                       const refundAudit = refundAuditsQuery.data?.find((audit) => audit.orderId === order.id);
                       const isCancelled = orderStatus === "cancelled";
