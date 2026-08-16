@@ -72,3 +72,11 @@
 - [x] Inspecionar o JSX do modal de detalhes em ReportsPage.tsx para garantir que a renderização de customerName / GERAL ocorre dentro do card do pedido
 - [x] Executar chamada real ao endpoint tRPC pdv.cashier.getAllSessionsWithOrders via fetch autenticado e inspecionar o JSON bruto
 - [x] Validar visualmente o modal "Detalhes da Venda" logado no navegador com os 4 pedidos do exemplo e confirmar a exibição do cliente e GERAL
+
+
+## Inclusão do Cliente nos Cupons Impressos do PDV
+- [x] Auditar o componente POSPage.tsx ou utilitário de impressão para localizar a montagem do texto do cupom
+- [x] Atualizar a formatação do cupom para incluir explicitamente a linha "Cliente: [Nome do Cliente]" logo após o cabeçalho ou dados do pedido
+- [x] Garantir fallback para "GERAL" quando nenhum cliente específico estiver selecionado
+- [x] Adicionar teste unitário de regressão validando a presença do cliente e fallback no cupom
+- [x] Validar TypeScript, testar com Vitest, realizar build e salvar checkpoint publicado

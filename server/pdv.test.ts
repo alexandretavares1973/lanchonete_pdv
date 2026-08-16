@@ -26,7 +26,7 @@ describe("Nome dos produtos no estorno", () => {
   });
 });
 
-describe("Identificação do cliente no relatório de vendas", () => {
+describe("Identificação do cliente no relatório de vendas e cupons", () => {
   it("exibe o nome do cliente associado ao pedido", () => {
     const order = { customerName: "Maria Santos" };
     expect(`Cliente: ${getReportCustomerLabel(order.customerName)}`).toBe("Cliente: Maria Santos");
@@ -35,6 +35,14 @@ describe("Identificação do cliente no relatório de vendas", () => {
   it("usa GERAL para pedidos sem cliente identificado", () => {
     expect(getReportCustomerLabel(null)).toBe("GERAL");
     expect(getReportCustomerLabel("  ")).toBe("GERAL");
+  });
+
+  it("formata corretamente o nome do cliente para impressão no cupom do PDV", () => {
+    const formatCouponCustomer = (name?: string | null) => (name && name.trim() ? name.trim() : "GERAL");
+    expect(formatCouponCustomer("Ana Souza")).toBe("Ana Souza");
+    expect(formatCouponCustomer("")).toBe("GERAL");
+    expect(formatCouponCustomer(null)).toBe("GERAL");
+    expect(formatCouponCustomer("   ")).toBe("GERAL");
   });
 });
 

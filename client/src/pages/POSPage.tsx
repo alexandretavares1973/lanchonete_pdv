@@ -501,7 +501,7 @@ export default function POSPage() {
             <p>CUPOM DE VENDA</p>
             <p>━━━━━━━━━━━━━━━━━━━━━━━</p>
             <p><strong>Cardápio:</strong> ${selectedMenu ? getSaturdayLabel(selectedMenu.saturdayOrder) : "N/A"}</p>
-            <p><strong>Cliente:</strong> ${lastCustomerName || "Não informado"}</p>
+            <p><strong>Cliente:</strong> ${lastCustomerName && lastCustomerName.trim() ? lastCustomerName.trim() : "GERAL"}</p>
             <p><strong>Data:</strong> ${timestamp.toLocaleDateString("pt-BR")}</p>
             <p><strong>Hora:</strong> ${timestamp.toLocaleTimeString("pt-BR")}</p>
           </div>
