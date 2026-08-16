@@ -70,5 +70,5 @@
 - [x] Inspecionar todas as chamadas tRPC em ReportsPage.tsx para confirmar qual endpoint alimenta a lista de sessões e pedidos
 - [x] Verificar no servidor se o roteador tRPC define output schema que possa omitir o campo customerName
 - [x] Inspecionar o JSX do modal de detalhes em ReportsPage.tsx para garantir que a renderização de customerName / GERAL ocorre dentro do card do pedido
-- [ ] Executar chamada real ao endpoint tRPC pdv.cashier.getAllSessionsWithOrders e inspecionar o JSON de pedidos com cliente e GERAL
-- [ ] Validar visualmente o modal "Detalhes da Venda" no navegador com os 4 pedidos do exemplo e confirmar a exibição do nome do cliente e GERAL
+- [ ] Executar chamada real ao endpoint tRPC pdv.cashier.getAllSessionsWithOrders via fetch autenticado e inspecionar o JSON bruto
+- [ ] Validar visualmente o modal "Detalhes da Venda" logado no navegador com os 4 pedidos do exemplo e confirmar a exibição do cliente e GERAL

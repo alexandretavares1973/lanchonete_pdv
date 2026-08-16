@@ -48,6 +48,7 @@ interface Order {
   paymentMethod: "pix" | "card" | "cash";
   total: number;
   status?: "pending" | "completed" | "cancelled";
+  customerId?: number | null;
   customerName?: string | null;
   items: OrderItem[];
   createdAt: Date | string;
@@ -898,10 +899,8 @@ export default function ReportsPage() {
                               <p className="mt-1 text-xs text-muted-foreground no-underline">
                                 {new Date(order.createdAt).toLocaleString("pt-BR")} · Total: R$ {Number(order.total || 0).toFixed(2)}
                               </p>
-                              <div className="mt-2 flex items-center gap-2">
-                                <span className="inline-flex rounded-md bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary no-underline">
-                                  👤 Cliente: {order.customerName && order.customerName.trim() ? order.customerName.trim() : "GERAL"}
-                                </span>
+                              <div className="mt-2 rounded bg-amber-50 px-2 py-1 text-xs font-bold text-amber-900 border border-amber-200">
+                                👤 Cliente: {order.customerName ? order.customerName : "GERAL"} (ID: {order.customerId || "N/A"})
                               </div>
                               <div className="mt-2 space-y-1 text-xs text-muted-foreground no-underline">
                                 {order.items.map((item, index) => (
