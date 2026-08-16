@@ -6,7 +6,7 @@ import { parseStockQuantity } from "../shared/stockQuantity";
 import { canCreateSharedSale, selectPreferredOpenMenu } from "../shared/menuSelection";
 import { planDryRun, summarizeSimulationResults } from "../shared/concurrency";
 import { filterAndSortHistoricalSessions } from "../shared/historicalSessionFilters";
-import { filterOrdersByReportDate, isReportDateRangeValid } from "../shared/reportDateFilters";
+import { filterOrdersByReportDate, getReportDateShortcutRange, isReportDateRangeValid, matchesReportSearch } from "../shared/reportDateFilters";
 
 describe("PDV System", () => {
   describe("Shared menu selection", () => {
@@ -392,6 +392,20 @@ describe("Filtro por data do Relatório de Vendas", () => {
 
   it("permite informar somente um limite do período", () => {
     expect(filterOrdersByReportDate(orders, { startDate: "2026-08-15" }).map((order) => order.id)).toEqual([2, 3]);
+  });
+
+  it("calcula os atalhos Hoje, Esta semana e Este mês", () => {
+    const now = new Date("2026-08-16T14:30:00");
+    expect(getReportDateShortcutRange("today", now)).toEqual({ startDate: "2026-08-16", endDate: "2026-08-16" });
+    expect(getReportDateShortcutRange("week", now)).toEqual({ startDate: "2026-08-10", endDate: "2026-08-16" });
+    expect(getReportDateShortcutRange("month", now)).toEqual({ startDate: "2026-08-01", endDate: "2026-08-31" });
+  });
+
+  it("localiza uma sessão pelo cliente ou pelo responsável", () => {
+    const session = { responsibleName: "Ana Caixa", orders: [{ customerName: "Maria Santos" }] };
+    expect(matchesReportSearch(session, "maria")).toBe(true);
+    expect(matchesReportSearch(session, "ANA")).toBe(true);
+    expect(matchesReportSearch(session, "joão")).toBe(false);
   });
 });
 

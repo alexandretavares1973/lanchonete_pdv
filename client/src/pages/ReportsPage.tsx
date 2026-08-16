@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { AlertTriangle, ArrowLeft, CalendarDays, CheckCircle2, FileDown, Loader2, Printer, RotateCcw } from "lucide-react";
 import { createTextPdf, downloadTextPdf } from "@/lib/simplePdf";
-import { filterOrdersByReportDate, isReportDateRangeValid, type ReportDateRange } from "../../../shared/reportDateFilters";
+import { filterOrdersByReportDate, getReportDateShortcutRange, isReportDateRangeValid, matchesReportSearch, type ReportDateRange, type ReportDateShortcut } from "../../../shared/reportDateFilters";
 
 interface MenuItem {
   id: number | string;
@@ -45,6 +45,7 @@ interface Order {
   paymentMethod: "pix" | "card" | "cash";
   total: number;
   status?: "pending" | "completed" | "cancelled";
+  customerName?: string | null;
   items: OrderItem[];
   createdAt: Date | string;
 }
@@ -53,6 +54,7 @@ interface CashierSession {
   id: number;
   legacyId?: string | number;
   responsibleId?: number | null;
+  responsibleName?: string | null;
   weeklyMenuId?: number | null;
   openedAt: Date | string;
   closedAt: Date | string | null;
@@ -76,6 +78,7 @@ export default function ReportsPage() {
   const [selectedMenuId, setSelectedMenuId] = useState<number | null>(null);
   const [reportStartDate, setReportStartDate] = useState("");
   const [reportEndDate, setReportEndDate] = useState("");
+  const [reportSearchTerm, setReportSearchTerm] = useState("");
   const allSessions = useMemo(() => (sharedSessions ?? []) as CashierSession[], [sharedSessions]);
   const sessions = useMemo(
     () => allSessions.filter((session) => session.weeklyMenuId !== null && session.weeklyMenuId !== undefined),
@@ -171,6 +174,7 @@ export default function ReportsPage() {
   const reportDateRange: ReportDateRange = { startDate: reportStartDate, endDate: reportEndDate };
   const reportDateRangeIsValid = isReportDateRangeValid(reportDateRange);
   const hasReportDateFilter = Boolean(reportStartDate || reportEndDate);
+  const hasReportSearch = Boolean(reportSearchTerm.trim());
   const getReportOrders = (session: CashierSession) => filterOrdersByReportDate(session.orders || [], reportDateRange);
   const reportDateLabel = reportStartDate || reportEndDate
     ? `${reportStartDate ? new Date(`${reportStartDate}T00:00:00`).toLocaleDateString("pt-BR") : "início"} a ${reportEndDate ? new Date(`${reportEndDate}T00:00:00`).toLocaleDateString("pt-BR") : "hoje"}`
@@ -178,6 +182,15 @@ export default function ReportsPage() {
   const resetReportDateFilter = () => {
     setReportStartDate("");
     setReportEndDate("");
+  };
+  const applyDateShortcut = (shortcut: ReportDateShortcut) => {
+    const range = getReportDateShortcutRange(shortcut);
+    setReportStartDate(range.startDate || "");
+    setReportEndDate(range.endDate || "");
+  };
+  const resetReportFilters = () => {
+    resetReportDateFilter();
+    setReportSearchTerm("");
   };
 
   const calculateReportData = (session: CashierSession) => {
@@ -536,7 +549,7 @@ export default function ReportsPage() {
     ? getSessionsForMenu(selectedMenuId)
     : sessions).filter(session => {
       const menu = menus.find(m => m.id === session.weeklyMenuId);
-      return Boolean(menu) && (!hasReportDateFilter || getReportOrders(session).length > 0);
+      return Boolean(menu) && (!hasReportDateFilter || getReportOrders(session).length > 0) && matchesReportSearch(session, reportSearchTerm);
     });
 
   return (
@@ -594,11 +607,20 @@ export default function ReportsPage() {
                 <p className="text-xs text-muted-foreground">O período usa a data de criação dos pedidos e afeta totais, detalhes e exportações.</p>
               </div>
             </div>
-            <Button type="button" variant="outline" size="sm" onClick={resetReportDateFilter} disabled={!hasReportDateFilter} className="gap-2">
-              <RotateCcw className="h-3.5 w-3.5" /> Limpar datas
+            <Button type="button" variant="outline" size="sm" onClick={resetReportFilters} disabled={!hasReportDateFilter && !hasReportSearch} className="gap-2">
+              <RotateCcw className="h-3.5 w-3.5" /> Limpar filtros
             </Button>
           </div>
-          <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto] md:items-end">
+          <div className="mb-3 flex flex-wrap gap-2">
+            <Button type="button" size="sm" variant="outline" onClick={() => applyDateShortcut("today")}>Hoje</Button>
+            <Button type="button" size="sm" variant="outline" onClick={() => applyDateShortcut("week")}>Esta semana</Button>
+            <Button type="button" size="sm" variant="outline" onClick={() => applyDateShortcut("month")}>Este mês</Button>
+          </div>
+          <div className="grid gap-3 md:grid-cols-[1.3fr_1fr_1fr_auto] md:items-end">
+            <label htmlFor="reports-search" className="text-sm font-medium text-foreground">
+              Buscar cliente ou responsável
+              <Input id="reports-search" type="search" value={reportSearchTerm} onChange={(event) => setReportSearchTerm(event.target.value)} placeholder="Nome do cliente ou responsável" className="mt-1" />
+            </label>
             <label htmlFor="reports-start-date" className="text-sm font-medium text-foreground">
               Data inicial
               <Input id="reports-start-date" type="date" value={reportStartDate} onChange={(event) => setReportStartDate(event.target.value)} className="mt-1" />

@@ -367,17 +367,20 @@ export async function closeCashierSession(id: number, finalBalance: any) {
 export async function getAllCashierSessionsWithOrders() {
   const db = await getDb();
   if (!db) return [];
-  const [sessionRows, orderRows, itemRows, productRows, customerRows] = await Promise.all([
+  const [sessionRows, orderRows, itemRows, productRows, customerRows, responsibleRows] = await Promise.all([
     db.select().from(cashierSessions).orderBy(desc(cashierSessions.openedAt)),
     db.select().from(orders).orderBy(desc(orders.createdAt)),
     db.select().from(orderItems),
     db.select().from(products),
     db.select().from(customers),
+    db.select().from(cashierResponsibles),
   ]);
   const productById = new Map(productRows.map((product) => [product.id, product]));
   const customerById = new Map(customerRows.map((customer) => [customer.id, customer]));
+  const responsibleById = new Map(responsibleRows.map((responsible) => [responsible.id, responsible]));
   return sessionRows.map((session) => ({
     ...session,
+    responsibleName: responsibleById.get(session.responsibleId)?.name,
     orders: orderRows.filter((order) => order.cashierSessionId === session.id).map((order) => ({
       ...order,
       total: Number(order.totalAmount),

@@ -695,3 +695,11 @@
 - [x] Aplicar o filtro nos totais de faturamento, formas de pagamento e produtos favoritos
 - [x] Garantir que exportações PDF e compartilhamento WhatsApp respeitem o filtro ativo
 - [x] Validar TypeScript, Vitest, build e salvar checkpoint publicado
+
+
+## Busca e Atalhos no Relatório de Vendas
+- [x] Adicionar campo de busca por nome do cliente ou responsável no Relatório de Vendas
+- [x] Adicionar botões de atalho rápido para "Hoje", "Esta semana" e "Este mês"
+- [x] Atualizar helpers compartilhados para suportar o termo de busca textual e cálculo de períodos
+- [x] Adicionar testes unitários para a busca e os atalhos de data
+- [x] Validar TypeScript, Vitest, build e salvar checkpoint publicado
