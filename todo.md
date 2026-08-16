@@ -96,3 +96,10 @@
 - [x] Garantir fallback para "GERAL" quando o pedido do período não tiver cliente cadastrado
 - [x] Adicionar teste unitário de regressão validando o resumo por período com clientes
 - [x] Validar TypeScript, testar com Vitest, realizar build e salvar checkpoint publicado
+
+
+## Exportação de Diagnóstico (JSON real e código do modal)
+- [x] Executar utilitário de captura para extrair a resposta JSON oficial do endpoint tRPC de sessões de caixa (`getAllCashierSessionsWithOrders`) contendo os pedidos e o campo `customerName`
+- [x] Extrair o código-fonte completo da renderização dos pedidos e botões de estorno em `ReportsPage.tsx`
+- [x] Consolidar os dados em um relatório markdown estruturado em arquivo exportável na raiz do projeto
+- [x] Validar o documento gerado e entregar o resultado ao usuário
