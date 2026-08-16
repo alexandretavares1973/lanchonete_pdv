@@ -7,6 +7,7 @@ import { canCreateSharedSale, selectPreferredOpenMenu } from "../shared/menuSele
 import { planDryRun, summarizeSimulationResults } from "../shared/concurrency";
 import { filterAndSortHistoricalSessions } from "../shared/historicalSessionFilters";
 import { filterOrdersByReportDate, getReportDateShortcutRange, isReportDateRangeValid, matchesReportSearch } from "../shared/reportDateFilters";
+import { getCustomerSearchSuggestions } from "../shared/reportSearchSuggestions";
 
 describe("PDV System", () => {
   describe("Shared menu selection", () => {
@@ -406,6 +407,22 @@ describe("Filtro por data do Relatório de Vendas", () => {
     expect(matchesReportSearch(session, "maria")).toBe(true);
     expect(matchesReportSearch(session, "ANA")).toBe(true);
     expect(matchesReportSearch(session, "joão")).toBe(false);
+  });
+});
+
+describe("Sugestões de clientes no Relatório de Vendas", () => {
+  const customers = [
+    { id: 1, name: "Maria Santos" },
+    { id: 2, name: "Carlos Silva" },
+    { id: 3, name: "Ana Maria" },
+  ];
+
+  it("prioriza nomes que começam com o termo e limita a lista", () => {
+    expect(getCustomerSearchSuggestions(customers, "maria", 2).map((customer) => customer.name)).toEqual(["Maria Santos", "Ana Maria"]);
+  });
+
+  it("retorna os primeiros clientes ordenados quando o campo está vazio", () => {
+    expect(getCustomerSearchSuggestions(customers, "", 2).map((customer) => customer.name)).toEqual(["Maria Santos", "Carlos Silva"]);
   });
 });
 

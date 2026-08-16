@@ -703,3 +703,11 @@
 - [x] Atualizar helpers compartilhados para suportar o termo de busca textual e cálculo de períodos
 - [x] Adicionar testes unitários para a busca e os atalhos de data
 - [x] Validar TypeScript, Vitest, build e salvar checkpoint publicado
+
+
+## Sugestões de preenchimento automático de clientes no Relatório de Vendas
+- [x] Carregar lista de clientes cadastrados na página de relatórios via tRPC
+- [x] Adicionar lista suspensa de sugestões filtradas pelo texto digitado
+- [x] Permitir selecionar sugestão por clique ou teclado com fechamento ao perder foco
+- [x] Adicionar testes unitários para o filtro de sugestões de clientes
+- [x] Validar TypeScript, Vitest, build e salvar checkpoint publicado

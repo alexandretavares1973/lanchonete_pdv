@@ -9,6 +9,7 @@ import { trpc } from "@/lib/trpc";
 import { AlertTriangle, ArrowLeft, CalendarDays, CheckCircle2, FileDown, Loader2, Printer, RotateCcw } from "lucide-react";
 import { createTextPdf, downloadTextPdf } from "@/lib/simplePdf";
 import { filterOrdersByReportDate, getReportDateShortcutRange, isReportDateRangeValid, matchesReportSearch, type ReportDateRange, type ReportDateShortcut } from "../../../shared/reportDateFilters";
+import { getCustomerSearchSuggestions } from "../../../shared/reportSearchSuggestions";
 
 interface MenuItem {
   id: number | string;
@@ -67,6 +68,7 @@ interface Customer {
   phone?: string;
   email?: string;
   isDefault?: boolean;
+  isActive?: boolean;
   createdAt: Date | string;
 }
 
@@ -74,12 +76,23 @@ export default function ReportsPage() {
   const [, setLocation] = useLocation();
   const { data: sharedMenus } = trpc.pdv.menu.list.useQuery();
   const { data: sharedSessions, isLoading: sessionsLoading } = trpc.pdv.cashier.getAllSessionsWithOrders.useQuery();
+  const { data: sharedCustomers } = trpc.pdv.customers.list.useQuery();
   const [menus, setMenus] = useState<WeeklyMenu[]>([]);
   const [selectedMenuId, setSelectedMenuId] = useState<number | null>(null);
   const [reportStartDate, setReportStartDate] = useState("");
   const [reportEndDate, setReportEndDate] = useState("");
   const [reportSearchTerm, setReportSearchTerm] = useState("");
+  const [isCustomerSuggestionsOpen, setIsCustomerSuggestionsOpen] = useState(false);
+  const [activeCustomerSuggestionIndex, setActiveCustomerSuggestionIndex] = useState(0);
   const allSessions = useMemo(() => (sharedSessions ?? []) as CashierSession[], [sharedSessions]);
+  const customers = useMemo(
+    () => ((sharedCustomers ?? []) as Customer[]).filter((customer) => customer.isActive !== false).sort((left, right) => left.name.localeCompare(right.name, "pt-BR")),
+    [sharedCustomers],
+  );
+  const customerSuggestions = useMemo(
+    () => getCustomerSearchSuggestions(customers, reportSearchTerm),
+    [customers, reportSearchTerm],
+  );
   const sessions = useMemo(
     () => allSessions.filter((session) => session.weeklyMenuId !== null && session.weeklyMenuId !== undefined),
     [allSessions],
@@ -191,6 +204,32 @@ export default function ReportsPage() {
   const resetReportFilters = () => {
     resetReportDateFilter();
     setReportSearchTerm("");
+    setIsCustomerSuggestionsOpen(false);
+    setActiveCustomerSuggestionIndex(0);
+  };
+  const selectCustomerSuggestion = (customerName: string) => {
+    setReportSearchTerm(customerName);
+    setIsCustomerSuggestionsOpen(false);
+    setActiveCustomerSuggestionIndex(0);
+  };
+  const handleCustomerSearchKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!isCustomerSuggestionsOpen || customerSuggestions.length === 0) {
+      if (event.key === "Escape") setIsCustomerSuggestionsOpen(false);
+      return;
+    }
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setActiveCustomerSuggestionIndex((index) => Math.min(index + 1, customerSuggestions.length - 1));
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setActiveCustomerSuggestionIndex((index) => Math.max(index - 1, 0));
+    } else if (event.key === "Enter") {
+      event.preventDefault();
+      selectCustomerSuggestion(customerSuggestions[activeCustomerSuggestionIndex].name);
+    } else if (event.key === "Escape") {
+      event.preventDefault();
+      setIsCustomerSuggestionsOpen(false);
+    }
   };
 
   const calculateReportData = (session: CashierSession) => {
@@ -617,10 +656,41 @@ export default function ReportsPage() {
             <Button type="button" size="sm" variant="outline" onClick={() => applyDateShortcut("month")}>Este mês</Button>
           </div>
           <div className="grid gap-3 md:grid-cols-[1.3fr_1fr_1fr_auto] md:items-end">
-            <label htmlFor="reports-search" className="text-sm font-medium text-foreground">
-              Buscar cliente ou responsável
-              <Input id="reports-search" type="search" value={reportSearchTerm} onChange={(event) => setReportSearchTerm(event.target.value)} placeholder="Nome do cliente ou responsável" className="mt-1" />
-            </label>
+            <div className="relative">
+              <label htmlFor="reports-search" className="text-sm font-medium text-foreground">Buscar cliente ou responsável</label>
+              <Input
+                id="reports-search"
+                type="search"
+                value={reportSearchTerm}
+                onChange={(event) => { setReportSearchTerm(event.target.value); setActiveCustomerSuggestionIndex(0); setIsCustomerSuggestionsOpen(true); }}
+                onFocus={() => setIsCustomerSuggestionsOpen(true)}
+                onBlur={() => window.setTimeout(() => setIsCustomerSuggestionsOpen(false), 120)}
+                onKeyDown={handleCustomerSearchKeyDown}
+                placeholder="Nome do cliente ou responsável"
+                className="mt-1"
+                role="combobox"
+                aria-autocomplete="list"
+                aria-expanded={isCustomerSuggestionsOpen && customerSuggestions.length > 0}
+                aria-controls="reports-customer-suggestions"
+              />
+              {isCustomerSuggestionsOpen && customerSuggestions.length > 0 && (
+                <div id="reports-customer-suggestions" role="listbox" className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-lg">
+                  {customerSuggestions.map((customer, index) => (
+                    <button
+                      key={customer.id}
+                      type="button"
+                      role="option"
+                      aria-selected={index === activeCustomerSuggestionIndex}
+                      className={`block w-full rounded px-3 py-2 text-left text-sm ${index === activeCustomerSuggestionIndex ? "bg-accent text-accent-foreground" : "hover:bg-accent/60"}`}
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={() => selectCustomerSuggestion(customer.name)}
+                    >
+                      {customer.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
             <label htmlFor="reports-start-date" className="text-sm font-medium text-foreground">
               Data inicial
               <Input id="reports-start-date" type="date" value={reportStartDate} onChange={(event) => setReportStartDate(event.target.value)} className="mt-1" />
