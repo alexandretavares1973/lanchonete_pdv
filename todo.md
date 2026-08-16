@@ -64,3 +64,11 @@
 - [x] Inserir o rótulo do cliente de forma destacada no card do pedido (ex: Cliente: Nome ou GERAL) com suporte a fallback
 - [x] Adicionar testes de regressão automatizados para verificar a presença de customerName no payload de pedidos e na renderização
 - [x] Validar TypeScript, testar com Vitest, realizar build de produção e salvar checkpoint publicado
+
+
+## Auditoria Concreta da Exibição do Cliente em Detalhes da Venda
+- [ ] Inspecionar todas as chamadas tRPC em ReportsPage.tsx para confirmar qual endpoint alimenta a lista de sessões e pedidos
+- [ ] Verificar no servidor se o roteador tRPC define output schema que possa omitir o campo customerName
+- [ ] Inspecionar o JSX do modal de detalhes em ReportsPage.tsx para garantir que a renderização de customerName / GERAL ocorre dentro do card do pedido
+- [ ] Executar consulta real ao endpoint no backend para inspecionar o JSON retornado de um pedido com e sem cliente
+- [ ] Obter print visual comprovando a exibição correta do nome do cliente e GERAL nos 4 pedidos do exemplo antes de concluir

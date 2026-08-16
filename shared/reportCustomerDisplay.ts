@@ -1,4 +1,6 @@
 export function getReportCustomerLabel(customerName?: string | null): string {
-  const normalizedName = customerName?.trim();
-  return normalizedName || "GERAL";
+  if (!customerName) return "GERAL";
+  const trimmed = String(customerName).trim();
+  if (!trimmed || trimmed === "undefined" || trimmed === "null") return "GERAL";
+  return trimmed;
 }
