@@ -555,7 +555,19 @@ export async function getOrdersByCashierSession(cashierSessionId: number) {
 export async function getOrderItemsByOrderId(orderId: number) {
   const db = await getDb();
   if (!db) return [];
-  return await db.select().from(orderItems).where(eq(orderItems.orderId, orderId));
+  return await db.select({
+    id: orderItems.id,
+    orderId: orderItems.orderId,
+    productId: orderItems.productId,
+    productName: products.name,
+    quantity: orderItems.quantity,
+    refundedQuantity: orderItems.refundedQuantity,
+    unitPrice: orderItems.unitPrice,
+    subtotal: orderItems.subtotal,
+    createdAt: orderItems.createdAt,
+  }).from(orderItems)
+    .leftJoin(products, eq(orderItems.productId, products.id))
+    .where(eq(orderItems.orderId, orderId));
 }
 
 /**

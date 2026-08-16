@@ -10,6 +10,7 @@ import { AlertTriangle, ArrowLeft, CalendarDays, CheckCircle2, FileDown, Loader2
 import { createTextPdf, downloadTextPdf } from "@/lib/simplePdf";
 import { filterOrdersByReportDate, getReportDateShortcutRange, isReportDateRangeValid, matchesReportSearch, type ReportDateRange, type ReportDateShortcut } from "../../../shared/reportDateFilters";
 import { getCustomerSearchSuggestions } from "../../../shared/reportSearchSuggestions";
+import { resolveRefundProductName } from "../../../shared/refundItemDisplay";
 
 interface MenuItem {
   id: number | string;
@@ -1054,11 +1055,12 @@ export default function ReportsPage() {
                     const maxRefundable = item.quantity - refunded;
                     const isFullyRefunded = maxRefundable <= 0;
                     const currentRefundQty = refundQuantities[itemKey] ?? 0;
+                    const productName = resolveRefundProductName(item, orderToCancel.items);
 
                   return (
                     <div key={`${orderToCancel.id}-refund-item-${index}`} className={`flex items-center justify-between py-2 border-b border-border/60 last:border-0 ${isFullyRefunded ? "opacity-60 line-through" : ""}`}>
                       <div className="flex-1 pr-2">
-                        <div className="font-medium text-foreground">{item.productName}</div>
+                        <div className="font-medium text-foreground">{productName}</div>
                         <div className="text-xs text-muted-foreground">Vendido: {item.quantity} | Já estornado: {refunded}</div>
                       </div>
                       <div className="text-xs font-semibold px-2 text-muted-foreground">

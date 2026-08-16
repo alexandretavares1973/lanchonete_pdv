@@ -719,3 +719,11 @@
 - [x] Corrigir a verificação de estoque e garantir baixa simultânea no global e no cardápio específico
 - [x] Adicionar teste unitário de regressão para a venda de produtos com estoque global e de cardápio
 - [x] Validar TypeScript, Vitest, build e salvar checkpoint publicado
+
+
+## Correção do nome do produto no diálogo de estorno
+- [ ] Inspecionar o componente do diálogo de estorno em ReportsPage.tsx
+- [ ] Verificar por que o nome do produto não está sendo renderizado na tabela de itens do pedido
+- [ ] Corrigir a propriedade exibida para garantir que o nome de cada produto apareça corretamente
+- [ ] Adicionar teste unitário de regressão para a renderização dos itens no estorno
+- [ ] Validar TypeScript, Vitest, build e salvar checkpoint publicado

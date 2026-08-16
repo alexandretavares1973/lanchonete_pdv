@@ -9,6 +9,21 @@ import { filterAndSortHistoricalSessions } from "../shared/historicalSessionFilt
 import { filterOrdersByReportDate, getReportDateShortcutRange, isReportDateRangeValid, matchesReportSearch } from "../shared/reportDateFilters";
 import { getCustomerSearchSuggestions } from "../shared/reportSearchSuggestions";
 import { getMysqlAffectedRows } from "../shared/mysqlResult";
+import { resolveRefundProductName } from "../shared/refundItemDisplay";
+
+describe("Nome dos produtos no estorno", () => {
+  it("prioriza o nome retornado pelo item oficial do pedido", () => {
+    expect(resolveRefundProductName({ productId: 30014, productName: "MACARRONADA" }, [{ productId: 30014, productName: "Nome antigo" }])).toBe("MACARRONADA");
+  });
+
+  it("usa o nome do pedido da sessão quando o endpoint antigo não o retornava", () => {
+    expect(resolveRefundProductName({ productId: 90002 }, [{ productId: 90002, productName: "SANDUICHE" }])).toBe("SANDUICHE");
+  });
+
+  it("exibe um fallback identificável quando o produto não existe mais", () => {
+    expect(resolveRefundProductName({ productId: 12345 }, [])).toBe("Produto #12345");
+  });
+});
 
 describe("Resultado de atualização MySQL2", () => {
   it("lê affectedRows quando o driver retorna [ResultSetHeader, FieldPacket[]]", () => {
