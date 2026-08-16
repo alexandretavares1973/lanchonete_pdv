@@ -671,4 +671,4 @@
 - [x] Proteger criação de pedidos com débito atômico de estoque, validação de cardápio e rollback transacional
 - [x] Adicionar testes unitários e de regressão para vínculo manual, concorrência e estoque
 - [x] Validar TypeScript, Vitest, build e preview
-- [ ] Salvar checkpoint publicado no modo Autoscale
+- [x] Salvar checkpoint publicado no modo Autoscale
