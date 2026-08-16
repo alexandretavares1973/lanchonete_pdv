@@ -67,8 +67,8 @@
 
 
 ## Auditoria Concreta da Exibição do Cliente em Detalhes da Venda
-- [ ] Inspecionar todas as chamadas tRPC em ReportsPage.tsx para confirmar qual endpoint alimenta a lista de sessões e pedidos
-- [ ] Verificar no servidor se o roteador tRPC define output schema que possa omitir o campo customerName
-- [ ] Inspecionar o JSX do modal de detalhes em ReportsPage.tsx para garantir que a renderização de customerName / GERAL ocorre dentro do card do pedido
-- [ ] Executar consulta real ao endpoint no backend para inspecionar o JSON retornado de um pedido com e sem cliente
-- [ ] Obter print visual comprovando a exibição correta do nome do cliente e GERAL nos 4 pedidos do exemplo antes de concluir
+- [x] Inspecionar todas as chamadas tRPC em ReportsPage.tsx para confirmar qual endpoint alimenta a lista de sessões e pedidos
+- [x] Verificar no servidor se o roteador tRPC define output schema que possa omitir o campo customerName
+- [x] Inspecionar o JSX do modal de detalhes em ReportsPage.tsx para garantir que a renderização de customerName / GERAL ocorre dentro do card do pedido
+- [ ] Executar chamada real ao endpoint tRPC pdv.cashier.getAllSessionsWithOrders e inspecionar o JSON de pedidos com cliente e GERAL
+- [ ] Validar visualmente o modal "Detalhes da Venda" no navegador com os 4 pedidos do exemplo e confirmar a exibição do nome do cliente e GERAL
