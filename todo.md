@@ -80,3 +80,11 @@
 - [x] Garantir fallback para "GERAL" quando nenhum cliente específico estiver selecionado
 - [x] Adicionar teste unitário de regressão validando a presença do cliente e fallback no cupom
 - [x] Validar TypeScript, testar com Vitest, realizar build e salvar checkpoint publicado
+
+
+## Exibição do Cliente no Card de Estorno (ReportsPage.tsx)
+- [ ] Auditar o card de pedido no diálogo "Detalhes da Venda" em ReportsPage.tsx para confirmar onde o nome do cliente é exibido
+- [ ] Atualizar o cabeçalho do card de pedido para mostrar de forma evidente "Cliente: [Nome do Cliente]" ao lado do ID e status do pedido
+- [ ] Garantir fallback para "GERAL" quando o pedido não tiver cliente vinculado
+- [ ] Adicionar teste unitário de regressão para a presença do cliente no card de estorno
+- [ ] Validar TypeScript, testar com Vitest, realizar build e salvar checkpoint publicado

@@ -899,8 +899,9 @@ export default function ReportsPage() {
                               <p className="mt-1 text-xs text-muted-foreground no-underline">
                                 {new Date(order.createdAt).toLocaleString("pt-BR")} · Total: R$ {Number(order.total || 0).toFixed(2)}
                               </p>
-                              <div className="mt-2 rounded bg-amber-50 px-2 py-1 text-xs font-bold text-amber-900 border border-amber-200">
-                                👤 Cliente: {order.customerName ? order.customerName : "GERAL"} (ID: {order.customerId || "N/A"})
+                              <div className="mt-2 inline-flex items-center gap-1.5 rounded-md bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-900 border border-amber-300">
+                                <span>👤 Cliente:</span>
+                                <span className="underline decoration-amber-400">{order.customerName && order.customerName.trim() ? order.customerName.trim() : "GERAL"}</span>
                               </div>
                               <div className="mt-2 space-y-1 text-xs text-muted-foreground no-underline">
                                 {order.items.map((item, index) => (
@@ -1045,6 +1046,9 @@ export default function ReportsPage() {
           </DialogHeader>
           {orderToCancel && (
             <div className="space-y-4">
+              <div className="rounded-md bg-primary/10 px-3 py-2 text-sm font-semibold text-primary">
+                👤 Cliente: {getReportCustomerLabel(orderToCancel.customerName)}
+              </div>
               <p className="text-sm text-muted-foreground">Informe a quantidade a estornar para cada item. O estoque global e do cardápio serão devolvidos proporcionalmente.</p>
               <div className="rounded-lg border border-border bg-muted/40 p-3 text-sm space-y-3 max-h-60 overflow-y-auto">
                 <div className="font-semibold pb-1 border-b border-border flex justify-between">
