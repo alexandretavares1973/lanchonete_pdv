@@ -5,6 +5,7 @@ import { LOW_STOCK_THRESHOLD, getLowStockMessage, isLowGlobalStock } from "../sh
 import { parseStockQuantity } from "../shared/stockQuantity";
 import { canCreateSharedSale, selectPreferredOpenMenu } from "../shared/menuSelection";
 import { planDryRun, summarizeSimulationResults } from "../shared/concurrency";
+import { filterAndSortHistoricalSessions } from "../shared/historicalSessionFilters";
 
 describe("PDV System", () => {
   describe("Shared menu selection", () => {
@@ -369,6 +370,29 @@ describe("Estorno Parcial por Item", () => {
     expect(itemsPayload[0].orderItemId).toBe(1);
     expect(itemsPayload[0].quantity).toBe(1);
     expect(Number.isNaN(itemsPayload[0].orderItemId)).toBe(false);
+  });
+});
+
+describe("Filtros de sessões históricas", () => {
+  const sessions = [
+    { id: 1, openedAt: "2026-08-10T09:00:00.000Z", orders: [{ total: 20 }, { total: 10 }] },
+    { id: 2, openedAt: "2026-08-12T09:00:00.000Z", orders: [{ total: 100 }] },
+    { id: 3, openedAt: "2026-08-12T18:00:00.000Z", orders: [] },
+  ];
+
+  it("filtra pelo intervalo inclusivo da data de abertura", () => {
+    const result = filterAndSortHistoricalSessions(sessions, { startDate: "2026-08-12", endDate: "2026-08-12" });
+    expect(result.map((session) => session.id)).toEqual([3, 2]);
+  });
+
+  it("ordena pela maior quantidade de pedidos", () => {
+    const result = filterAndSortHistoricalSessions(sessions, { sortBy: "ordersDesc" });
+    expect(result.map((session) => session.id)).toEqual([1, 2, 3]);
+  });
+
+  it("ordena pelo maior valor total e mantém desempate por data", () => {
+    const result = filterAndSortHistoricalSessions(sessions, { sortBy: "totalDesc" });
+    expect(result.map((session) => session.id)).toEqual([2, 1, 3]);
   });
 });
 

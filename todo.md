@@ -672,3 +672,11 @@
 - [x] Adicionar testes unitários e de regressão para vínculo manual, concorrência e estoque
 - [x] Validar TypeScript, Vitest, build e preview
 - [x] Salvar checkpoint publicado no modo Autoscale
+
+
+## Filtros da revisão de sessões históricas
+- [x] Adicionar filtro por data inicial e data final na revisão de sessões
+- [x] Adicionar ordenação por data, quantidade de pedidos e valor total
+- [x] Exibir contagem de resultados e estado vazio orientado
+- [x] Adicionar testes unitários para filtragem e ordenação
+- [x] Validar TypeScript, Vitest, build e preview; salvar checkpoint publicado

@@ -1,9 +1,11 @@
 import { useMemo, useState } from "react";
-import { AlertTriangle, ArrowLeft, CheckCircle2, Link2, Loader2 } from "lucide-react";
+import { AlertTriangle, ArrowLeft, CheckCircle2, Filter, Link2, Loader2, RotateCcw } from "lucide-react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { filterAndSortHistoricalSessions, type HistoricalSessionFilterOrder } from "../../../shared/historicalSessionFilters";
 import { trpc } from "@/lib/trpc";
 
 type HistoricalItem = {
@@ -48,6 +50,9 @@ export default function HistoricalSessionReviewPage() {
   const menus = rawMenus as Menu[];
   const utils = trpc.useUtils();
   const [selectedMenuBySession, setSelectedMenuBySession] = useState<Record<number, string>>({});
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [sortBy, setSortBy] = useState<HistoricalSessionFilterOrder>("openedAtDesc");
   const linkMutation = trpc.pdv.cashier.linkHistoricalSession.useMutation({
     onSuccess: async () => {
       await Promise.all([
@@ -58,6 +63,17 @@ export default function HistoricalSessionReviewPage() {
     },
     onError: (error) => toast.error(error.message || "Não foi possível vincular a sessão."),
   });
+
+  const visibleSessions = useMemo(
+    () => filterAndSortHistoricalSessions(sessions, { startDate, endDate, sortBy }),
+    [sessions, startDate, endDate, sortBy],
+  );
+
+  const resetFilters = () => {
+    setStartDate("");
+    setEndDate("");
+    setSortBy("openedAtDesc");
+  };
 
   const menuProductIds = useMemo(
     () => new Map(menus.map((menu) => [menu.id, new Set(menu.items.map((item) => item.productId))])),
@@ -116,6 +132,28 @@ export default function HistoricalSessionReviewPage() {
           </div>
         </Card>
 
+        <Card className="mb-6 p-4 shadow-sm">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <Filter className="h-5 w-5 text-primary" />
+              <div>
+                <h2 className="font-semibold text-foreground">Filtrar sessões</h2>
+                <p className="text-xs text-muted-foreground">Use o período de abertura para localizar registros antigos.</p>
+              </div>
+            </div>
+            <Button type="button" variant="outline" size="sm" onClick={resetFilters} className="gap-2" disabled={!startDate && !endDate && sortBy === "openedAtDesc"}>
+              <RotateCcw className="h-3.5 w-3.5" /> Limpar filtros
+            </Button>
+          </div>
+          <div className="grid gap-3 md:grid-cols-[1fr_1fr_1.4fr_auto] md:items-end">
+            <label className="text-sm font-medium text-foreground" htmlFor="historical-start-date">Data inicial<Input id="historical-start-date" type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} className="mt-1" /></label>
+            <label className="text-sm font-medium text-foreground" htmlFor="historical-end-date">Data final<Input id="historical-end-date" type="date" value={endDate} onChange={(event) => setEndDate(event.target.value)} className="mt-1" /></label>
+            <label className="text-sm font-medium text-foreground" htmlFor="historical-sort">Ordenar por<select id="historical-sort" value={sortBy} onChange={(event) => setSortBy(event.target.value as HistoricalSessionFilterOrder)} className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground"><option value="openedAtDesc">Data mais recente primeiro</option><option value="openedAtAsc">Data mais antiga primeiro</option><option value="ordersDesc">Maior quantidade de pedidos</option><option value="totalDesc">Maior valor total</option></select></label>
+            <div className="rounded-md bg-muted/50 px-3 py-2 text-sm text-muted-foreground"><strong className="text-foreground">{visibleSessions.length}</strong> de {sessions.length} sessão(ões)</div>
+          </div>
+          {startDate && endDate && startDate > endDate && <p className="mt-2 text-sm text-destructive">A data inicial deve ser anterior ou igual à data final.</p>}
+        </Card>
+
         {isLoading ? (
           <Card className="p-10 text-center text-muted-foreground">Carregando sessões históricas...</Card>
         ) : sessions.length === 0 ? (
@@ -124,9 +162,16 @@ export default function HistoricalSessionReviewPage() {
             <p className="font-semibold text-foreground">Não há sessões históricas pendentes.</p>
             <p className="mt-1 text-sm text-muted-foreground">Todas as sessões já estão vinculadas ou não existem registros para revisar.</p>
           </Card>
+        ) : visibleSessions.length === 0 ? (
+          <Card className="p-10 text-center">
+            <Filter className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
+            <p className="font-semibold text-foreground">Nenhuma sessão corresponde aos filtros.</p>
+            <p className="mt-1 text-sm text-muted-foreground">Ajuste o período ou a ordenação para ampliar a busca.</p>
+            <Button type="button" variant="outline" onClick={resetFilters} className="mt-4">Limpar filtros</Button>
+          </Card>
         ) : (
           <div className="space-y-5">
-            {sessions.map((session) => {
+            {visibleSessions.map((session) => {
               const suggestedMenu = getSuggestedMenu(session);
               const selectedMenuId = selectedMenuBySession[session.id] || (suggestedMenu ? String(suggestedMenu.id) : "");
               const productSummary = new Map<string, number>();
