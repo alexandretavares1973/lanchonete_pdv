@@ -83,8 +83,8 @@
 
 
 ## Exibição do Cliente no Card de Estorno (ReportsPage.tsx)
-- [ ] Auditar o card de pedido no diálogo "Detalhes da Venda" em ReportsPage.tsx para confirmar onde o nome do cliente é exibido
-- [ ] Atualizar o cabeçalho do card de pedido para mostrar de forma evidente "Cliente: [Nome do Cliente]" ao lado do ID e status do pedido
-- [ ] Garantir fallback para "GERAL" quando o pedido não tiver cliente vinculado
-- [ ] Adicionar teste unitário de regressão para a presença do cliente no card de estorno
-- [ ] Validar TypeScript, testar com Vitest, realizar build e salvar checkpoint publicado
+- [x] Auditar o card de pedido no diálogo "Detalhes da Venda" em ReportsPage.tsx para confirmar onde o nome do cliente é exibido
+- [x] Atualizar a renderização do card de pedido e do diálogo de estorno para exibir de forma evidente "Cliente: [Nome do Cliente]" com suporte a fallback GERAL
+- [x] Garantir fallback para "GERAL" quando o pedido não tiver cliente vinculado
+- [x] Adicionar teste unitário de regressão para a presença do cliente no card de estorno
+- [x] Validar TypeScript, testar com Vitest, realizar build e salvar checkpoint publicado
