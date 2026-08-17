@@ -370,26 +370,35 @@ export default function WeeklyMenuPage() {
                   >
                     Editar Produtos
                   </Button>
-                  <Button
-                    onClick={() => handleToggleStatus(menu.id)}
-                    className={`w-full gap-2 ${
-                      menu.status === "open"
-                        ? "bg-red-500 hover:bg-red-600"
-                        : "bg-green-500 hover:bg-green-600"
-                    }`}
-                  >
-                    {menu.status === "open" ? (
-                      <>
-                        <Lock className="w-4 h-4" />
-                        Fechar Cardápio
-                      </>
-                    ) : (
-                      <>
-                        <Unlock className="w-4 h-4" />
-                        Abrir Cardápio
-                      </>
-                    )}
-                  </Button>
+                  {(() => {
+                    const hasAnotherOpen = menu.status !== "open" && menus.some((m: any) => m.status === "open" && m.id !== menu.id);
+                    return (
+                      <Button
+                        onClick={() => handleToggleStatus(menu.id)}
+                        disabled={hasAnotherOpen}
+                        title={hasAnotherOpen ? "Já existe outro cardápio aberto no momento." : undefined}
+                        className={`w-full gap-2 ${
+                          menu.status === "open"
+                            ? "bg-red-500 hover:bg-red-600"
+                            : hasAnotherOpen
+                            ? "bg-muted text-muted-foreground cursor-not-allowed opacity-60"
+                            : "bg-green-500 hover:bg-green-600"
+                        }`}
+                      >
+                        {menu.status === "open" ? (
+                          <>
+                            <Lock className="w-4 h-4" />
+                            Fechar Cardápio
+                          </>
+                        ) : (
+                          <>
+                            <Unlock className="w-4 h-4" />
+                            Abrir Cardápio
+                          </>
+                        )}
+                      </Button>
+                    );
+                  })()}
                   <Button
                     onClick={() => handleDeleteMenu(menu.id)}
                     variant="destructive"

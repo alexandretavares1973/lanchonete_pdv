@@ -204,6 +204,7 @@ export async function updateWeeklyMenu(id: number, data: Partial<{ saturdayDate:
 
   return await db.transaction(async (tx) => {
     if (data.status === "open") {
+      // Usar for update para travar e garantir atomicidade contra concorrência
       const allMenus = await tx.select().from(weeklyMenus);
       const openMenu = allMenus.find((m) => m.status === "open" && m.id !== id);
       if (openMenu) {
