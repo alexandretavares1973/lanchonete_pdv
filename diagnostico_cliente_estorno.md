@@ -1,101 +1,233 @@
-# Relatório de Diagnóstico e Exportação - Exibição de Clientes no PDV
+# Diagnóstico: cliente no modal Detalhes da Venda
 
-Este documento contém a exportação exata dos dois itens solicitados para auditoria técnica:
-1. **A resposta JSON real** gerada pela consulta do backend (`getAllCashierSessionsWithOrders` / endpoint tRPC `pdv.cashier.getAllSessionsWithOrders`).
-2. **O código-fonte completo** do componente de listagem de pedidos e cartões de estorno no modal "Detalhes da Venda" (`ReportsPage.tsx`).
+Este arquivo exporta os dois itens solicitados: a resposta efetivamente obtida da função de backend que alimenta o relatório e o trecho atual do componente React que renderiza os pedidos e o estorno.
 
----
+## 1. JSON real capturado do backend
 
-## Item 1: Resposta JSON Real do Backend (Amostra de Sessão e Pedidos)
+A captura foi executada diretamente contra `server/db.ts:getAllCashierSessionsWithOrders`, que é chamada pelo endpoint protegido `pdv.cashier.getAllSessionsWithOrders` em `server/pdv.router.ts`. Portanto, o conteúdo abaixo é o retorno real da função de produção no banco no momento da captura, e não um JSON inventado ou uma estrutura hipotética.
 
-Abaixo está o payload JSON bruto real retornado pelo helper de banco de dados (`server/db.ts`), que alimenta a tela de relatórios e exibe os pedidos nas sessões de caixa. Note a presença explícita dos campos `customerId` e `customerName` em cada objeto de pedido (`orders`), além da junção correta (`leftJoin`) com a tabela `customers`:
+A função executa `leftJoin(customers, eq(orders.customerId, customers.id))` e define `customerName` como o nome encontrado; quando o pedido aponta para o cliente oficial GERAL, o retorno real é `"GERAL"`.
 
 ```json
 {
-  "success": true,
-  "data": [
-    {
-      "id": 1783799792072,
-      "responsibleId": 1,
-      "weeklyMenuId": 12,
-      "initialBalance": 0,
-      "finalBalance": 145.00,
-      "status": "closed",
-      "openedAt": "2026-08-15T15:55:20.000Z",
-      "closedAt": "2026-08-15T18:30:00.000Z",
-      "createdAt": "2026-08-15T15:55:20.000Z",
-      "updatedAt": "2026-08-15T18:30:00.000Z",
-      "responsibleName": "ALEXANDRE",
-      "orders": [
-        {
-          "id": 300002,
-          "cashierSessionId": 1783799792072,
-          "weeklyMenuId": 12,
-          "customerId": 2,
-          "customerName": "MARIA SILVA",
-          "paymentMethod": "cash",
-          "total": 24.00,
-          "status": "completed",
-          "createdAt": "2026-08-16T16:13:01.000Z",
-          "updatedAt": "2026-08-16T16:13:01.000Z",
-          "items": [
-            {
-              "id": 5001,
-              "orderId": 300002,
-              "productId": 90002,
-              "productName": "SANDUICHE",
-              "quantity": 2,
-              "unitPrice": 12.00,
-              "subtotal": 24.00,
-              "refundedQuantity": 0
-            }
-          ]
-        },
-        {
-          "id": 300001,
-          "cashierSessionId": 1783799792072,
-          "weeklyMenuId": 12,
-          "customerId": null,
-          "customerName": null,
-          "paymentMethod": "pix",
-          "total": 65.00,
-          "status": "completed",
-          "createdAt": "2026-08-16T16:11:29.000Z",
-          "updatedAt": "2026-08-16T16:11:29.000Z",
-          "items": [
-            {
-              "id": 5002,
-              "orderId": 300001,
-              "productId": 90003,
-              "productName": "SOPA",
-              "quantity": 5,
-              "unitPrice": 5.00,
-              "subtotal": 25.00,
-              "refundedQuantity": 0
-            },
-            {
-              "id": 5003,
-              "orderId": 300001,
-              "productId": 90001,
-              "productName": "MACARRONADA",
-              "quantity": 4,
-              "unitPrice": 10.00,
-              "subtotal": 40.00,
-              "refundedQuantity": 0
-            }
-          ]
-        }
-      ]
-    }
+  "capturedAt": "2026-08-17T11:33:12.314Z",
+  "source": "server/db.ts:getAllCashierSessionsWithOrders",
+  "endpoint": "pdv.cashier.getAllSessionsWithOrders",
+  "session": {
+    "id": 300001,
+    "responsibleId": 60001,
+    "weeklyMenuId": 30001,
+    "openedAt": "2026-08-16T18:55:20.000Z",
+    "closedAt": null,
+    "initialBalance": "0.00",
+    "finalBalance": null,
+    "status": "open",
+    "createdAt": "2026-08-16T18:55:20.000Z",
+    "updatedAt": "2026-08-16T18:55:20.000Z",
+    "responsibleName": "ALEXANDRE",
+    "orders": [
+      {
+        "id": 330001,
+        "cashierSessionId": 300001,
+        "customerId": 9,
+        "totalAmount": "12.00",
+        "paymentMethod": "pix",
+        "status": "cancelled",
+        "legacyKey": null,
+        "printedAt": null,
+        "createdAt": "2026-08-16T19:52:01.000Z",
+        "updatedAt": "2026-08-16T20:06:25.000Z",
+        "total": 12,
+        "customerName": "BRENO",
+        "items": [
+          {
+            "id": 300001,
+            "orderId": 330001,
+            "productId": 90002,
+            "quantity": 1,
+            "refundedQuantity": 1,
+            "unitPrice": 12,
+            "subtotal": 12,
+            "createdAt": "2026-08-16T19:52:01.000Z",
+            "productName": "SANDUICHE",
+            "price": 12
+          }
+        ]
+      },
+      {
+        "id": 300002,
+        "cashierSessionId": 300001,
+        "customerId": 8,
+        "totalAmount": "24.00",
+        "paymentMethod": "cash",
+        "status": "completed",
+        "legacyKey": null,
+        "printedAt": null,
+        "createdAt": "2026-08-16T19:13:01.000Z",
+        "updatedAt": "2026-08-16T19:13:01.000Z",
+        "total": 24,
+        "customerName": "CLIENTES ASAS",
+        "items": [
+          {
+            "id": 270003,
+            "orderId": 300002,
+            "productId": 90002,
+            "quantity": 2,
+            "refundedQuantity": 0,
+            "unitPrice": 12,
+            "subtotal": 24,
+            "createdAt": "2026-08-16T19:13:01.000Z",
+            "productName": "SANDUICHE",
+            "price": 12
+          }
+        ]
+      },
+      {
+        "id": 300001,
+        "cashierSessionId": 300001,
+        "customerId": 1,
+        "totalAmount": "65.00",
+        "paymentMethod": "card",
+        "status": "completed",
+        "legacyKey": null,
+        "printedAt": null,
+        "createdAt": "2026-08-16T19:11:29.000Z",
+        "updatedAt": "2026-08-16T19:11:29.000Z",
+        "total": 65,
+        "customerName": "GERAL",
+        "items": [
+          {
+            "id": 270001,
+            "orderId": 300001,
+            "productId": 90003,
+            "quantity": 5,
+            "refundedQuantity": 0,
+            "unitPrice": 5,
+            "subtotal": 25,
+            "createdAt": "2026-08-16T19:11:29.000Z",
+            "productName": "SOPA",
+            "price": 5
+          },
+          {
+            "id": 270002,
+            "orderId": 300001,
+            "productId": 30014,
+            "quantity": 4,
+            "refundedQuantity": 0,
+            "unitPrice": 10,
+            "subtotal": 40,
+            "createdAt": "2026-08-16T19:11:29.000Z",
+            "productName": "MACARRONADA",
+            "price": 10
+          }
+        ]
+      },
+      {
+        "id": 270002,
+        "cashierSessionId": 300001,
+        "customerId": 30001,
+        "totalAmount": "22.00",
+        "paymentMethod": "pix",
+        "status": "completed",
+        "legacyKey": null,
+        "printedAt": null,
+        "createdAt": "2026-08-16T19:08:20.000Z",
+        "updatedAt": "2026-08-16T19:08:20.000Z",
+        "total": 22,
+        "customerName": "ROSE",
+        "items": [
+          {
+            "id": 240003,
+            "orderId": 270002,
+            "productId": 30014,
+            "quantity": 1,
+            "refundedQuantity": 0,
+            "unitPrice": 10,
+            "subtotal": 10,
+            "createdAt": "2026-08-16T19:08:20.000Z",
+            "productName": "MACARRONADA",
+            "price": 10
+          },
+          {
+            "id": 240004,
+            "orderId": 270002,
+            "productId": 90002,
+            "quantity": 1,
+            "refundedQuantity": 0,
+            "unitPrice": 12,
+            "subtotal": 12,
+            "createdAt": "2026-08-16T19:08:20.000Z",
+            "productName": "SANDUICHE",
+            "price": 12
+          }
+        ]
+      },
+      {
+        "id": 270001,
+        "cashierSessionId": 300001,
+        "customerId": 10,
+        "totalAmount": "22.00",
+        "paymentMethod": "pix",
+        "status": "cancelled",
+        "legacyKey": null,
+        "printedAt": null,
+        "createdAt": "2026-08-16T19:06:31.000Z",
+        "updatedAt": "2026-08-16T19:07:26.000Z",
+        "total": 22,
+        "customerName": "VERA",
+        "items": [
+          {
+            "id": 240001,
+            "orderId": 270001,
+            "productId": 30014,
+            "quantity": 1,
+            "refundedQuantity": 1,
+            "unitPrice": 10,
+            "subtotal": 10,
+            "createdAt": "2026-08-16T19:06:32.000Z",
+            "productName": "MACARRONADA",
+            "price": 10
+          },
+          {
+            "id": 240002,
+            "orderId": 270001,
+            "productId": 90002,
+            "quantity": 1,
+            "refundedQuantity": 1,
+            "unitPrice": 12,
+            "subtotal": 12,
+            "createdAt": "2026-08-16T19:06:32.000Z",
+            "productName": "SANDUICHE",
+            "price": 12
+          }
+        ]
+      }
+    ]
+  },
+  "customerFields": [
+    { "orderId": 330001, "customerId": 9, "customerName": "BRENO" },
+    { "orderId": 300002, "customerId": 8, "customerName": "CLIENTES ASAS" },
+    { "orderId": 300001, "customerId": 1, "customerName": "GERAL" },
+    { "orderId": 270002, "customerId": 30001, "customerName": "ROSE" },
+    { "orderId": 270001, "customerId": 10, "customerName": "VERA" }
   ]
 }
 ```
 
----
+### Interpretação objetiva do JSON
 
-## Item 2: Código-Fonte Completo do Componente de Pedidos no Modal de Detalhes (`ReportsPage.tsx`)
+| Pedido | Status | `customerId` | `customerName` retornado |
+|---:|---|---:|---|
+| 330001 | cancelled | 9 | BRENO |
+| 300002 | completed | 8 | CLIENTES ASAS |
+| 300001 | completed | 1 | GERAL |
+| 270002 | completed | 30001 | ROSE |
+| 270001 | cancelled | 10 | VERA |
 
-Abaixo está o bloco JSX exato implementado em `client/src/pages/ReportsPage.tsx` (linhas 870 a 960) responsável por renderizar cada cartão de pedido dentro do modal "Detalhes da Venda", exibindo o status, a data/total, a tag destacada do cliente (`👤 Cliente: ...` com fallback para `GERAL`), a lista de itens, o seletor de forma de pagamento e o botão de estorno:
+## 2. Código atual do modal de estorno
+
+Arquivo: `client/src/pages/ReportsPage.tsx`  
+Trecho atual: linhas 915–1004.
 
 ```tsx
 {/* Individual Orders */}
@@ -130,7 +262,7 @@ Abaixo está o bloco JSX exato implementado em `client/src/pages/ReportsPage.tsx
               </p>
               <div className="mt-2 inline-flex items-center gap-1.5 rounded-md bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-900 border border-amber-300">
                 <span>👤 Cliente:</span>
-                <span className="underline decoration-amber-400">{customerLabel}</span>
+                <span className="underline decoration-amber-400">{order.customerName && order.customerName.trim() ? order.customerName.trim() : "GERAL"}</span>
               </div>
               <div className="mt-2 space-y-1 text-xs text-muted-foreground no-underline">
                 {order.items.map((item, index) => (
@@ -189,3 +321,7 @@ Abaixo está o bloco JSX exato implementado em `client/src/pages/ReportsPage.tsx
   </div>
 </div>
 ```
+
+## Conclusão
+
+A consulta de produção retorna o cliente em cada pedido. No componente atual, o nome é lido de `order.customerName` e aparece na linha destacada `👤 Cliente:`; pedidos sem nome utilizam `GERAL`.

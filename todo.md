@@ -99,7 +99,7 @@
 
 
 ## Exportação de Diagnóstico (JSON real e código do modal)
-- [x] Executar utilitário de captura para extrair a resposta JSON oficial do endpoint tRPC de sessões de caixa (`getAllCashierSessionsWithOrders`) contendo os pedidos e o campo `customerName`
-- [x] Extrair o código-fonte completo da renderização dos pedidos e botões de estorno em `ReportsPage.tsx`
-- [x] Consolidar os dados em um relatório markdown estruturado em arquivo exportável na raiz do projeto
-- [x] Validar o documento gerado e entregar o resultado ao usuário
+- [x] Executar captura real da função `getAllCashierSessionsWithOrders` e registrar o JSON efetivo contendo `customerName`
+- [x] Extrair o código-fonte atual da renderização dos pedidos e botões de estorno em `ReportsPage.tsx`
+- [x] Consolidar a captura real e o código vigente em `diagnostico_cliente_estorno.md`
+- [x] Validar o documento, gerar também o JSON bruto e preparar a entrega direta ao usuário

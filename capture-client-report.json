@@ -1,0 +1,223 @@
+{
+  "capturedAt": "2026-08-17T11:33:12.314Z",
+  "source": "server/db.ts:getAllCashierSessionsWithOrders",
+  "endpoint": "pdv.cashier.getAllSessionsWithOrders",
+  "session": {
+    "id": 300001,
+    "responsibleId": 60001,
+    "weeklyMenuId": 30001,
+    "openedAt": "2026-08-16T18:55:20.000Z",
+    "closedAt": null,
+    "initialBalance": "0.00",
+    "finalBalance": null,
+    "status": "open",
+    "createdAt": "2026-08-16T18:55:20.000Z",
+    "updatedAt": "2026-08-16T18:55:20.000Z",
+    "responsibleName": "ALEXANDRE",
+    "orders": [
+      {
+        "id": 330001,
+        "cashierSessionId": 300001,
+        "customerId": 9,
+        "totalAmount": "12.00",
+        "paymentMethod": "pix",
+        "status": "cancelled",
+        "legacyKey": null,
+        "printedAt": null,
+        "createdAt": "2026-08-16T19:52:01.000Z",
+        "updatedAt": "2026-08-16T20:06:25.000Z",
+        "total": 12,
+        "customerName": "BRENO",
+        "items": [
+          {
+            "id": 300001,
+            "orderId": 330001,
+            "productId": 90002,
+            "quantity": 1,
+            "refundedQuantity": 1,
+            "unitPrice": 12,
+            "subtotal": 12,
+            "createdAt": "2026-08-16T19:52:01.000Z",
+            "productName": "SANDUICHE",
+            "price": 12
+          }
+        ]
+      },
+      {
+        "id": 300002,
+        "cashierSessionId": 300001,
+        "customerId": 8,
+        "totalAmount": "24.00",
+        "paymentMethod": "cash",
+        "status": "completed",
+        "legacyKey": null,
+        "printedAt": null,
+        "createdAt": "2026-08-16T19:13:01.000Z",
+        "updatedAt": "2026-08-16T19:13:01.000Z",
+        "total": 24,
+        "customerName": "CLIENTES ASAS",
+        "items": [
+          {
+            "id": 270003,
+            "orderId": 300002,
+            "productId": 90002,
+            "quantity": 2,
+            "refundedQuantity": 0,
+            "unitPrice": 12,
+            "subtotal": 24,
+            "createdAt": "2026-08-16T19:13:01.000Z",
+            "productName": "SANDUICHE",
+            "price": 12
+          }
+        ]
+      },
+      {
+        "id": 300001,
+        "cashierSessionId": 300001,
+        "customerId": 1,
+        "totalAmount": "65.00",
+        "paymentMethod": "card",
+        "status": "completed",
+        "legacyKey": null,
+        "printedAt": null,
+        "createdAt": "2026-08-16T19:11:29.000Z",
+        "updatedAt": "2026-08-16T19:11:29.000Z",
+        "total": 65,
+        "customerName": "GERAL",
+        "items": [
+          {
+            "id": 270001,
+            "orderId": 300001,
+            "productId": 90003,
+            "quantity": 5,
+            "refundedQuantity": 0,
+            "unitPrice": 5,
+            "subtotal": 25,
+            "createdAt": "2026-08-16T19:11:29.000Z",
+            "productName": "SOPA",
+            "price": 5
+          },
+          {
+            "id": 270002,
+            "orderId": 300001,
+            "productId": 30014,
+            "quantity": 4,
+            "refundedQuantity": 0,
+            "unitPrice": 10,
+            "subtotal": 40,
+            "createdAt": "2026-08-16T19:11:29.000Z",
+            "productName": "MACARRONADA",
+            "price": 10
+          }
+        ]
+      },
+      {
+        "id": 270002,
+        "cashierSessionId": 300001,
+        "customerId": 30001,
+        "totalAmount": "22.00",
+        "paymentMethod": "pix",
+        "status": "completed",
+        "legacyKey": null,
+        "printedAt": null,
+        "createdAt": "2026-08-16T19:08:20.000Z",
+        "updatedAt": "2026-08-16T19:08:20.000Z",
+        "total": 22,
+        "customerName": "ROSE",
+        "items": [
+          {
+            "id": 240003,
+            "orderId": 270002,
+            "productId": 30014,
+            "quantity": 1,
+            "refundedQuantity": 0,
+            "unitPrice": 10,
+            "subtotal": 10,
+            "createdAt": "2026-08-16T19:08:20.000Z",
+            "productName": "MACARRONADA",
+            "price": 10
+          },
+          {
+            "id": 240004,
+            "orderId": 270002,
+            "productId": 90002,
+            "quantity": 1,
+            "refundedQuantity": 0,
+            "unitPrice": 12,
+            "subtotal": 12,
+            "createdAt": "2026-08-16T19:08:20.000Z",
+            "productName": "SANDUICHE",
+            "price": 12
+          }
+        ]
+      },
+      {
+        "id": 270001,
+        "cashierSessionId": 300001,
+        "customerId": 10,
+        "totalAmount": "22.00",
+        "paymentMethod": "pix",
+        "status": "cancelled",
+        "legacyKey": null,
+        "printedAt": null,
+        "createdAt": "2026-08-16T19:06:31.000Z",
+        "updatedAt": "2026-08-16T19:07:26.000Z",
+        "total": 22,
+        "customerName": "VERA",
+        "items": [
+          {
+            "id": 240001,
+            "orderId": 270001,
+            "productId": 30014,
+            "quantity": 1,
+            "refundedQuantity": 1,
+            "unitPrice": 10,
+            "subtotal": 10,
+            "createdAt": "2026-08-16T19:06:32.000Z",
+            "productName": "MACARRONADA",
+            "price": 10
+          },
+          {
+            "id": 240002,
+            "orderId": 270001,
+            "productId": 90002,
+            "quantity": 1,
+            "refundedQuantity": 1,
+            "unitPrice": 12,
+            "subtotal": 12,
+            "createdAt": "2026-08-16T19:06:32.000Z",
+            "productName": "SANDUICHE",
+            "price": 12
+          }
+        ]
+      }
+    ]
+  },
+  "customerFields": [
+    {
+      "orderId": 330001,
+      "customerId": 9,
+      "customerName": "BRENO"
+    },
+    {
+      "orderId": 300002,
+      "customerId": 8,
+      "customerName": "CLIENTES ASAS"
+    },
+    {
+      "orderId": 300001,
+      "customerId": 1,
+      "customerName": "GERAL"
+    },
+    {
+      "orderId": 270002,
+      "customerId": 30001,
+      "customerName": "ROSE"
+    },
+    {
+      "orderId": 270001,
+      "customerId": 10,
+      "customerName": "VERA"
+    }
+  ]
+}
