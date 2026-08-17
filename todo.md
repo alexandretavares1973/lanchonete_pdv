@@ -118,4 +118,4 @@
 - [x] Remover o estado `selectedMenuId` e a lógica de filtro de sessões baseada em cardápio em `ReportsPage.tsx`
 - [x] Remover o bloco visual inteiro do filtro "Filtrar por Cardápio" (título, descrição e botões de seleção) da interface
 - [x] Garantir que a listagem de sessões, totais e exportações (PDF, WhatsApp, Impressão) passem a depender exclusivamente do período selecionado
-- [x] Executar testes Vitest, validar TypeScript, build de produção e inspecionar visualmente a tela limpa
+- [x] Executar testes Vitest, validar TypeScript, build de produção e inspecionar visualmente a tela limpa (validado via inspeção visual direta da URL publicada)
