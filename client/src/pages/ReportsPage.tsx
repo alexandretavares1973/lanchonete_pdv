@@ -81,7 +81,7 @@ export default function ReportsPage() {
   const { data: sharedSessions, isLoading: sessionsLoading } = trpc.pdv.cashier.getAllSessionsWithOrders.useQuery();
   const { data: sharedCustomers } = trpc.pdv.customers.list.useQuery();
   const [menus, setMenus] = useState<WeeklyMenu[]>([]);
-  const [selectedMenuId, setSelectedMenuId] = useState<number | null>(null);
+
   const [reportStartDate, setReportStartDate] = useState("");
   const [reportEndDate, setReportEndDate] = useState("");
   const [reportSearchTerm, setReportSearchTerm] = useState("");
@@ -183,9 +183,7 @@ export default function ReportsPage() {
     return `${labels[order - 1] || order}º Sábado`;
   };
 
-  const getSessionsForMenu = (menuId: number) => {
-    return sessions.filter(s => s.weeklyMenuId === menuId);
-  };
+
 
   const reportDateRange: ReportDateRange = { startDate: reportStartDate, endDate: reportEndDate };
   const reportDateRangeIsValid = isReportDateRangeValid(reportDateRange);
@@ -610,12 +608,10 @@ export default function ReportsPage() {
     printWindow.print();
   };
 
-  const activeSessions = (selectedMenuId
-    ? getSessionsForMenu(selectedMenuId)
-    : sessions).filter(session => {
-      const menu = menus.find(m => m.id === session.weeklyMenuId);
-      return Boolean(menu) && (!hasReportDateFilter || getReportOrders(session).length > 0) && matchesReportSearch(session, reportSearchTerm);
-    });
+  const activeSessions = sessions.filter(session => {
+    const menu = menus.find(m => m.id === session.weeklyMenuId);
+    return Boolean(menu) && (!hasReportDateFilter || getReportOrders(session).length > 0) && matchesReportSearch(session, reportSearchTerm);
+  });
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
@@ -636,32 +632,7 @@ export default function ReportsPage() {
           </Button>
         </div>
 
-        {/* Menu Filter */}
-          <Card className="p-6 mb-6">
-          <div className="mb-4">
-            <h2 className="font-semibold text-foreground">Filtrar por Cardápio</h2>
-            <p className="text-xs text-muted-foreground">Os dados exibidos vêm das sessões, pedidos e cardápios compartilhados no banco.</p>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
-            <Button
-              onClick={() => setSelectedMenuId(null)}
-              variant={selectedMenuId === null ? "default" : "outline"}
-              className={selectedMenuId === null ? "bg-gradient-to-r from-primary to-secondary" : ""}
-            >
-              Todos
-            </Button>
-            {menus.map(menu => (
-              <Button
-                key={menu.id}
-                onClick={() => setSelectedMenuId(menu.id)}
-                variant={selectedMenuId === menu.id ? "default" : "outline"}
-                className={selectedMenuId === menu.id ? "bg-gradient-to-r from-primary to-secondary" : ""}
-              >
-                {getSaturdayLabel(menu.saturdayOrder)}
-              </Button>
-            ))}
-          </div>
-        </Card>
+
 
         <Card className="mb-6 p-5">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">

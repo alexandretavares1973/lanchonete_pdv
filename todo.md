@@ -112,3 +112,10 @@
 - [x] Criar um Diálogo (Dialog) dedicado na interface informando o bloqueio de abertura e instruindo o usuário a fechar primeiro o cardápio ativo com a mensagem exata solicitada
 - [x] Adicionar testes automatizados em `server/pdv.test.ts` simulando a tentativa de abrir múltiplos cardápios simultaneamente e validando o bloqueio
 - [x] Validar TypeScript, testar com Vitest (84 testes aprovados), realizar build e salvar checkpoint publicado
+
+
+## Remoção do Filtro por Cardápio no Relatório de Vendas (ReportsPage.tsx)
+- [x] Remover o estado `selectedMenuId` e a lógica de filtro de sessões baseada em cardápio em `ReportsPage.tsx`
+- [x] Remover o bloco visual inteiro do filtro "Filtrar por Cardápio" (título, descrição e botões de seleção) da interface
+- [x] Garantir que a listagem de sessões, totais e exportações (PDF, WhatsApp, Impressão) passem a depender exclusivamente do período selecionado
+- [x] Executar testes Vitest, validar TypeScript, build de produção e inspecionar visualmente a tela limpa
