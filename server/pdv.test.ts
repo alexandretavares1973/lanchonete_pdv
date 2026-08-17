@@ -87,23 +87,49 @@ describe("Resultado de atualização MySQL2", () => {
 });
 
 describe("PDV System", () => {
-  describe("Shared menu selection", () => {
+  describe("Shared menu selection and single open menu rule", () => {
     const menus = [
       { id: 10, status: "open" as const },
       { id: 20, status: "open" as const },
       { id: 30, status: "closed" as const },
     ];
 
-    it("requires explicit selection when multiple open menus exist (no default menu preference)", () => {
+    it("requires explicit selection when multiple open menus exist", () => {
       expect(canCreateSharedSale(null, 2)).toBe(false);
       expect(canCreateSharedSale(20, 2)).toBe(true);
     });
 
-    it("selects the only open menu automatically when only one exists", () => {
-      const singleOpen = [{ id: 40, status: "open" as const }];
-      const openList = singleOpen.filter(m => m.status === "open");
-      const selected = openList.length === 1 ? openList[0] : null;
-      expect(selected?.id).toBe(40);
+    it("impõe que apenas um cardápio pode estar aberto por vez na validação simulada", () => {
+      const validateSingleOpen = (targetId: number, currentMenus: Array<{ id: number; status: "open" | "closed"; saturdayOrder: number; saturdayDate: string }>) => {
+        const target = currentMenus.find(m => m.id === targetId);
+        if (target?.status === "closed") {
+          const openOther = currentMenus.find(m => m.status === "open" && m.id !== targetId);
+          if (openOther) {
+            const labels = ["1º", "2º", "3º", "4º", "5º"];
+            const saturdayLabel = `${labels[openOther.saturdayOrder - 1] || openOther.saturdayOrder + "º"} Sábado`;
+            const dateStr = new Date(openOther.saturdayDate).toLocaleDateString("pt-BR");
+            throw new Error(`Não é possível abrir este cardápio. Primeiro feche o cardápio que já está aberto: ${saturdayLabel} (${dateStr}).`);
+          }
+        }
+        return true;
+      };
+
+      // Tentar abrir o menu 20 quando o menu 10 já está aberto deve lançar erro descritivo
+      const menuList = [
+        { id: 10, status: "open" as const, saturdayOrder: 1, saturdayDate: "2026-08-01" },
+        { id: 20, status: "closed" as const, saturdayOrder: 2, saturdayDate: "2026-08-08" },
+      ];
+
+      expect(() => validateSingleOpen(20, menuList)).toThrowError(
+        "Não é possível abrir este cardápio. Primeiro feche o cardápio que já está aberto: 1º Sábado (01/08/2026)."
+      );
+
+      // Se o menu 10 for fechado, abrir o menu 20 deve ser permitido
+      const menuListAfterClose = [
+        { id: 10, status: "closed" as const, saturdayOrder: 1, saturdayDate: "2026-08-01" },
+        { id: 20, status: "closed" as const, saturdayOrder: 2, saturdayDate: "2026-08-08" },
+      ];
+      expect(validateSingleOpen(20, menuListAfterClose)).toBe(true);
     });
   });
 

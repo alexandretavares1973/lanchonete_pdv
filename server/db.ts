@@ -201,8 +201,22 @@ export async function getAllWeeklyMenus() {
 export async function updateWeeklyMenu(id: number, data: Partial<{ saturdayDate: string; saturdayOrder: number; responsibleId: number | null; status: "open" | "closed" }>) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  await db.update(weeklyMenus).set(data as any).where(eq(weeklyMenus.id, id));
-  return (await db.select().from(weeklyMenus).where(eq(weeklyMenus.id, id)).limit(1))[0];
+
+  return await db.transaction(async (tx) => {
+    if (data.status === "open") {
+      const allMenus = await tx.select().from(weeklyMenus);
+      const openMenu = allMenus.find((m) => m.status === "open" && m.id !== id);
+      if (openMenu) {
+        const labels = ["1º", "2º", "3º", "4º", "5º"];
+        const saturdayLabel = `${labels[openMenu.saturdayOrder - 1] || openMenu.saturdayOrder + "º"} Sábado`;
+        const dateStr = new Date(openMenu.saturdayDate).toLocaleDateString("pt-BR");
+        throw new Error(`Não é possível abrir este cardápio. Primeiro feche o cardápio que já está aberto: ${saturdayLabel} (${dateStr}).`);
+      }
+    }
+
+    await tx.update(weeklyMenus).set(data as any).where(eq(weeklyMenus.id, id));
+    return (await tx.select().from(weeklyMenus).where(eq(weeklyMenus.id, id)).limit(1))[0];
+  });
 }
 
 export async function deleteWeeklyMenu(id: number) {

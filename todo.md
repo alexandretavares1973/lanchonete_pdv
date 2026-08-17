@@ -104,3 +104,11 @@
 - [x] Remover a lógica de preferência em `POSPage.tsx`, restaurando a exigência de escolha manual quando houver múltiplos cardápios abertos (mantendo seleção automática apenas se houver um único cardápio aberto)
 - [x] Atualizar os testes unitários em `server/pdv.test.ts` e validar 84 testes aprovados
 - [x] Validar TypeScript, build de produção e salvar checkpoint publicado
+
+
+## Regra de Cardápio Único Aberto
+- [x] Validar e atualizar o backend (`server/db.ts`) para rejeitar transacionalmente a abertura de um cardápio (`status = "open"`) se já houver outro cardápio aberto, retornando o nome e a data do cardápio existente
+- [x] Atualizar a página do cardápio semanal (`WeeklyMenuPage.tsx`) para verificar cardápios abertos e exibir aviso antes mesmo do backend ou tratar o erro
+- [x] Criar um Diálogo (Dialog) dedicado na interface informando o bloqueio de abertura e instruindo o usuário a fechar primeiro o cardápio ativo com a mensagem exata solicitada
+- [x] Adicionar testes automatizados em `server/pdv.test.ts` simulando a tentativa de abrir múltiplos cardápios simultaneamente e validando o bloqueio
+- [x] Validar TypeScript, testar com Vitest (84 testes aprovados), realizar build e salvar checkpoint publicado

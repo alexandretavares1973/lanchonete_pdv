@@ -43,6 +43,7 @@ export default function WeeklyMenuPage() {
   const [showAddMenu, setShowAddMenu] = useState(false);
   const [showAddProducts, setShowAddProducts] = useState(false);
   const [editingMenuId, setEditingMenuId] = useState<number | null>(null);
+  const [openMenuBlockedMessage, setOpenMenuBlockedMessage] = useState<string | null>(null);
   
   const [formData, setFormData] = useState({
     saturdayDate: "",
@@ -87,7 +88,14 @@ export default function WeeklyMenuPage() {
       await utils.pdv.menu.list.invalidate();
       toast.success("Status do cardápio atualizado!");
     },
-    onError: (error) => toast.error(error.message || "Não foi possível atualizar o cardápio."),
+    onError: (error) => {
+      const msg = error.message || "Não foi possível atualizar o cardápio.";
+      if (msg.includes("Primeiro feche o cardápio que já está aberto")) {
+        setOpenMenuBlockedMessage(msg);
+      } else {
+        toast.error(msg);
+      }
+    },
   });
   const deleteMenuMutation = trpc.pdv.menu.delete.useMutation({
     onSuccess: async () => {
@@ -194,7 +202,19 @@ export default function WeeklyMenuPage() {
   const handleToggleStatus = (menuId: number) => {
     const menu = menus.find((candidate: any) => candidate.id === menuId);
     if (!menu) return;
-    updateMenuMutation.mutate({ id: menuId, status: menu.status === "open" ? "closed" : "open" });
+
+    const targetStatus = menu.status === "open" ? "closed" : "open";
+    if (targetStatus === "open") {
+      const alreadyOpen = menus.find((m: any) => m.status === "open" && m.id !== menuId);
+      if (alreadyOpen) {
+        const saturdayLabel = `${["1º", "2º", "3º", "4º", "5º"][alreadyOpen.saturdayOrder - 1] || alreadyOpen.saturdayOrder}º Sábado`;
+        const dateStr = new Date(alreadyOpen.saturdayDate).toLocaleDateString("pt-BR");
+        setOpenMenuBlockedMessage(`Não é possível abrir este cardápio. Primeiro feche o cardápio que já está aberto: ${saturdayLabel} (${dateStr}).`);
+        return;
+      }
+    }
+
+    updateMenuMutation.mutate({ id: menuId, status: targetStatus });
   };
 
   const getSaturdayLabel = (order: number) => {
@@ -225,6 +245,25 @@ export default function WeeklyMenuPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
       <div className="max-w-7xl mx-auto p-6">
+        {/* Dialogo de bloqueio de cardápio duplo aberto */}
+        <Dialog open={Boolean(openMenuBlockedMessage)} onOpenChange={(open) => !open && setOpenMenuBlockedMessage(null)}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-destructive flex items-center gap-2">⚠️ Ação não permitida</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+              <p className="text-sm leading-relaxed text-foreground font-medium">
+                {openMenuBlockedMessage}
+              </p>
+            </div>
+            <div className="flex justify-end gap-3 mt-4">
+              <Button onClick={() => setOpenMenuBlockedMessage(null)} className="bg-primary text-primary-foreground">
+                Entendi
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
