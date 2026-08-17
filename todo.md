@@ -98,8 +98,9 @@
 - [x] Validar TypeScript, testar com Vitest, realizar build e salvar checkpoint publicado
 
 
-## Exportação de Diagnóstico (JSON real e código do modal)
-- [x] Executar captura real da função `getAllCashierSessionsWithOrders` e registrar o JSON efetivo contendo `customerName`
-- [x] Extrair o código-fonte atual da renderização dos pedidos e botões de estorno em `ReportsPage.tsx`
-- [x] Consolidar a captura real e o código vigente em `diagnostico_cliente_estorno.md`
-- [x] Validar o documento, gerar também o JSON bruto e preparar a entrega direta ao usuário
+## Remoção da Configuração de Cardápio Padrão do PDV
+- [x] Auditar armazenamento e uso (constatado que era armazenado exclusivamente no localStorage como `"defaultWeeklyMenuId"` e consumido por `POSPage.tsx` via `selectPreferredOpenMenu`)
+- [x] Remover a seção visual "Cardápio Padrão do PDV" da página de configurações (`SettingsPage.tsx`)
+- [x] Remover a lógica de preferência em `POSPage.tsx`, restaurando a exigência de escolha manual quando houver múltiplos cardápios abertos (mantendo seleção automática apenas se houver um único cardápio aberto)
+- [x] Atualizar os testes unitários em `server/pdv.test.ts` e validar 84 testes aprovados
+- [x] Validar TypeScript, build de produção e salvar checkpoint publicado

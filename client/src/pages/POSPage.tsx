@@ -9,7 +9,7 @@ import { ShoppingCart, Trash2, Lock, UserPlus } from "lucide-react";
 import { DEFAULT_PAYMENT_METHOD, getExplicitCustomer } from "@shared/posOrderFlow";
 import { getLowStockMessage, isLowGlobalStock } from "@shared/stockAlerts";
 import { trpc } from "@/lib/trpc";
-import { selectPreferredOpenMenu } from "@shared/menuSelection";
+
 
 interface MenuItem {
   id: number | string;
@@ -95,12 +95,12 @@ export default function POSPage() {
     const menusFromServer = sharedMenus ?? [];
     setMenus(menusFromServer);
     const openMenusList = menusFromServer.filter((m: any) => m.status === "open");
-    const defaultMenuId = localStorage.getItem("defaultWeeklyMenuId");
     setSelectedMenu((current: any) => {
       if (current && openMenusList.some((menu: any) => menu.id === current.id)) {
         return openMenusList.find((menu: any) => menu.id === current.id) || current;
       }
-      return selectPreferredOpenMenu(openMenusList, defaultMenuId); 
+      // Nenhum cardápio pré-selecionado automaticamente: escolha manual obrigatória
+      return openMenusList.length === 1 ? openMenusList[0] : null;
     });
   }, [sharedMenus]);
 

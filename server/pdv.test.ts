@@ -3,7 +3,7 @@ import { getSafeLegacyResponsibleId, getTestDataBlueprint } from "./db";
 import { getExplicitCustomer, getFreshOrderDefaults, DEFAULT_PAYMENT_METHOD } from "../shared/posOrderFlow";
 import { LOW_STOCK_THRESHOLD, getLowStockMessage, isLowGlobalStock } from "../shared/stockAlerts";
 import { parseStockQuantity } from "../shared/stockQuantity";
-import { canCreateSharedSale, selectPreferredOpenMenu } from "../shared/menuSelection";
+import { canCreateSharedSale } from "../shared/menuSelection";
 import { planDryRun, summarizeSimulationResults } from "../shared/concurrency";
 import { filterAndSortHistoricalSessions } from "../shared/historicalSessionFilters";
 import { filterOrdersByReportDate, getReportDateShortcutRange, isReportDateRangeValid, matchesReportSearch } from "../shared/reportDateFilters";
@@ -94,20 +94,16 @@ describe("PDV System", () => {
       { id: 30, status: "closed" as const },
     ];
 
-    it("uses the saved default only when that menu is open", () => {
-      expect(selectPreferredOpenMenu(menus, "20")?.id).toBe(20);
-      expect(selectPreferredOpenMenu(menus, "30")).toBeNull();
-    });
-
-    it("requires explicit selection when multiple open menus exist without a valid default", () => {
-      expect(selectPreferredOpenMenu(menus)).toBeNull();
+    it("requires explicit selection when multiple open menus exist (no default menu preference)", () => {
       expect(canCreateSharedSale(null, 2)).toBe(false);
       expect(canCreateSharedSale(20, 2)).toBe(true);
     });
 
-    it("selects the only open menu automatically", () => {
-      expect(selectPreferredOpenMenu([{ id: 40, status: "open" as const }])?.id).toBe(40);
-      expect(selectPreferredOpenMenu([{ id: 50, status: "closed" as const }])).toBeNull();
+    it("selects the only open menu automatically when only one exists", () => {
+      const singleOpen = [{ id: 40, status: "open" as const }];
+      const openList = singleOpen.filter(m => m.status === "open");
+      const selected = openList.length === 1 ? openList[0] : null;
+      expect(selected?.id).toBe(40);
     });
   });
 

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
-import { ArrowLeft, DatabaseZap, Loader2, ShieldCheck, Star, TestTube2 } from "lucide-react";
+import { ArrowLeft, DatabaseZap, Loader2, ShieldCheck, TestTube2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -10,8 +10,7 @@ import { trpc } from "@/lib/trpc";
 export default function SettingsPage() {
   const [, setLocation] = useLocation();
   const [showTestDataDialog, setShowTestDataDialog] = useState(false);
-  const [defaultMenuId, setDefaultMenuId] = useState<string>(() => localStorage.getItem("defaultWeeklyMenuId") || "");
-  const { data: sharedMenus = [] } = trpc.pdv.menu.list.useQuery();
+
   const utils = trpc.useUtils();
   const generateTestDataMutation = trpc.settings.generateTestData.useMutation({
     onSuccess: async (result) => {
@@ -92,42 +91,7 @@ export default function SettingsPage() {
           </Card>
         </div>
 
-        {/* Default Menu Configuration Card */}
-        <Card className="mt-6 p-6 shadow-sm">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="rounded-xl bg-primary/10 p-2 text-primary">
-              <Star className="h-5 w-5" />
-            </div>
-            <div>
-              <h2 className="text-lg font-semibold text-foreground">Cardápio Padrão do PDV</h2>
-              <p className="text-xs text-muted-foreground">Defina qual cardápio deve ser selecionado automaticamente ao abrir o PDV quando houver vários abertos.</p>
-            </div>
-          </div>
-          <div className="flex flex-col sm:flex-row items-center gap-4">
-            <select
-              value={defaultMenuId}
-              onChange={(e) => {
-                const id = e.target.value;
-                setDefaultMenuId(id);
-                if (id) {
-                  localStorage.setItem("defaultWeeklyMenuId", id);
-                  toast.success("✅ Cardápio padrão salvo com sucesso!");
-                } else {
-                  localStorage.removeItem("defaultWeeklyMenuId");
-                  toast.success("Cardápio padrão removido.");
-                }
-              }}
-              className="w-full sm:w-auto flex-1 px-3 py-2 border border-border rounded-lg bg-background text-foreground text-sm"
-            >
-              <option value="">Nenhum (exigir escolha manual se houver vários)</option>
-              {sharedMenus.map((m: any) => (
-                <option key={m.id} value={m.id}>
-                  {`${["1º", "2º", "3º", "4º", "5º"][m.saturdayOrder - 1] || m.saturdayOrder}º Sábado`} - {new Date(m.saturdayDate).toLocaleDateString("pt-BR")} ({m.status === "open" ? "Aberto" : "Fechado"})
-                </option>
-              ))}
-            </select>
-          </div>
-        </Card>
+
       </div>
 
       <Dialog open={showTestDataDialog} onOpenChange={(open) => !generateTestDataMutation.isPending && setShowTestDataDialog(open)}>
