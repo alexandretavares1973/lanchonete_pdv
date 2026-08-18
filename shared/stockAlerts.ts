@@ -1,4 +1,4 @@
-export const LOW_STOCK_THRESHOLD = 3;
+export const LOW_STOCK_THRESHOLD = 5;
 
 export type StockAlertProduct = {
   name: string;

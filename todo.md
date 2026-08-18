@@ -119,3 +119,11 @@
 - [x] Remover o bloco visual inteiro do filtro "Filtrar por Cardápio" (título, descrição e botões de seleção) da interface
 - [x] Garantir que a listagem de sessões, totais e exportações (PDF, WhatsApp, Impressão) passem a depender exclusivamente do período selecionado
 - [x] Executar testes Vitest, validar TypeScript, build de produção e inspecionar visualmente a tela limpa (validado via inspeção visual direta da URL publicada)
+
+
+## Auditoria e Correção de SOPA e Limite de Estoque Baixo
+- [x] Consultar no banco de dados os valores reais de `products.quantity = 2`, `products.isUnlimited = false` para SOPA e `menu_items.availableQuantity = 12` no cardápio ativo
+- [x] Rastrear no código-fonte o uso da constante de estoque baixo (`LOW_STOCK_THRESHOLD` em `shared/stockAlerts.ts`), que estava com `3` por equívoco
+- [x] Unificar o limiar de alerta de estoque baixo para `5` (`LOW_STOCK_THRESHOLD = 5`), corrigindo a divergência
+- [x] Validar com 84 testes Vitest aprovados, TypeScript e build de produção
+- [x] Salvar checkpoint e relatar a auditoria completa e os números reais ao usuário

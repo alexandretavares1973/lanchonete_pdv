@@ -415,18 +415,18 @@ describe("Edição rápida de estoque", () => {
 });
 
 describe("Alertas de estoque baixo", () => {
-  it("deve alertar somente quando o estoque global for menor que 3", () => {
-    expect(LOW_STOCK_THRESHOLD).toBe(3);
-    expect(isLowGlobalStock({ name: "Hambúrguer", quantity: 2 })).toBe(true);
-    expect(isLowGlobalStock({ name: "Hambúrguer", quantity: 3 })).toBe(false);
+  it("deve alertar somente quando o estoque global for menor que 5", () => {
+    expect(LOW_STOCK_THRESHOLD).toBe(5);
+    expect(isLowGlobalStock({ name: "Hambúrguer", quantity: 4 })).toBe(true);
+    expect(isLowGlobalStock({ name: "Hambúrguer", quantity: 5 })).toBe(false);
     expect(isLowGlobalStock({ name: "Hambúrguer", quantity: 0 })).toBe(true);
   });
 
   it("deve considerar o desconto da venda ao avaliar o estoque restante", () => {
-    const product = { name: "Coxinha", quantity: 5, isUnlimited: false };
-    const quantityAfterSale = product.quantity - 3;
+    const product = { name: "Coxinha", quantity: 7, isUnlimited: false };
+    const quantityAfterSale = product.quantity - 3; // 4, que é menor que 5
     expect(isLowGlobalStock(product, quantityAfterSale)).toBe(true);
-    expect(getLowStockMessage(product.name)).toBe("ALERTA: Coxinha tem quantidade no estoque menor que 3");
+    expect(getLowStockMessage(product.name)).toBe("ALERTA: Coxinha tem quantidade no estoque menor que 5");
   });
 });
 
