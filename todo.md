@@ -134,3 +134,9 @@
 - [x] Ajustar `getAllWeeklyMenus` em `server/db.ts` para que a quantidade disponível no cardápio respeite sempre o teto do estoque global (`Math.min(rawMenuQty, globalQty)`)
 - [x] Unificar o limiar de estoque baixo em 5 (`LOW_STOCK_THRESHOLD = 5`) em `shared/stockAlerts.ts` e validar testes
 - [x] Executar testes Vitest (84 aprovados), TypeScript e build de produção com sucesso
+
+
+## Correção do Alerta de Estoque Baixo no POS (POSPage.tsx)
+- [ ] Auditar `POSPage.tsx` para localizar a renderização do alerta de estoque baixo (verificar se usa a função compartilhada `isLowGlobalStock` e `getLowStockMessage`)
+- [ ] Ajustar o código do POS para que qualquer produto com quantidade global restante < 5 exiba o alerta oficial ("ALERTA: [Nome] tem quantidade no estoque menor que 5")
+- [ ] Validar testes unitários em `server/pdv.test.ts`, compilar o build de produção e salvar checkpoint publicado
