@@ -700,3 +700,20 @@ describe("Visibilidade entre usuários", () => {
     expect(readMenus()[0]).toEqual(testeView[0]);
   });
 });
+
+
+describe("Alerta de estoque baixo no POS (LOW_STOCK_THRESHOLD = 5)", () => {
+  it("dispara alerta corretamente para produtos com estoque global < 5", () => {
+    const productSandwich = { name: "SANDUICHE", quantity: 1, isUnlimited: false };
+    const productSoup = { name: "SOPA", quantity: 2, isUnlimited: false };
+    const productNormal = { name: "MACARRONADA", quantity: 10, isUnlimited: false };
+
+    expect(isLowGlobalStock(productSandwich)).toBe(true);
+    expect(getLowStockMessage(productSandwich.name)).toBe("ALERTA: SANDUICHE tem quantidade no estoque menor que 5");
+
+    expect(isLowGlobalStock(productSoup)).toBe(true);
+    expect(getLowStockMessage(productSoup.name)).toBe("ALERTA: SOPA tem quantidade no estoque menor que 5");
+
+    expect(isLowGlobalStock(productNormal)).toBe(false);
+  });
+});

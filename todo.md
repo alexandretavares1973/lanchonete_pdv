@@ -137,6 +137,6 @@
 
 
 ## Correção do Alerta de Estoque Baixo no POS (POSPage.tsx)
-- [ ] Auditar `POSPage.tsx` para localizar a renderização do alerta de estoque baixo (verificar se usa a função compartilhada `isLowGlobalStock` e `getLowStockMessage`)
-- [ ] Ajustar o código do POS para que qualquer produto com quantidade global restante < 5 exiba o alerta oficial ("ALERTA: [Nome] tem quantidade no estoque menor que 5")
-- [ ] Validar testes unitários em `server/pdv.test.ts`, compilar o build de produção e salvar checkpoint publicado
+- [x] Auditar `POSPage.tsx` para localizar a renderização do alerta de estoque baixo (verificar se usa a função compartilhada `isLowGlobalStock` e `getLowStockMessage`)
+- [x] Ajustar o código do POS para que qualquer produto com quantidade global restante < 5 exiba o alerta oficial ("ALERTA: [Nome] tem quantidade no estoque menor que 5")
+- [x] Validar testes unitários em `server/pdv.test.ts`, compilar o build de produção e salvar checkpoint publicado

@@ -660,11 +660,11 @@ export default function POSPage() {
                         const cartQuantity = cart.find((item) => item.id === String(product.id))?.quantity || 0;
                         const menuRemainingQuantity = getRemainingMenuQuantity(product);
                         const globalRemainingQuantity = globalProduct
-                          ? Number(globalProduct.quantity) - cartQuantity
-                          : 0;
+                          ? Number(globalProduct.quantity ?? 0) - cartQuantity
+                          : Number(product.quantity ?? 0) - cartQuantity;
                         const lowGlobalStock = globalProduct
                           ? isLowGlobalStock(globalProduct, globalRemainingQuantity)
-                          : false;
+                          : Number(product.quantity ?? 0) < 5;
                         return (
                         <div
                           key={product.id}
