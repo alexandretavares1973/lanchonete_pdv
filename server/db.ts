@@ -184,15 +184,18 @@ export async function getAllWeeklyMenus() {
     responsibleName: menu.responsibleId ? responsibleById.get(menu.responsibleId)?.name : undefined,
     items: items.filter((item) => item.menuId === menu.id).map((item) => {
       const product = productById.get(item.productId);
+      const globalQty = product?.quantity ?? 0;
+      const rawMenuQty = item.availableQuantity ?? 0;
+      const effectiveQty = Math.max(0, Math.min(rawMenuQty, globalQty));
       return {
         id: item.id,
         menuId: item.menuId,
         productId: item.productId,
         productName: product?.name || `Produto #${item.productId}`,
         price: product ? Number(product.price) : 0,
-        quantity: item.availableQuantity,
-        availableQuantity: item.availableQuantity,
-        isAvailable: item.isAvailable,
+        quantity: effectiveQty,
+        availableQuantity: effectiveQty,
+        isAvailable: item.isAvailable && effectiveQty > 0,
       };
     }),
   }));

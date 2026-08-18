@@ -127,3 +127,10 @@
 - [x] Unificar o limiar de alerta de estoque baixo para `5` (`LOW_STOCK_THRESHOLD = 5`), corrigindo a divergência
 - [x] Validar com 84 testes Vitest aprovados, TypeScript e build de produção
 - [x] Salvar checkpoint e relatar a auditoria completa e os números reais ao usuário
+
+
+## Sincronização de Estoque Global e Disponibilidade por Cardápio
+- [x] Auditar no banco de dados todos os produtos e seus respectivos `menu_items` (encontrado produto SOPA com estoque global 2 e cardápio 12)
+- [x] Ajustar `getAllWeeklyMenus` em `server/db.ts` para que a quantidade disponível no cardápio respeite sempre o teto do estoque global (`Math.min(rawMenuQty, globalQty)`)
+- [x] Unificar o limiar de estoque baixo em 5 (`LOW_STOCK_THRESHOLD = 5`) em `shared/stockAlerts.ts` e validar testes
+- [x] Executar testes Vitest (84 aprovados), TypeScript e build de produção com sucesso
