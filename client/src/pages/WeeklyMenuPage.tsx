@@ -164,7 +164,16 @@ export default function WeeklyMenuPage() {
     const globalQty = product.quantity ?? 0;
     if (quantity > globalQty) {
       const diff = quantity - globalQty;
-      toast.error(`⚠️ ATENÇÃO: A quantidade informada (${quantity}) excede o estoque global do produto "${product.name}" (${globalQty}) em ${diff} unidade(s)!`);
+      toast.error(`⚠️ ATENÇÃO: A quantidade informada (${quantity}) excede o estoque global do produto "${product.name}" (${globalQty}) em ${diff} unidade(s)!`, {
+        action: {
+          label: `Ajustar para ${globalQty}`,
+          onClick: () => {
+            setProductForm({ ...productForm, quantity: String(globalQty) });
+            toast.success(`Quantidade ajustada para o máximo disponível: ${globalQty}`);
+          },
+        },
+        duration: 8000,
+      });
       return;
     }
 
@@ -203,7 +212,16 @@ export default function WeeklyMenuPage() {
         const globalQty = product.quantity ?? 0;
         if (newQuantity > globalQty) {
           const diff = newQuantity - globalQty;
-          toast.error(`⚠️ ATENÇÃO: A quantidade informada (${newQuantity}) excede o estoque global do produto "${product.name}" (${globalQty}) em ${diff} unidade(s)!`);
+          toast.error(`⚠️ ATENÇÃO: A quantidade informada (${newQuantity}) excede o estoque global do produto "${product.name}" (${globalQty}) em ${diff} unidade(s)!`, {
+            action: {
+              label: `Ajustar para ${globalQty}`,
+              onClick: () => {
+                setEditingProductForm({ quantity: String(globalQty) });
+                toast.success(`Quantidade ajustada para o máximo disponível: ${globalQty}`);
+              },
+            },
+            duration: 8000,
+          });
           return;
         }
       }

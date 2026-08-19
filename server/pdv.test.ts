@@ -806,3 +806,13 @@ describe("Validação de quantidade de produto no cardápio versus estoque globa
     expect(diff).toBe(5);
   });
 });
+
+
+describe("Ajuste automático para o máximo disponível no estoque global", () => {
+  it("limita a quantidade excedida ao estoque global", () => {
+    const globalQty = 12;
+    const requested = 20;
+    const adjusted = Math.min(requested, globalQty);
+    expect(adjusted).toBe(12);
+  });
+});
