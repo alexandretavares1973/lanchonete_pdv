@@ -334,6 +334,15 @@ export async function getMenuItemByMenuAndProduct(menuId: number, productId: num
 export async function createMenuItem(data: any) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
+
+  if (data.availableQuantity !== null && data.availableQuantity !== undefined && data.productId) {
+    const [prod] = await db.select().from(products).where(eq(products.id, data.productId)).limit(1);
+    if (prod && prod.quantity !== null && data.availableQuantity > prod.quantity) {
+      const diff = data.availableQuantity - prod.quantity;
+      throw new Error(`A quantidade informada (${data.availableQuantity}) excede o estoque global do produto "${prod.name}" (${prod.quantity}) em ${diff} unidade(s).`);
+    }
+  }
+
   const [result] = await db.insert(menuItems).values(data);
   const id = Number((result as any)?.insertId || 0);
   return (await db.select().from(menuItems).where(eq(menuItems.id, id)).limit(1))[0];
@@ -342,6 +351,18 @@ export async function createMenuItem(data: any) {
 export async function updateMenuItem(id: number, data: any) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
+
+  if (data.availableQuantity !== null && data.availableQuantity !== undefined) {
+    const [item] = await db.select().from(menuItems).where(eq(menuItems.id, id)).limit(1);
+    if (item) {
+      const [prod] = await db.select().from(products).where(eq(products.id, item.productId)).limit(1);
+      if (prod && prod.quantity !== null && data.availableQuantity > prod.quantity) {
+        const diff = data.availableQuantity - prod.quantity;
+        throw new Error(`A quantidade informada (${data.availableQuantity}) excede o estoque global do produto "${prod.name}" (${prod.quantity}) em ${diff} unidade(s).`);
+      }
+    }
+  }
+
   await db.update(menuItems).set(data).where(eq(menuItems.id, id));
   return (await db.select().from(menuItems).where(eq(menuItems.id, id)).limit(1))[0];
 }

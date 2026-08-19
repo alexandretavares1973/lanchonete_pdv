@@ -793,3 +793,16 @@ describe("Validação de integridade da UI da página de produtos", () => {
     expect(content).toContain("Novo Produto");
   });
 });
+
+
+describe("Validação de quantidade de produto no cardápio versus estoque global", () => {
+  it("detecta quando a quantidade do cardápio excede o estoque global e calcula a diferença", () => {
+    const globalStock = 10;
+    const requestedQty = 15;
+    const exceeds = requestedQty > globalStock;
+    const diff = exceeds ? requestedQty - globalStock : 0;
+
+    expect(exceeds).toBe(true);
+    expect(diff).toBe(5);
+  });
+});

@@ -160,6 +160,14 @@ export default function WeeklyMenuPage() {
       toast.error("Informe uma quantidade inteira não negativa.");
       return;
     }
+
+    const globalQty = product.quantity ?? 0;
+    if (quantity > globalQty) {
+      const diff = quantity - globalQty;
+      toast.error(`⚠️ ATENÇÃO: A quantidade informada (${quantity}) excede o estoque global do produto "${product.name}" (${globalQty}) em ${diff} unidade(s)!`);
+      return;
+    }
+
     addMenuItemMutation.mutate({ menuId: editingMenuId, productId: product.id, availableQuantity: quantity });
   };
 
@@ -168,7 +176,7 @@ export default function WeeklyMenuPage() {
     setEditingProductForm({ quantity: item.quantity?.toString() || "" });
   };
 
-  const handleSaveProductQuantity = (_menuId: number, productId: string) => {
+  const handleSaveProductQuantity = (menuId: number, productId: string) => {
     if (!editingProductForm.quantity) {
       toast.error("Informe a quantidade");
       return;
@@ -185,6 +193,22 @@ export default function WeeklyMenuPage() {
       toast.error("Identificador do item de cardápio inválido.");
       return;
     }
+
+    // Encontrar o item no cardápio atual para obter o productId e o nome do produto
+    const menu = menus.find((m: any) => m.id === menuId);
+    const item = menu?.items.find((i: any) => Number(i.id) === menuItemId);
+    if (item) {
+      const product = globalProducts.find((p: any) => p.id === item.productId);
+      if (product) {
+        const globalQty = product.quantity ?? 0;
+        if (newQuantity > globalQty) {
+          const diff = newQuantity - globalQty;
+          toast.error(`⚠️ ATENÇÃO: A quantidade informada (${newQuantity}) excede o estoque global do produto "${product.name}" (${globalQty}) em ${diff} unidade(s)!`);
+          return;
+        }
+      }
+    }
+
     updateMenuItemMutation.mutate({ menuItemId, availableQuantity: newQuantity });
   };
 
