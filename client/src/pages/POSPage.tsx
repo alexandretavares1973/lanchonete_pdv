@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { ShoppingCart, Trash2, Lock, UserPlus } from "lucide-react";
 import { DEFAULT_PAYMENT_METHOD, getExplicitCustomer } from "@shared/posOrderFlow";
 import { getLowStockMessage, isLowGlobalStock } from "@shared/stockAlerts";
+import { printViaWebBluetooth, formatThermalReceipt } from "@/lib/thermalPrinter";
 import { trpc } from "@/lib/trpc";
 
 
@@ -350,6 +351,26 @@ export default function POSPage() {
       toast.warning(getLowStockMessage(productName));
     });
     setShowConfirm(false);
+
+    // Verificar se a opção de impressão térmica automática está ativa
+    const autoPrintThermal = localStorage.getItem("auto_print_thermal") === "true";
+    if (autoPrintThermal) {
+      printViaWebBluetooth({
+        orderId: "NOVO",
+        createdAt: new Date(),
+        customerName: customer.name,
+        items: cart.map(i => ({ productName: i.productName, quantity: i.quantity, price: i.price, subtotal: i.subtotal })),
+        total,
+        paymentMethod,
+        receivedAmount: paymentMethod === "cash" ? amountReceived : undefined,
+        change: paymentMethod === "cash" ? amountReceived - total : undefined,
+      }).then(() => {
+        toast.success("🖨️ Cupom térmico impresso automaticamente via Bluetooth!");
+      }).catch((err) => {
+        console.warn("Impressão térmica automática falhou, usando cupom padrão:", err);
+      });
+    }
+
     setShowPrint(true);
     setCart([]);
     setSelectedCustomer(null);
@@ -934,23 +955,51 @@ export default function POSPage() {
         <Dialog open={showPrint} onOpenChange={setShowPrint}>
           <DialogContent className="bg-background border border-border">
             <DialogHeader>
-              <DialogTitle className="text-foreground">Imprimir Cupom?</DialogTitle>
+              <DialogTitle className="text-foreground">Imprimir Cupom do Pedido</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
-              <p className="text-muted-foreground">Deseja imprimir o cupom do pedido?</p>
-              <div className="flex gap-3">
+              <p className="text-muted-foreground">Escolha o formato de impressão para o pedido finalizado:</p>
+              <div className="flex flex-col gap-3">
                 <Button
-                  onClick={() => setShowPrint(false)}
-                  variant="outline"
-                  className="flex-1"
+                  onClick={async () => {
+                    try {
+                      const itemsToPrint = lastOrderItems.length > 0 ? lastOrderItems : cart;
+                      await printViaWebBluetooth({
+                        orderId: "PEDIDO",
+                        createdAt: new Date(),
+                        customerName: lastCustomerName || "GERAL",
+                        items: itemsToPrint.map(i => ({ productName: i.productName, quantity: i.quantity, price: i.price, subtotal: i.subtotal })),
+                        total: lastOrderTotal,
+                        paymentMethod: lastPaymentMethod,
+                        receivedAmount: lastPaymentMethod === "cash" ? lastAmountReceived : undefined,
+                        change: lastPaymentMethod === "cash" ? lastOrderChange : undefined,
+                      });
+                      toast.success("🖨️ Cupom enviado para a impressora térmica!");
+                      setShowPrint(false);
+                    } catch (err: any) {
+                      toast.error(err?.message || "Falha ao conectar na impressora térmica Bluetooth. Verifique o pareamento.");
+                    }
+                  }}
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
                 >
-                  Não
+                  🖨️ Imprimir em Impressora Térmica (Bluetooth)
                 </Button>
                 <Button
-                  onClick={handlePrint}
-                  className="flex-1 bg-gradient-to-r from-primary to-secondary text-white"
+                  onClick={() => {
+                    handlePrint();
+                    setShowPrint(false);
+                  }}
+                  variant="outline"
+                  className="w-full"
                 >
-                  Imprimir
+                  📄 Imprimir Cupom Tradicional (Navegador/PDF)
+                </Button>
+                <Button
+                  onClick={() => setShowPrint(false)}
+                  variant="ghost"
+                  className="w-full text-muted-foreground"
+                >
+                  Fechar (Sem imprimir)
                 </Button>
               </div>
             </div>

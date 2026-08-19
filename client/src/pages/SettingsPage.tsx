@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
-import { ArrowLeft, DatabaseZap, Loader2, ShieldCheck, TestTube2 } from "lucide-react";
+import { ArrowLeft, DatabaseZap, Loader2, ShieldCheck, TestTube2, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -10,6 +10,14 @@ import { trpc } from "@/lib/trpc";
 export default function SettingsPage() {
   const [, setLocation] = useLocation();
   const [showTestDataDialog, setShowTestDataDialog] = useState(false);
+  const [printerName, setPrinterName] = useState(() => localStorage.getItem("thermal_printer_name") || "Nenhuma impressora selecionada");
+  const [autoPrint, setAutoPrint] = useState(() => localStorage.getItem("auto_print_thermal") === "true");
+
+  const handleSavePrinter = () => {
+    localStorage.setItem("thermal_printer_name", printerName);
+    localStorage.setItem("auto_print_thermal", String(autoPrint));
+    toast.success("✅ Configurações de impressora térmica salvas com sucesso!");
+  };
 
   const utils = trpc.useUtils();
   const generateTestDataMutation = trpc.settings.generateTestData.useMutation({
@@ -87,6 +95,78 @@ export default function SettingsPage() {
               <p className="text-sm leading-6 text-muted-foreground">
                 A geração de dados exige uma sessão autenticada com permissão administrativa. Os registros criados entram no mesmo fluxo de estoque, caixa, vendas e relatórios.
               </p>
+            </div>
+          </Card>
+        </div>
+
+        {/* Impressora Térmica Configuration Card */}
+        <div className="mt-6">
+          <Card className="p-6 shadow-sm border-border bg-card">
+            <div className="flex items-start gap-4">
+              <div className="rounded-2xl bg-primary/10 p-3 text-primary">
+                <Printer className="h-7 w-7" />
+              </div>
+              <div className="flex-1 space-y-4">
+                <div>
+                  <h2 className="text-xl font-semibold text-foreground">Impressora Térmica Padrão</h2>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Configure a impressora ESC/POS (Bluetooth ou USB) para emissão de cupons de vendas.
+                  </p>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div>
+                    <label className="text-sm font-medium text-foreground block mb-2">
+                      Identificação da Impressora
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={printerName}
+                        onChange={(e) => setPrinterName(e.target.value)}
+                        placeholder="Ex: Impressora Bluetooth POS-58"
+                        className="flex-1 px-3 py-2 border border-border rounded-lg bg-background text-foreground text-sm"
+                      />
+                      <Button
+                        variant="outline"
+                        onClick={async () => {
+                          try {
+                            const device = await (navigator as any).bluetooth?.requestDevice({ acceptAllDevices: true });
+                            if (device?.name) {
+                              setPrinterName(device.name);
+                              toast.success(`Impressora "${device.name}" selecionada com sucesso!`);
+                            }
+                          } catch (e: any) {
+                            toast.error("Seleção Bluetooth cancelada ou indisponível.");
+                          }
+                        }}
+                      >
+                        Buscar Dispositivo
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between p-3 border border-border rounded-lg bg-muted/30">
+                    <div>
+                      <p className="font-medium text-foreground text-sm">Impressão Automática</p>
+                      <p className="text-xs text-muted-foreground">Imprimir cupom térmico logo após finalizar a venda</p>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={autoPrint}
+                      onChange={(e) => setAutoPrint(e.target.checked)}
+                      className="w-5 h-5 accent-primary cursor-pointer"
+                    />
+                  </div>
+                </div>
+
+                <Button
+                  onClick={handleSavePrinter}
+                  className="bg-primary hover:bg-primary/90 text-white font-medium gap-2"
+                >
+                  Salvar Configuração de Impressão
+                </Button>
+              </div>
             </div>
           </Card>
         </div>
