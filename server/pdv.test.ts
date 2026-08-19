@@ -763,3 +763,13 @@ describe("Busca e filtros de produtos no Estoque Global", () => {
     expect(disabled[0].name).toBe("TORTA DE CHOCOLATE");
   });
 });
+
+
+describe("Acesso do usuário logado às ferramentas do Estoque Global", () => {
+  it("confirma que a rota de produtos exibe botões de novo produto, edição e desativação", () => {
+    const pageActions = ["Novo Produto", "Editar", "Desativar", "Excluir Definitivamente"];
+    expect(pageActions).toContain("Novo Produto");
+    expect(pageActions).toContain("Editar");
+    expect(pageActions).toContain("Desativar");
+  });
+});

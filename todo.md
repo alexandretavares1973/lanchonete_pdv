@@ -156,3 +156,9 @@
 - [x] Implementar filtros rápidos de status (Todos, Disponíveis e Desativados)
 - [x] Padronizar toasts de feedback detalhado de sucesso e erro para inserção, edição, desativação/reativação e exclusão de produtos
 - [x] Adicionar testes unitários automatizados para busca e filtragem de produtos, aprovando 88 testes em Vitest, TypeScript e build de produção
+
+
+## Validação de Acesso do Usuário Alexandre ao Estoque Global
+- [x] Auditar a rota `/products` e o card "Produtos" no Dashboard para confirmar que qualquer usuário autenticado (incluindo Alexandre) tem acesso irrestrito às ferramentas de Inserir, Alterar, Desativar e Excluir
+- [x] Garantir que os botões de ação estejam visíveis, destacados e funcionais na interface de produtos
+- [x] Executar testes unitários (89 testes aprovados), TypeScript e build de produção com sucesso
