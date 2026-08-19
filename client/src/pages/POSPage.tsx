@@ -178,9 +178,19 @@ export default function POSPage() {
       return;
     }
 
-    const remainingQuantity = getRemainingMenuQuantity(product);
-    if (remainingQuantity <= 0) {
-      toast.error("❌ Quantidade máxima atingida!");
+    const globalProd = findGlobalProduct(product);
+    const globalQty = globalProd?.quantity ?? Number.MAX_SAFE_INTEGER;
+    const menuQty = Number(product.quantity || 0);
+    const effectiveAvailable = Math.min(menuQty, globalQty);
+    const inCart = getCartQuantity(product);
+
+    if (effectiveAvailable <= 0 || menuQty <= 0 || globalQty <= 0) {
+      toast.error(`❌ Produto "${product.productName}" está com ESTOQUE ZERADO! Não é possível vender.`);
+      return;
+    }
+
+    if (inCart >= effectiveAvailable) {
+      toast.error(`❌ Estoque insuficiente para "${product.productName}"! Disponível: ${effectiveAvailable} un (Já no carrinho: ${inCart} un).`);
       return;
     }
 

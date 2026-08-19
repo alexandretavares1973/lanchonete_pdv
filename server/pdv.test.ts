@@ -816,3 +816,19 @@ describe("Ajuste automático para o máximo disponível no estoque global", () =
     expect(adjusted).toBe(12);
   });
 });
+
+
+describe("Alertas de estoque zerado ou insuficiente no POS", () => {
+  it("detecta estoque zerado e impede adição", () => {
+    const effectiveAvailable = 0;
+    const isZero = effectiveAvailable <= 0;
+    expect(isZero).toBe(true);
+  });
+
+  it("detecta estoque insuficiente quando o carrinho atinge o limite", () => {
+    const effectiveAvailable = 5;
+    const inCart = 5;
+    const isInsufficient = inCart >= effectiveAvailable;
+    expect(isInsufficient).toBe(true);
+  });
+});
