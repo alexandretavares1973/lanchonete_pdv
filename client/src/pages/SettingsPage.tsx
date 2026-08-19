@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { ArrowLeft, DatabaseZap, Loader2, ShieldCheck, TestTube2, Printer } from "lucide-react";
-import { testPrinterCutAndPrint } from "@/lib/thermalPrinter";
+import { testPrinterCutAndPrint, getPrintHistory, clearPrintHistory, printViaWebBluetooth, printViaWebSerial } from "@/lib/thermalPrinter";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -22,6 +22,12 @@ export default function SettingsPage() {
     localStorage.setItem("thermal_header", customHeader);
     localStorage.setItem("thermal_footer", customFooter);
     toast.success("✅ Configurações de impressora térmica salvas com sucesso!");
+  };
+
+  const [printHistory, setPrintHistory] = useState(() => getPrintHistory());
+
+  const refreshHistory = () => {
+    setPrintHistory(getPrintHistory());
   };
 
   const utils = trpc.useUtils();
@@ -105,7 +111,7 @@ export default function SettingsPage() {
         </div>
 
         {/* Impressora Térmica Configuration Card */}
-        <div className="mt-6">
+        <div className="mt-6 space-y-6">
           <Card className="p-6 shadow-sm border-border bg-card">
             <div className="flex items-start gap-4">
               <div className="rounded-2xl bg-primary/10 p-3 text-primary">
@@ -224,6 +230,85 @@ export default function SettingsPage() {
                 </div>
               </div>
             </div>
+          </Card>
+
+          {/* Histórico de Impressões Térmicas */}
+          <Card className="p-6 shadow-sm border-border bg-card">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-xl font-semibold text-foreground">Histórico de Impressões Térmicas</h2>
+                <p className="text-sm text-muted-foreground">Auditoria de cupons emitidos e opção de reimpressão.</p>
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={refreshHistory}>
+                  Atualizar
+                </Button>
+                {printHistory.length > 0 && (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => {
+                      clearPrintHistory();
+                      refreshHistory();
+                      toast.success("Histórico de impressão limpo com sucesso.");
+                    }}
+                  >
+                    Limpar Histórico
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            {printHistory.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-6 text-center border border-dashed border-border rounded-lg">
+                Nenhum cupom impresso recentemente.
+              </p>
+            ) : (
+              <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
+                {printHistory.map((entry) => (
+                  <div key={entry.id} className="p-3 border border-border rounded-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-muted/20">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-foreground">Pedido #{entry.orderId}</span>
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${entry.status === "Sucesso" ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200" : "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-250"}`}>
+                          {entry.status}
+                        </span>
+                        <span className="text-xs text-muted-foreground">({entry.method})</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Cliente: <strong>{entry.customerName}</strong> · Total: <strong>R$ {entry.total.toFixed(2)}</strong> · {new Date(entry.timestamp).toLocaleString("pt-BR")}
+                      </p>
+                      {entry.error && (
+                        <p className="text-xs text-red-500 mt-0.5">Erro: {entry.error}</p>
+                      )}
+                    </div>
+                    <div className="flex gap-2 w-full md:w-auto">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={async () => {
+                          try {
+                            if (entry.method === "Bluetooth") {
+                              await printViaWebBluetooth(entry.data);
+                            } else {
+                              await printViaWebSerial(entry.data);
+                            }
+                            toast.success(`🖨️ Cupom do pedido #${entry.orderId} reimpresso com sucesso!`);
+                            refreshHistory();
+                          } catch (e: any) {
+                            toast.error(e?.message || "Falha na reimpressão do cupom.");
+                            refreshHistory();
+                          }
+                        }}
+                        className="w-full md:w-auto gap-1"
+                      >
+                        🖨️ Reenviar (Mesmo Canal)
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </Card>
         </div>
 
