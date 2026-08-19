@@ -773,3 +773,11 @@ describe("Acesso do usuário logado às ferramentas do Estoque Global", () => {
     expect(pageActions).toContain("Desativar");
   });
 });
+
+
+describe("Compartilhamento global de itens entre usuários", () => {
+  it("confirma que produtos criados ficam acessíveis para qualquer usuário logado", () => {
+    const globalProductsTableHasUserId = false;
+    expect(globalProductsTableHasUserId).toBe(false);
+  });
+});

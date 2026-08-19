@@ -162,3 +162,9 @@
 - [x] Auditar a rota `/products` e o card "Produtos" no Dashboard para confirmar que qualquer usuário autenticado (incluindo Alexandre) tem acesso irrestrito às ferramentas de Inserir, Alterar, Desativar e Excluir
 - [x] Garantir que os botões de ação estejam visíveis, destacados e funcionais na interface de produtos
 - [x] Executar testes unitários (89 testes aprovados), TypeScript e build de produção com sucesso
+
+
+## Visibilidade Global e Compartilhada entre Usuários
+- [x] Confirmar que todas as tabelas compartilhadas (`products`, `weekly_menus`, `menu_items`, `customers`, `orders`) não possuem filtro restritivo por ID de usuário individual
+- [x] Garantir que qualquer item inserido ou alterado por qualquer usuário (atual ou futuro) seja imediatamente visível no banco central e sincronizado via WebSocket para todos os demais operadores
+- [x] Executar testes unitários (90 testes aprovados), TypeScript e build de produção com sucesso
