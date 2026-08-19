@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { ArrowLeft, DatabaseZap, Loader2, ShieldCheck, TestTube2, Printer } from "lucide-react";
-import { testPrinterCutAndPrint, getPrintHistory, clearPrintHistory, printViaWebBluetooth, printViaWebSerial } from "@/lib/thermalPrinter";
+import { testPrinterCutAndPrint, getPrintHistory, clearPrintHistory, printViaWebBluetooth, printViaWebSerial, PrintLogEntry } from "@/lib/thermalPrinter";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -24,7 +24,32 @@ export default function SettingsPage() {
     toast.success("✅ Configurações de impressora térmica salvas com sucesso!");
   };
 
-  const [printHistory, setPrintHistory] = useState(() => getPrintHistory());
+  const [printHistory, setPrintHistory] = useState(() => {
+    const existing = getPrintHistory();
+    if (existing.length === 0) {
+      const sample: PrintLogEntry = {
+        id: "sample1",
+        timestamp: new Date().toISOString(),
+        orderId: "EXEMPLO",
+        customerName: "CLIENTE TESTE",
+        total: 25.00,
+        method: "Bluetooth",
+        status: "Sucesso",
+        error: undefined,
+        data: {
+          orderId: "EXEMPLO",
+          createdAt: new Date(),
+          customerName: "CLIENTE TESTE",
+          items: [{ productName: "X-Salada Teste", quantity: 1, price: 25.00, subtotal: 25.00 }],
+          total: 25.00,
+          paymentMethod: "PIX"
+        }
+      };
+      localStorage.setItem("thermal_print_history", JSON.stringify([sample]));
+      return [sample];
+    }
+    return existing;
+  });
 
   const refreshHistory = () => {
     setPrintHistory(getPrintHistory());
