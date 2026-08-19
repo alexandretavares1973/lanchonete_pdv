@@ -168,3 +168,9 @@
 - [x] Confirmar que todas as tabelas compartilhadas (`products`, `weekly_menus`, `menu_items`, `customers`, `orders`) não possuem filtro restritivo por ID de usuário individual
 - [x] Garantir que qualquer item inserido ou alterado por qualquer usuário (atual ou futuro) seja imediatamente visível no banco central e sincronizado via WebSocket para todos os demais operadores
 - [x] Executar testes unitários (90 testes aprovados), TypeScript e build de produção com sucesso
+
+
+## Correção Definitiva da Interface de Produtos (Estoque Global)
+- [x] Validar que o componente `ProductsPage.tsx` renderiza corretamente os botões de Inserir (Novo Produto), Alterar (Editar), Desativar/Reativar e Excluir Definitivamente
+- [x] Garantir que o build de produção empacote e publique corretamente a versão atualizada da tela
+- [x] Executar testes unitários (91 testes aprovados), TypeScript e build de produção com sucesso

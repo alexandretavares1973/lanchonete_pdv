@@ -781,3 +781,15 @@ describe("Compartilhamento global de itens entre usuários", () => {
     expect(globalProductsTableHasUserId).toBe(false);
   });
 });
+
+
+describe("Validação de integridade da UI da página de produtos", () => {
+  it("garante que os componentes de criação, edição e exclusão estão presentes no código fonte de ProductsPage", async () => {
+    const fs = await import("fs");
+    const content = fs.readFileSync("/home/ubuntu/lanchonete_pdv/client/src/pages/ProductsPage.tsx", "utf-8");
+    expect(content).toContain("handleOpenCreate");
+    expect(content).toContain("handleOpenEdit");
+    expect(content).toContain("handleOpenDelete");
+    expect(content).toContain("Novo Produto");
+  });
+});
