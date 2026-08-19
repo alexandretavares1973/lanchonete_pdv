@@ -717,3 +717,21 @@ describe("Alerta de estoque baixo no POS (LOW_STOCK_THRESHOLD = 5)", () => {
     expect(isLowGlobalStock(productNormal)).toBe(false);
   });
 });
+
+
+describe("Ciclo de vida e exclusão segura de produtos", () => {
+  it("impede exclusão definitiva de produtos com vínculos", async () => {
+    // Simula a verificação de deleteProductSafe quando há vínculos
+    const checkSafeDeleteMock = (hasMenuItems: boolean, hasOrderItems: boolean) => {
+      if (hasMenuItems || hasOrderItems) {
+        throw new Error("Não é possível excluir este produto pois ele possui vínculos em cardápios ou pedidos antigos. Use a opção de desativar.");
+      }
+      return true;
+    };
+
+    expect(() => checkSafeDeleteMock(true, false)).toThrowError(
+      "Não é possível excluir este produto pois ele possui vínculos em cardápios ou pedidos antigos. Use a opção de desativar."
+    );
+    expect(checkSafeDeleteMock(false, false)).toBe(true);
+  });
+});

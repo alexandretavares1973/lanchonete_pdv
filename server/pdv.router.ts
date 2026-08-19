@@ -47,6 +47,7 @@ export const pdvRouter = router({
           name: z.string().optional(),
           price: z.number().optional(),
           quantity: z.number().min(0).optional(),
+          description: z.string().optional(),
           isUnlimited: z.boolean().optional(), // mantido no input mas será ignorado se for true
           isAvailable: z.boolean().optional(),
         })
@@ -63,6 +64,18 @@ export const pdvRouter = router({
         const result = await db.updateProduct(id, updateData);
         publishRealtimeEvent({ entity: "product", action: "updated", ids: { productId: id } });
         return result;
+      }),
+
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        try {
+          const result = await db.deleteProductSafe(input.id);
+          publishRealtimeEvent({ entity: "product", action: "deleted", ids: { productId: input.id } });
+          return { success: true, result };
+        } catch (error: any) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: error.message || "Erro ao excluir produto." });
+        }
       }),
   }),
 

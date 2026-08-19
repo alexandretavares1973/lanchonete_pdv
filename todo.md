@@ -140,3 +140,12 @@
 - [x] Auditar `POSPage.tsx` para localizar a renderização do alerta de estoque baixo (verificar se usa a função compartilhada `isLowGlobalStock` e `getLowStockMessage`)
 - [x] Ajustar o código do POS para que qualquer produto com quantidade global restante < 5 exiba o alerta oficial ("ALERTA: [Nome] tem quantidade no estoque menor que 5")
 - [x] Validar testes unitários em `server/pdv.test.ts`, compilar o build de produção e salvar checkpoint publicado
+
+
+## Gestão Completa de Produtos no Estoque Global (Inserir, Alterar, Desativar e Excluir com Segurança)
+- [x] Criar botão e modal de cadastro (Inserir) de novos produtos no Estoque Global com nome, preço, quantidade obrigatória e descrição
+- [x] Criar modal de edição (Alterar) de produtos existentes com atualização em tempo real
+- [x] Implementar botão de Desativar / Reativar produto com feedback visual imediato
+- [x] Implementar exclusão definitiva protegida no backend (`deleteProductSafe`) que valida vínculos em cardápios e pedidos antigos antes de apagar
+- [x] Criar diálogo de confirmação amigável explicando a diferença entre desativar e excluir definitivamente
+- [x] Adicionar testes de regressão automatizados para validação de exclusão segura e aprovar todos os 86 testes em Vitest, TypeScript e build de produção

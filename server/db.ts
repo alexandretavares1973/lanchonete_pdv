@@ -1511,3 +1511,19 @@ export async function refundOrderItems(
     return { ok: true as const, status: newStatus, refundedItemsCount: auditedItems.length };
   });
 }
+
+export async function deleteProductSafe(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  // Verificar se o produto está em menu_items ou order_items
+  const [menuItemsRows, orderItemsRows] = await Promise.all([
+    db.select().from(menuItems).where(eq(menuItems.productId, id)),
+    db.select().from(orderItems).where(eq(orderItems.productId, id)),
+  ]);
+
+  if (menuItemsRows.length > 0 || orderItemsRows.length > 0) {
+    throw new Error("Não é possível excluir este produto pois ele possui vínculos em cardápios ou pedidos antigos. Use a opção de desativar.");
+  }
+
+  return await db.delete(products).where(eq(products.id, id));
+}
