@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { ArrowLeft, DatabaseZap, Loader2, ShieldCheck, TestTube2, Printer } from "lucide-react";
+import { testPrinterCutAndPrint } from "@/lib/thermalPrinter";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -12,10 +13,14 @@ export default function SettingsPage() {
   const [showTestDataDialog, setShowTestDataDialog] = useState(false);
   const [printerName, setPrinterName] = useState(() => localStorage.getItem("thermal_printer_name") || "Nenhuma impressora selecionada");
   const [autoPrint, setAutoPrint] = useState(() => localStorage.getItem("auto_print_thermal") === "true");
+  const [customHeader, setCustomHeader] = useState(() => localStorage.getItem("thermal_header") || "LANCHONETE PDV\nSistema de Vendas");
+  const [customFooter, setCustomFooter] = useState(() => localStorage.getItem("thermal_footer") || "Obrigado pela preferencia!\nVolte sempre!");
 
   const handleSavePrinter = () => {
     localStorage.setItem("thermal_printer_name", printerName);
     localStorage.setItem("auto_print_thermal", String(autoPrint));
+    localStorage.setItem("thermal_header", customHeader);
+    localStorage.setItem("thermal_footer", customFooter);
     toast.success("✅ Configurações de impressora térmica salvas com sucesso!");
   };
 
@@ -160,12 +165,63 @@ export default function SettingsPage() {
                   </div>
                 </div>
 
-                <Button
-                  onClick={handleSavePrinter}
-                  className="bg-primary hover:bg-primary/90 text-white font-medium gap-2"
-                >
-                  Salvar Configuração de Impressão
-                </Button>
+                <div className="grid gap-4 md:grid-cols-2 pt-2">
+                  <div>
+                    <label className="text-sm font-medium text-foreground block mb-1">Cabeçalho do Cupom</label>
+                    <textarea
+                      value={customHeader}
+                      onChange={(e) => setCustomHeader(e.target.value)}
+                      rows={2}
+                      className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-foreground block mb-1">Rodapé do Cupom</label>
+                    <textarea
+                      value={customFooter}
+                      onChange={(e) => setCustomFooter(e.target.value)}
+                      rows={2}
+                      className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground text-sm"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-3 pt-2">
+                  <Button
+                    onClick={handleSavePrinter}
+                    className="bg-primary hover:bg-primary/90 text-white font-medium gap-2"
+                  >
+                    Salvar Configuração de Impressão
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={async () => {
+                      try {
+                        await testPrinterCutAndPrint("bluetooth");
+                        toast.success("🖨️ Teste de impressão e corte Bluetooth executado com sucesso!");
+                      } catch (e: any) {
+                        toast.error(e?.message || "Falha no teste Bluetooth.");
+                      }
+                    }}
+                    className="gap-2"
+                  >
+                    Testar Corte (Bluetooth)
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={async () => {
+                      try {
+                        await testPrinterCutAndPrint("serial");
+                        toast.success("🔌 Teste de impressão e corte USB Serial executado com sucesso!");
+                      } catch (e: any) {
+                        toast.error(e?.message || "Falha no teste USB Serial.");
+                      }
+                    }}
+                    className="gap-2"
+                  >
+                    Testar Corte (USB Serial)
+                  </Button>
+                </div>
               </div>
             </div>
           </Card>

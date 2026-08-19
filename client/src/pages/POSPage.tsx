@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { ShoppingCart, Trash2, Lock, UserPlus } from "lucide-react";
 import { DEFAULT_PAYMENT_METHOD, getExplicitCustomer } from "@shared/posOrderFlow";
 import { getLowStockMessage, isLowGlobalStock } from "@shared/stockAlerts";
-import { printViaWebBluetooth, formatThermalReceipt } from "@/lib/thermalPrinter";
+import { printViaWebBluetooth, printViaWebSerial, formatThermalReceipt } from "@/lib/thermalPrinter";
 import { trpc } from "@/lib/trpc";
 
 
@@ -974,15 +974,39 @@ export default function POSPage() {
                         receivedAmount: lastPaymentMethod === "cash" ? lastAmountReceived : undefined,
                         change: lastPaymentMethod === "cash" ? lastOrderChange : undefined,
                       });
-                      toast.success("🖨️ Cupom enviado para a impressora térmica!");
+                      toast.success("🖨️ Cupom enviado para a impressora térmica Bluetooth!");
                       setShowPrint(false);
                     } catch (err: any) {
-                      toast.error(err?.message || "Falha ao conectar na impressora térmica Bluetooth. Verifique o pareamento.");
+                      toast.error(err?.message || "Falha ao conectar na impressora Bluetooth.");
                     }
                   }}
                   className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
                 >
-                  🖨️ Imprimir em Impressora Térmica (Bluetooth)
+                  🖨️ Imprimir Térmica (Bluetooth)
+                </Button>
+                <Button
+                  onClick={async () => {
+                    try {
+                      const itemsToPrint = lastOrderItems.length > 0 ? lastOrderItems : cart;
+                      await printViaWebSerial({
+                        orderId: "PEDIDO",
+                        createdAt: new Date(),
+                        customerName: lastCustomerName || "GERAL",
+                        items: itemsToPrint.map(i => ({ productName: i.productName, quantity: i.quantity, price: i.price, subtotal: i.subtotal })),
+                        total: lastOrderTotal,
+                        paymentMethod: lastPaymentMethod,
+                        receivedAmount: lastPaymentMethod === "cash" ? lastAmountReceived : undefined,
+                        change: lastPaymentMethod === "cash" ? lastOrderChange : undefined,
+                      });
+                      toast.success("🖨️ Cupom enviado para a impressora térmica USB!");
+                      setShowPrint(false);
+                    } catch (err: any) {
+                      toast.error(err?.message || "Falha ao conectar na porta USB Serial.");
+                    }
+                  }}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold"
+                >
+                  🔌 Imprimir Térmica (USB / Serial)
                 </Button>
                 <Button
                   onClick={() => {
