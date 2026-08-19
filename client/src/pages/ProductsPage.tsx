@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
-import { ArrowLeft, Package, Plus, Save, Trash2, TriangleAlert, Edit2, CheckCircle2, XCircle } from "lucide-react";
+import { ArrowLeft, Package, Plus, Save, Trash2, TriangleAlert, Edit2, CheckCircle2, XCircle, Search, Filter } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -17,6 +17,9 @@ export default function ProductsPage() {
   const utils = trpc.useUtils();
   const { data: products = [], isLoading, error } = trpc.pdv.products.list.useQuery();
 
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "available" | "disabled">("all");
+
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -30,39 +33,43 @@ export default function ProductsPage() {
   const [formDescription, setFormDescription] = useState("");
 
   const createMutation = trpc.pdv.products.create.useMutation({
-    onSuccess: async () => {
+    onSuccess: async (_, variables) => {
       await utils.pdv.products.list.invalidate();
-      toast.success("✅ Produto cadastrado com sucesso!");
+      toast.success(`✅ Produto "${variables.name}" inserido com sucesso no Estoque Global!`);
       setShowCreateDialog(false);
       resetForm();
     },
     onError: (err) => {
-      toast.error(err.message || "Erro ao cadastrar produto.");
+      toast.error(`❌ Erro ao cadastrar produto: ${err.message || "Tente novamente."}`);
     },
   });
 
   const updateMutation = trpc.pdv.products.update.useMutation({
-    onSuccess: async () => {
+    onSuccess: async (_, variables) => {
       await utils.pdv.products.list.invalidate();
-      toast.success("✅ Produto atualizado com sucesso!");
+      if (variables.isAvailable !== undefined) {
+        toast.success(`✅ Produto ${variables.isAvailable ? "reativado" : "desativado"} com sucesso!`);
+      } else {
+        toast.success(`✅ Produto alterado com sucesso!`);
+      }
       setShowEditDialog(false);
       setSelectedProduct(null);
       resetForm();
     },
     onError: (err) => {
-      toast.error(err.message || "Erro ao atualizar produto.");
+      toast.error(`❌ Erro ao atualizar produto: ${err.message || "Tente novamente."}`);
     },
   });
 
   const deleteMutation = trpc.pdv.products.delete.useMutation({
     onSuccess: async () => {
       await utils.pdv.products.list.invalidate();
-      toast.success("✅ Produto excluído definitivamente.");
+      toast.success("✅ Produto excluído definitivamente do Estoque Global.");
       setShowDeleteDialog(false);
       setSelectedProduct(null);
     },
     onError: (err) => {
-      toast.error(err.message || "Não foi possível excluir o produto. Tente desativá-lo.");
+      toast.error(`❌ Não foi possível excluir: ${err.message || "Produto possui vínculos."}`);
     },
   });
 
@@ -152,13 +159,23 @@ export default function ProductsPage() {
     });
   };
 
+  // Filtragem por busca e status
+  const filteredProducts = products.filter((product: any) => {
+    const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (product.description && product.description.toLowerCase().includes(searchQuery.toLowerCase()));
+    
+    if (statusFilter === "available") return matchesSearch && product.isAvailable;
+    if (statusFilter === "disabled") return matchesSearch && !product.isAvailable;
+    return matchesSearch;
+  });
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
       <div className="max-w-6xl mx-auto p-6">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
           <div>
             <h1 className="text-3xl font-bold text-foreground">Produtos (Estoque Global)</h1>
-            <p className="text-muted-foreground">Cadastre, altere preços, gerencie estoques e desative produtos</p>
+            <p className="text-muted-foreground">Cadastre, altere, desative e gerencie o estoque completo</p>
           </div>
           <div className="flex items-center gap-3">
             <Button onClick={handleOpenCreate} className="gap-2 bg-gradient-to-r from-primary to-secondary text-white">
@@ -170,24 +187,71 @@ export default function ProductsPage() {
           </div>
         </div>
 
+        {/* Barra de Busca e Filtros */}
+        <Card className="p-4 mb-6 flex flex-col md:flex-row items-center gap-4">
+          <div className="relative flex-1 w-full">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Buscar produto por nome ou descrição..."
+              className="pl-9 w-full"
+            />
+          </div>
+          <div className="flex items-center gap-2 w-full md:w-auto">
+            <Filter className="h-4 w-4 text-muted-foreground shrink-0" />
+            <Button
+              variant={statusFilter === "all" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setStatusFilter("all")}
+              className="flex-1 md:flex-initial"
+            >
+              Todos ({products.length})
+            </Button>
+            <Button
+              variant={statusFilter === "available" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setStatusFilter("available")}
+              className="flex-1 md:flex-initial"
+            >
+              Disponíveis
+            </Button>
+            <Button
+              variant={statusFilter === "disabled" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setStatusFilter("disabled")}
+              className="flex-1 md:flex-initial"
+            >
+              Desativados
+            </Button>
+          </div>
+        </Card>
+
         {isLoading && <Card className="p-8 text-center text-muted-foreground">Carregando produtos...</Card>}
         {error && <Card className="p-8 text-center text-destructive">Não foi possível carregar os produtos.</Card>}
-        {!isLoading && !error && products.length === 0 && (
+        
+        {!isLoading && !error && filteredProducts.length === 0 && (
           <Card className="p-10 text-center">
             <Package className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
-            <p className="font-medium text-foreground">Nenhum produto cadastrado</p>
-            <Button onClick={handleOpenCreate} className="mt-4 gap-2">
-              <Plus className="h-4 w-4" /> Cadastrar primeiro produto
-            </Button>
+            <p className="font-medium text-foreground">Nenhum produto encontrado com os filtros atuais</p>
+            {searchQuery || statusFilter !== "all" ? (
+              <Button variant="outline" onClick={() => { setSearchQuery(""); setStatusFilter("all"); }} className="mt-3">
+                Limpar busca e filtros
+              </Button>
+            ) : (
+              <Button onClick={handleOpenCreate} className="mt-4 gap-2">
+                <Plus className="h-4 w-4" /> Cadastrar primeiro produto
+              </Button>
+            )}
           </Card>
         )}
 
-        {!isLoading && !error && products.length > 0 && (
+        {!isLoading && !error && filteredProducts.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {products.map((product) => {
+            {filteredProducts.map((product: any) => {
               const lowStock = isLowGlobalStock(product);
               return (
-                <Card key={product.id} className="p-5 flex flex-col justify-between">
+                <Card key={product.id} className="p-5 flex flex-col justify-between hover:border-primary/50 transition-colors">
                   <div>
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
@@ -212,7 +276,7 @@ export default function ProductsPage() {
                       </p>
                     )}
 
-                    {lowStock && (
+                    {lowStock && product.isAvailable && (
                       <div className="mt-3 rounded-md border border-amber-300 bg-amber-50 p-2.5 text-xs font-semibold text-amber-900" role="alert">
                         <div className="flex items-start gap-2">
                           <TriangleAlert className="h-4 w-4 shrink-0 mt-0.5" />

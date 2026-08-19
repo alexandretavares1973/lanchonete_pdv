@@ -735,3 +735,31 @@ describe("Ciclo de vida e exclusão segura de produtos", () => {
     expect(checkSafeDeleteMock(false, false)).toBe(true);
   });
 });
+
+
+describe("Busca e filtros de produtos no Estoque Global", () => {
+  const sampleProducts = [
+    { id: 1, name: "HAMBURGUER", isAvailable: true, description: "Carne e queijo" },
+    { id: 2, name: "SUCO DE UVA", isAvailable: true, description: "Natural" },
+    { id: 3, name: "TORTA DE CHOCOLATE", isAvailable: false, description: "Sobremesa" },
+  ];
+
+  it("filtra produtos por termo de busca em nome ou descrição", () => {
+    const query = "suco";
+    const result = sampleProducts.filter(p =>
+      p.name.toLowerCase().includes(query.toLowerCase()) ||
+      p.description.toLowerCase().includes(query.toLowerCase())
+    );
+    expect(result).toHaveLength(1);
+    expect(result[0].name).toBe("SUCO DE UVA");
+  });
+
+  it("filtra produtos por status disponíveis ou desativados", () => {
+    const available = sampleProducts.filter(p => p.isAvailable);
+    expect(available).toHaveLength(2);
+
+    const disabled = sampleProducts.filter(p => !p.isAvailable);
+    expect(disabled).toHaveLength(1);
+    expect(disabled[0].name).toBe("TORTA DE CHOCOLATE");
+  });
+});

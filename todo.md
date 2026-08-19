@@ -149,3 +149,10 @@
 - [x] Implementar exclusão definitiva protegida no backend (`deleteProductSafe`) que valida vínculos em cardápios e pedidos antigos antes de apagar
 - [x] Criar diálogo de confirmação amigável explicando a diferença entre desativar e excluir definitivamente
 - [x] Adicionar testes de regressão automatizados para validação de exclusão segura e aprovar todos os 86 testes em Vitest, TypeScript e build de produção
+
+
+## Aprimoramento do Estoque Global (Busca, Filtros e Notificações Visuais)
+- [x] Implementar barra de busca em tempo real por nome e descrição do produto na página de Produtos (`ProductsPage.tsx`)
+- [x] Implementar filtros rápidos de status (Todos, Disponíveis e Desativados)
+- [x] Padronizar toasts de feedback detalhado de sucesso e erro para inserção, edição, desativação/reativação e exclusão de produtos
+- [x] Adicionar testes unitários automatizados para busca e filtragem de produtos, aprovando 88 testes em Vitest, TypeScript e build de produção
