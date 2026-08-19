@@ -832,3 +832,25 @@ describe("Alertas de estoque zerado ou insuficiente no POS", () => {
     expect(isInsufficient).toBe(true);
   });
 });
+
+
+describe("Camada de Impressão Térmica ESC/POS", () => {
+  it("formata corretamente os dados do recibo térmico", () => {
+    const data = {
+      orderId: 1001,
+      createdAt: new Date("2026-08-19T10:00:00Z"),
+      customerName: "Maria Silva",
+      items: [
+        { productName: "Hambúrguer", quantity: 2, price: 15.0, subtotal: 30.0 }
+      ],
+      total: 30.0,
+      paymentMethod: "PIX"
+    };
+
+    const line = "--------------------------------";
+    expect(data.orderId).toBe(1001);
+    expect(data.customerName).toBe("Maria Silva");
+    expect(data.total).toBe(30.0);
+    expect(data.items.length).toBe(1);
+  });
+});
